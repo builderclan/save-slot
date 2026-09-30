@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   ExternalLink,
 } from "lucide-react";
+import { RejectionModal } from "@/components/admin/rejection-modal";
 
 export default function AdminEventsModerationPage() {
   const [version, setVersion] = React.useState(0);
@@ -24,6 +25,8 @@ export default function AdminEventsModerationPage() {
   const [conflicts, setConflicts] = React.useState<Record<string, ConflictReport>>({});
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [rejectingEvent, setRejectingEvent] = React.useState<{ id: string; title: string } | null>(null);
+  const [isRejecting, setIsRejecting] = React.useState(false);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -78,13 +81,17 @@ export default function AdminEventsModerationPage() {
     }
   };
 
-  const handleReject = async (id: string) => {
-    const reason = prompt("Reason for rejection:") || "Rejected by campus administration";
+  const handleConfirmReject = async (reason: string) => {
+    if (!rejectingEvent) return;
+    setIsRejecting(true);
     try {
-      await eventService.updateEventStatus(id, "rejected", { rejection_reason: reason });
+      await eventService.updateEventStatus(rejectingEvent.id, "rejected", { rejection_reason: reason });
+      setRejectingEvent(null);
       refresh();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to reject event");
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -235,7 +242,7 @@ export default function AdminEventsModerationPage() {
                   {evt.status === "pending" && (
                     <>
                       <button
-                        onClick={() => handleReject(evt.id)}
+                        onClick={() => setRejectingEvent({ id: evt.id, title: evt.title })}
                         className="px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold transition cursor-pointer"
                       >
                         Reject
@@ -251,7 +258,7 @@ export default function AdminEventsModerationPage() {
 
                   {evt.status === "published" && (
                     <button
-                      onClick={() => handleReject(evt.id)}
+                      onClick={() => setRejectingEvent({ id: evt.id, title: evt.title })}
                       className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold transition cursor-pointer"
                     >
                       Unpublish / Revoke
@@ -263,6 +270,15 @@ export default function AdminEventsModerationPage() {
           })
         )}
       </div>
+
+      {/* Styled Rejection Modal */}
+      <RejectionModal
+        isOpen={Boolean(rejectingEvent)}
+        eventTitle={rejectingEvent?.title || ""}
+        onClose={() => setRejectingEvent(null)}
+        onConfirm={handleConfirmReject}
+        isSubmitting={isRejecting}
+      />
     </div>
   );
 }

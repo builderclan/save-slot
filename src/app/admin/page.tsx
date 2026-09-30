@@ -14,6 +14,7 @@ import {
   Calendar,
   Clock,
 } from "lucide-react";
+import { RejectionModal } from "@/components/admin/rejection-modal";
 
 export default function AdminDashboardPage() {
   const [version, setVersion] = React.useState(0);
@@ -24,6 +25,8 @@ export default function AdminDashboardPage() {
   const [conflictCount, setConflictCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [rejectingEvent, setRejectingEvent] = React.useState<{ id: string; title: string } | null>(null);
+  const [isRejecting, setIsRejecting] = React.useState(false);
 
   const refreshData = React.useCallback(() => {
     setVersion((v) => v + 1);
@@ -97,13 +100,17 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleRejectEvent = async (id: string) => {
-    const reason = prompt("Enter reason for rejection:") || "Rejected by campus administration";
+  const handleConfirmReject = async (reason: string) => {
+    if (!rejectingEvent) return;
+    setIsRejecting(true);
     try {
-      await eventService.updateEventStatus(id, "rejected", { rejection_reason: reason });
+      await eventService.updateEventStatus(rejectingEvent.id, "rejected", { rejection_reason: reason });
+      setRejectingEvent(null);
       refreshData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to reject event");
+    } finally {
+      setIsRejecting(false);
     }
   };
 
@@ -332,7 +339,7 @@ export default function AdminDashboardPage() {
                   {/* Admin Approve / Reject Actions */}
                   <div className="flex items-center gap-2 self-end md:self-center">
                     <button
-                      onClick={() => handleRejectEvent(evt.id)}
+                      onClick={() => setRejectingEvent({ id: evt.id, title: evt.title })}
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold transition cursor-pointer"
                     >
                       <XCircle className="h-3.5 w-3.5" />
@@ -352,6 +359,15 @@ export default function AdminDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Styled Rejection Modal */}
+      <RejectionModal
+        isOpen={Boolean(rejectingEvent)}
+        eventTitle={rejectingEvent?.title || ""}
+        onClose={() => setRejectingEvent(null)}
+        onConfirm={handleConfirmReject}
+        isSubmitting={isRejecting}
+      />
     </div>
   );
 }

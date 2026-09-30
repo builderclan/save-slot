@@ -32,7 +32,10 @@ function CreateEventForm() {
   const [communityId, setCommunityId] = React.useState<string>("");
   const [title, setTitle] = React.useState("");
   const [category, setCategory] = React.useState<EventCategory>("Tech");
-  const [date, setDate] = React.useState("2026-09-17");
+  const [date, setDate] = React.useState(() => {
+    const today = new Date();
+    return today.toISOString().split("T")[0];
+  });
   const [startTime, setStartTime] = React.useState("16:30");
   const [endTime, setEndTime] = React.useState("18:30");
   const [venueId, setVenueId] = React.useState<string>("");
@@ -43,6 +46,22 @@ function CreateEventForm() {
   const [coverImageUrl, setCoverImageUrl] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [tagsInput, setTagsInput] = React.useState("");
+
+  // Auto-advance endTime if missing or invalid relative to startTime
+  const handleStartTimeChange = (newStartTime: string) => {
+    setStartTime(newStartTime);
+    if (!endTime || endTime <= newStartTime) {
+      const parts = newStartTime.split(":");
+      if (parts.length === 2) {
+        const h = parseInt(parts[0], 10);
+        const m = parts[1];
+        if (!isNaN(h)) {
+          const nextH = (h + 1) % 24;
+          setEndTime(`${String(nextH).padStart(2, "0")}:${m}`);
+        }
+      }
+    }
+  };
 
   const [conflictReport, setConflictReport] = React.useState<ConflictReport>({
     hasVenueConflict: false,
@@ -110,6 +129,11 @@ function CreateEventForm() {
   const handleSubmit = async (targetStatus: "draft" | "published" | "pending") => {
     if (!title.trim()) {
       alert("Please provide an event title.");
+      return;
+    }
+
+    if (endTime <= startTime) {
+      alert("End time must be after start time.");
       return;
     }
 
@@ -297,7 +321,7 @@ function CreateEventForm() {
                 type="time"
                 required
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={(e) => handleStartTimeChange(e.target.value)}
                 className="w-full py-2 px-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400"
               />
             </div>
@@ -311,8 +335,17 @@ function CreateEventForm() {
                 required
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full py-2 px-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className={`w-full py-2 px-3 bg-white border rounded-lg focus:outline-none focus:ring-1 ${
+                  endTime && startTime && endTime <= startTime
+                    ? "border-rose-400 focus:ring-rose-400 bg-rose-50/30"
+                    : "border-slate-200 focus:ring-slate-400"
+                }`}
               />
+              {endTime && startTime && endTime <= startTime && (
+                <p className="text-[11px] text-rose-600 font-medium mt-1">
+                  End time must be after start time.
+                </p>
+              )}
             </div>
           </div>
 

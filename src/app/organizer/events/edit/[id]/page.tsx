@@ -42,6 +42,22 @@ export default function EditEventPage() {
   const [tagsInput, setTagsInput] = React.useState("");
   const [status, setStatus] = React.useState<EventStatus>("published");
 
+  // Auto-advance endTime if missing or invalid relative to startTime
+  const handleStartTimeChange = (newStartTime: string) => {
+    setStartTime(newStartTime);
+    if (!endTime || endTime <= newStartTime) {
+      const parts = newStartTime.split(":");
+      if (parts.length === 2) {
+        const h = parseInt(parts[0], 10);
+        const m = parts[1];
+        if (!isNaN(h)) {
+          const nextH = (h + 1) % 24;
+          setEndTime(`${String(nextH).padStart(2, "0")}:${m}`);
+        }
+      }
+    }
+  };
+
   // Load event and venues
   React.useEffect(() => {
     let isMounted = true;
@@ -118,6 +134,11 @@ export default function EditEventPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    if (endTime <= startTime) {
+      alert("End time must be after start time.");
+      return;
+    }
 
     const startIso = `${date}T${startTime}:00Z`;
     const endIso = `${date}T${endTime}:00Z`;
@@ -266,7 +287,7 @@ export default function EditEventPage() {
                 type="time"
                 required
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={(e) => handleStartTimeChange(e.target.value)}
                 className="w-full py-2 px-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400"
               />
             </div>
@@ -280,8 +301,17 @@ export default function EditEventPage() {
                 required
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
-                className="w-full py-2 px-3 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-slate-400"
+                className={`w-full py-2 px-3 bg-white border rounded-lg focus:outline-none focus:ring-1 ${
+                  endTime && startTime && endTime <= startTime
+                    ? "border-rose-400 focus:ring-rose-400 bg-rose-50/30"
+                    : "border-slate-200 focus:ring-slate-400"
+                }`}
               />
+              {endTime && startTime && endTime <= startTime && (
+                <p className="text-[11px] text-rose-600 font-medium mt-1">
+                  End time must be after start time.
+                </p>
+              )}
             </div>
           </div>
 
