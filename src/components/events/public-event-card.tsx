@@ -4,8 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { Event } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
-import { format, parseISO } from "date-fns";
-import { MapPin, ExternalLink, Radio } from "lucide-react";
+import { format, parseISO, differenceInMinutes } from "date-fns";
+import { MapPin, ExternalLink, Radio, ArrowUpRight, Ticket } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PublicEventCardProps {
@@ -21,29 +21,74 @@ export function PublicEventCard({
   className,
   showDate = false,
 }: PublicEventCardProps) {
-  const startTimeFormatted = React.useMemo(() => {
+  const parsedStart = React.useMemo(() => {
     try {
-      return format(parseISO(event.start_time), "h:mm a");
+      return parseISO(event.start_time);
     } catch {
-      return event.start_time;
+      return new Date();
     }
   }, [event.start_time]);
 
-  const endTimeFormatted = React.useMemo(() => {
+  const parsedEnd = React.useMemo(() => {
     try {
-      return format(parseISO(event.end_time), "h:mm a");
+      return parseISO(event.end_time);
     } catch {
-      return event.end_time;
+      return new Date();
     }
   }, [event.end_time]);
 
-  const dateFormatted = React.useMemo(() => {
+  const startTimeFormatted = React.useMemo(() => {
     try {
-      return format(parseISO(event.start_time), "EEE, MMM d");
+      return format(parsedStart, "h:mm a");
+    } catch {
+      return event.start_time;
+    }
+  }, [parsedStart, event.start_time]);
+
+  const endTimeFormatted = React.useMemo(() => {
+    try {
+      return format(parsedEnd, "h:mm a");
+    } catch {
+      return event.end_time;
+    }
+  }, [parsedEnd, event.end_time]);
+
+  const dayNumber = React.useMemo(() => {
+    try {
+      return format(parsedStart, "d");
     } catch {
       return "";
     }
-  }, [event.start_time]);
+  }, [parsedStart]);
+
+  const monthShort = React.useMemo(() => {
+    try {
+      return format(parsedStart, "MMM").toUpperCase();
+    } catch {
+      return "";
+    }
+  }, [parsedStart]);
+
+  const dayOfWeek = React.useMemo(() => {
+    try {
+      return format(parsedStart, "EEE").toUpperCase();
+    } catch {
+      return "";
+    }
+  }, [parsedStart]);
+
+  const durationLabel = React.useMemo(() => {
+    try {
+      const minutes = differenceInMinutes(parsedEnd, parsedStart);
+      if (minutes <= 0) return null;
+      if (minutes < 60) return `${minutes}m`;
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+    } catch {
+      return null;
+    }
+  }, [parsedStart, parsedEnd]);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Avoid triggering when user clicks on an external registration link or tag
@@ -71,52 +116,69 @@ export function PublicEventCard({
       onClick={handleCardClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        "group relative bg-white rounded-xl border border-slate-200/90 hover:border-slate-300 hover:shadow-xs p-4 sm:p-5 transition-all duration-150 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-1",
+        "group relative bg-white rounded-2xl border border-[#e8e5de] hover:border-[#12161f]/40 hover:shadow-md transition-all duration-200 overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#12161f] focus:ring-offset-2 flex flex-col md:flex-row items-stretch",
         className
       )}
-      aria-label={`Event: ${event.title} by ${event.community?.name || "Campus Organization"}`}
+      aria-label={`Event Pass: ${event.title} by ${event.community?.name || "Campus Community"}`}
     >
-      {/* Left Column: Time & Details */}
-      <div className="flex items-start gap-4 flex-1 min-w-0">
-        {/* Time Pillar */}
-        <div className="shrink-0 w-24 text-left sm:text-right pt-0.5">
-          {showDate && (
-            <div className="text-[11px] font-semibold text-blue-600 uppercase tracking-tight">
-              {dateFormatted}
-            </div>
-          )}
-          <div className="text-sm font-bold text-slate-900 leading-tight">
-            {startTimeFormatted}
-          </div>
-          <div className="text-xs text-slate-400 font-medium leading-tight mt-0.5">
-            {endTimeFormatted}
-          </div>
+      {/* 1. Ticket Pass Stub: Date & Schedule Block */}
+      <div className="md:w-36 shrink-0 bg-[#faf9f6] border-b md:border-b-0 md:border-r border-[#e8e5de] p-4 flex md:flex-col items-center justify-between md:justify-center text-center gap-1.5 transition-colors group-hover:bg-[#f4f2ec]">
+        {/* Ticket Notch Cutout Indicator */}
+        <div className="flex md:flex-col items-center gap-2 md:gap-0.5">
+          <span className="text-[10px] font-black uppercase tracking-widest text-[#8c827a]">
+            {monthShort}
+          </span>
+          <span className="text-2xl md:text-3xl font-black text-[#12161f] tracking-tight leading-none">
+            {dayNumber}
+          </span>
+          <span className="text-[10px] font-bold text-[#6b7280] tracking-wider uppercase">
+            {dayOfWeek}
+          </span>
         </div>
 
-        {/* Vertical Divider */}
-        <div className="hidden sm:block w-px self-stretch bg-slate-100 group-hover:bg-slate-200 transition" />
+        {/* Vertical Perforation divider on mobile */}
+        <div className="h-6 w-px bg-[#e8e5de] md:hidden" />
 
-        {/* Event Content */}
-        <div className="space-y-1.5 flex-1 min-w-0">
-          {/* Metadata Row: Category + Virtual/Location Pill */}
+        {/* Time Interval & Duration Badge */}
+        <div className="flex flex-col items-end md:items-center text-right md:text-center">
+          <span className="text-xs font-bold text-[#12161f] tracking-tight whitespace-nowrap">
+            {startTimeFormatted}
+          </span>
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className="text-[11px] text-[#71717a] font-medium whitespace-nowrap">
+              to {endTimeFormatted}
+            </span>
+            {durationLabel && (
+              <span className="text-[9px] font-bold bg-[#e8e5de] text-[#52525b] px-1.5 py-0.2 rounded-sm ml-1 uppercase">
+                {durationLabel}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Pass Body: Content, Metadata, Host */}
+      <div className="p-4 sm:p-5 flex-1 min-w-0 flex flex-col justify-between gap-3">
+        <div className="space-y-2">
+          {/* Metadata Ribbon: Category Stamp + Location */}
           <div className="flex flex-wrap items-center gap-2">
             <CategoryBadge category={event.category} size="sm" />
 
             {event.is_virtual ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">
-                <Radio className="h-3 w-3" />
-                Virtual
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-purple-800 bg-purple-50 px-2.5 py-0.5 rounded-full border border-purple-200">
+                <Radio className="h-3 w-3 animate-pulse text-purple-600" />
+                Live Virtual Stream
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-xs text-slate-500 font-medium truncate max-w-[200px] sm:max-w-xs">
-                <MapPin className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <span className="inline-flex items-center gap-1 text-xs text-[#52525b] font-medium truncate max-w-[280px]">
+                <MapPin className="h-3.5 w-3.5 text-[#a1a1aa] shrink-0" />
                 <span className="truncate">{event.location_name}</span>
               </span>
             )}
           </div>
 
           {/* Event Title */}
-          <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition leading-snug">
+          <h3 className="text-base sm:text-lg font-bold text-[#12161f] group-hover:text-blue-700 transition leading-snug">
             <Link
               href={`/events/${event.slug}`}
               onClick={(e) => {
@@ -131,57 +193,62 @@ export function PublicEventCard({
             </Link>
           </h3>
 
-          {/* Host Community & Description Snippet */}
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            {event.community?.logo_url && (
+          {/* Description Snippet */}
+          {event.description && (
+            <p className="text-xs text-[#52525b] line-clamp-1 leading-relaxed">
+              {event.description}
+            </p>
+          )}
+        </div>
+
+        {/* Footer of Card: Host Community + Action Button */}
+        <div className="pt-2 border-t border-[#f4f2ec] flex items-center justify-between gap-3 text-xs">
+          {/* Host Community Pill */}
+          <div className="flex items-center gap-2 min-w-0">
+            {event.community?.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={event.community.logo_url}
                 alt=""
-                className="w-4 h-4 rounded-full object-cover shrink-0"
+                className="w-4 h-4 rounded-full object-cover border border-[#e8e5de] shrink-0"
               />
+            ) : (
+              <div className="w-4 h-4 rounded-full bg-[#12161f] text-white flex items-center justify-center text-[9px] font-bold shrink-0">
+                {(event.community?.name || "C").slice(0, 1)}
+              </div>
             )}
-            <span className="font-medium text-slate-700 truncate">
+            <span className="font-semibold text-[#3f3f46] truncate">
               {event.community?.name || "Campus Community"}
             </span>
           </div>
+
+          {/* Action Callout */}
+          <div className="flex items-center gap-2 shrink-0">
+            {event.external_registration_url ? (
+              <a
+                href={event.external_registration_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold bg-[#12161f] text-white hover:bg-black transition shadow-xs"
+                title="Register for this event"
+              >
+                <span>RSVP</span>
+                <ExternalLink className="h-3 w-3 text-white/70" />
+              </a>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                <Ticket className="h-3 w-3 text-emerald-600" />
+                Open Access
+              </span>
+            )}
+
+            {/* Micro-Affordance arrow icon */}
+            <div className="w-6 h-6 rounded-full bg-[#f4f2ec] group-hover:bg-[#12161f] group-hover:text-white transition flex items-center justify-center text-[#71717a]">
+              <ArrowUpRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Right Column: Registration CTA & Action */}
-      <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
-        {/* Registration State */}
-        {event.external_registration_url ? (
-          <a
-            href={event.external_registration_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 transition border border-slate-200/80 active:scale-98"
-            title="Register for this event (opens external site)"
-          >
-            Register
-            <ExternalLink className="h-3 w-3 text-slate-500" />
-          </a>
-        ) : (
-          <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80">
-            Open Event
-          </span>
-        )}
-
-        {/* View Details Text Link */}
-        <Link
-          href={`/events/${event.slug}`}
-          onClick={(e) => {
-            if (onSelect) {
-              e.preventDefault();
-              onSelect(event);
-            }
-          }}
-          className="text-xs font-semibold text-blue-600 hover:text-blue-700 sm:hidden"
-        >
-          Details &rarr;
-        </Link>
       </div>
     </div>
   );

@@ -37,19 +37,19 @@ export function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80">
+    <header className="sticky top-0 z-40 w-full bg-[#fcfbfa]/90 backdrop-blur-md border-b border-[#e8e5de]">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Brand & Campus Selector */}
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <Link href="/" className="flex items-center gap-2 shrink-0 group">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center shadow-xs group-hover:bg-blue-600 transition">
-              <CalendarIcon className="h-4 w-4" />
+          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+            <div className="w-8 h-8 rounded-xl bg-[#12161f] text-[#fcfbfa] flex items-center justify-center font-display font-black text-xs shadow-xs group-hover:bg-blue-700 transition">
+              BC
             </div>
             <div className="hidden sm:flex flex-col">
-              <span className="text-sm font-bold tracking-tight text-slate-900 leading-none">
+              <span className="text-sm font-black tracking-tight text-[#12161f] leading-none font-display">
                 Campus Calendar
               </span>
-              <span className="text-[11px] text-slate-400 font-medium leading-tight mt-0.5">
+              <span className="text-[10px] text-[#8c827a] font-semibold tracking-wider uppercase leading-tight mt-0.5">
                 BuilderClan
               </span>
             </div>
@@ -86,21 +86,21 @@ export function Navbar() {
           {/* Quick Create Event button */}
           <Link
             href="/organizer/events/new"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition shadow-2xs active:scale-[0.98]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#12161f] text-white hover:bg-black transition shadow-xs active:scale-[0.98]"
           >
-            <PlusCircle className="h-3.5 w-3.5" />
+            <PlusCircle className="h-3.5 w-3.5 text-white/80" />
             Post Event
           </Link>
 
           {/* Portal Switcher */}
-          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 text-xs">
+          <div className="flex items-center bg-[#f4f2ec] p-0.5 rounded-xl border border-[#e8e5de] text-xs">
             <Link
               href="/"
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition",
+                "px-2.5 py-1 rounded-lg font-medium transition",
                 !isOrganizerArea && !isAdminArea
-                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-[#12161f] shadow-xs font-bold"
+                  : "text-[#6b7280] hover:text-[#12161f]"
               )}
             >
               Student
@@ -108,10 +108,10 @@ export function Navbar() {
             <Link
               href="/organizer"
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition",
+                "px-2.5 py-1 rounded-lg font-medium transition",
                 isOrganizerArea
-                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-[#12161f] shadow-xs font-bold"
+                  : "text-[#6b7280] hover:text-[#12161f]"
               )}
             >
               Organizer
@@ -119,10 +119,10 @@ export function Navbar() {
             <Link
               href="/admin"
               className={cn(
-                "px-2.5 py-1 rounded-md font-medium transition",
+                "px-2.5 py-1 rounded-lg font-medium transition",
                 isAdminArea
-                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-white text-[#12161f] shadow-xs font-bold"
+                  : "text-[#6b7280] hover:text-[#12161f]"
               )}
             >
               Admin

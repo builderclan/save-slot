@@ -1,68 +1,73 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #fbfaf7;
+  --foreground: #12161f;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #12161f;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #0f172a;
-  --primary-foreground: #f8fafc;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
-  --destructive: #ef4444;
+  --popover-foreground: #12161f;
+  --primary: #12161f;
+  --primary-foreground: #fbfaf7;
+  --secondary: #f4f2ec;
+  --secondary-foreground: #12161f;
+  --muted: #f4f2ec;
+  --muted-foreground: #6b7280;
+  --accent: #f4f2ec;
+  --accent-foreground: #12161f;
+  --destructive: #e11d48;
   --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #94a3b8;
-  --radius: 0.5rem;
+  --border: #e8e5de;
+  --input: #e8e5de;
+  --ring: #12161f;
+  --radius: 0.75rem;
 }
 
 body {
   background-color: var(--background);
   color: var(--foreground);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Category Badges Styling */
+.font-display {
+  font-family: var(--font-outfit), var(--font-geist-sans), sans-serif;
+}
+
+/* Category Badges Styling — Distinct collegiate ink & tactile stamps */
 .badge-tech {
-  background-color: #eff6ff;
+  background-color: #f0f6fe;
   color: #1d4ed8;
   border-color: #bfdbfe;
 }
 .badge-career {
-  background-color: #fffbeb;
+  background-color: #fef8ee;
   color: #b45309;
   border-color: #fde68a;
 }
 .badge-arts {
-  background-color: #faf5ff;
-  color: #6d28d9;
+  background-color: #fbf6fe;
+  color: #7c3aed;
   border-color: #e9d5ff;
 }
 .badge-social {
-  background-color: #fff1f2;
+  background-color: #fff1f4;
   color: #be123c;
   border-color: #fecdd3;
 }
 .badge-sports {
-  background-color: #ecfdf5;
+  background-color: #f0fdf4;
   color: #047857;
   border-color: #a7f3d0;
 }
 .badge-academic {
-  background-color: #ecfeff;
+  background-color: #f0fdfc;
   color: #0e7490;
   border-color: #a5f3fc;
 }
 .badge-workshop {
-  background-color: #eef2ff;
+  background-color: #f1f3fe;
   color: #4338ca;
   border-color: #c7d2fe;
 }
@@ -76,9 +81,14 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
+  background: #d6d3cb;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #a8a29e;
+}
+
+/* Perforation dashed line for ticket stubs */
+.ticket-dashed-divider {
+  background-image: repeating-linear-gradient(to bottom, #d6d3cb, #d6d3cb 4px, transparent 4px, transparent 8px);
 }
