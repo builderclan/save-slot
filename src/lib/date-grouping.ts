@@ -126,8 +126,9 @@ export function groupEventsByCampusDate(
     const eventDate = new Date(event.start_time);
     const eventDateStr = getCampusDateString(eventDate, timeZone);
 
-    // Case 5: Past events are ignored in upcoming sections
+    // Past events (< today) fallback to upcoming rather than silently dropping
     if (eventDateStr < todayDateStr) {
+      groups.upcoming.push(event);
       continue;
     }
 
