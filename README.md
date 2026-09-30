@@ -20,6 +20,33 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Docker
+
+### Using Docker Compose (Recommended)
+
+1. Ensure your environment variables are configured in `.env` (see `.env.example`).
+2. Build and start the container:
+   ```bash
+   docker compose up --build -d
+   ```
+3. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. To view logs or stop the application:
+   ```bash
+   docker compose logs -f
+   docker compose down
+   ```
+
+### Using Docker CLI
+
+1. Build the production Docker image:
+   ```bash
+   docker build -t calendar-bc .
+   ```
+2. Run the container:
+   ```bash
+   docker run -d -p 3000:3000 --env-file .env --name calendar-bc-app calendar-bc
+   ```
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
