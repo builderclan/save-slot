@@ -28,6 +28,13 @@ let communitiesState: Community[] = [...INITIAL_COMMUNITIES];
 let venuesState: Venue[] = [...INITIAL_VENUES];
 let eventsState: Event[] = [...INITIAL_EVENTS];
 
+// Refresh initial state if empty or reloaded
+export function refreshMockStore() {
+  eventsState = [...INITIAL_EVENTS];
+  communitiesState = [...INITIAL_COMMUNITIES];
+  venuesState = [...INITIAL_VENUES];
+}
+
 function hydrateMockEvent(event: Event): Event {
   const community = communitiesState.find((c) => c.id === event.community_id);
   const venue = event.venue_id ? venuesState.find((v) => v.id === event.venue_id) : undefined;

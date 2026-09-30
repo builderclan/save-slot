@@ -64,14 +64,14 @@ export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalPro
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#12161f]/60 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col"
+        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cover Image or Accent Header */}
         {event.cover_image_url ? (
-          <div className="relative h-48 sm:h-56 w-full bg-slate-100 overflow-hidden">
+          <div className="relative h-48 sm:h-56 w-full bg-stone-100 overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={event.cover_image_url}
@@ -89,25 +89,25 @@ export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalPro
             <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
               <CategoryBadge category={event.category} />
               {event.is_virtual && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-600/90 text-white backdrop-blur-xs">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-600/90 text-white backdrop-blur-xs font-mono">
                   <Radio className="h-3 w-3 animate-pulse" /> Virtual Event
                 </span>
               )}
             </div>
           </div>
         ) : (
-          <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+          <div className="p-4 sm:p-6 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
             <div className="flex items-center gap-2">
               <CategoryBadge category={event.category} />
               {event.is_virtual && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 font-mono">
                   <Radio className="h-3 w-3" /> Virtual
                 </span>
               )}
             </div>
             <button
               onClick={onClose}
-              className="p-1 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition cursor-pointer"
+              className="p-1 rounded-full text-stone-500 hover:text-[#12161f] hover:bg-stone-200 transition cursor-pointer"
               aria-label="Close modal"
             >
               <X className="h-5 w-5" />
@@ -118,19 +118,19 @@ export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalPro
         {/* Scrollable Body */}
         <div className="p-6 overflow-y-auto space-y-6">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight leading-snug">
+            <h2 className="text-xl sm:text-2xl font-black text-[#12161f] tracking-tight leading-snug font-display">
               {event.title}
             </h2>
 
             {/* Organizing Community */}
             {event.community && (
-              <div className="mt-2.5 flex items-center gap-2 text-sm text-slate-600">
-                <span className="text-slate-400">Hosted by</span>
+              <div className="mt-2.5 flex items-center gap-2 text-sm text-stone-600">
+                <span className="text-stone-400">Hosted by</span>
                 <Link
                   href={`/communities/${event.community.slug}`}
-                  className="font-medium text-slate-900 hover:underline inline-flex items-center gap-1.5"
+                  className="font-semibold text-stone-900 hover:underline inline-flex items-center gap-1.5"
                 >
-                  <Users className="h-3.5 w-3.5 text-slate-500" />
+                  <Users className="h-3.5 w-3.5 text-stone-500" />
                   {event.community.name}
                 </Link>
               </div>
@@ -138,31 +138,31 @@ export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalPro
           </div>
 
           {/* Key Info Strip */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-stone-50 rounded-xl border border-stone-100 text-sm">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-white border border-slate-200 text-slate-700 shadow-xs shrink-0">
+              <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shadow-xs shrink-0">
                 <CalendarIcon className="h-4 w-4" />
               </div>
               <div>
-                <p className="font-semibold text-slate-900">
+                <p className="font-bold text-[#12161f]">
                   {formatEventDate(event.start_time)}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-stone-500 font-mono">
                   {formatEventTimeRange(event.start_time, event.end_time)}
                 </p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-white border border-slate-200 text-slate-700 shadow-xs shrink-0">
+              <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shadow-xs shrink-0">
                 <MapPin className="h-4 w-4" />
               </div>
               <div>
-                <p className="font-semibold text-slate-900">
+                <p className="font-bold text-[#12161f]">
                   {event.location_name}
                 </p>
                 {event.venue?.building && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-stone-500 font-mono">
                     {event.venue.building} {event.venue.capacity ? `(Cap: ${event.venue.capacity})` : ""}
                   </p>
                 )}
@@ -182,10 +182,10 @@ export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalPro
 
           {/* Description */}
           <div className="space-y-2">
-            <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider font-mono">
               About This Event
             </h4>
-            <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">
+            <div className="text-sm text-stone-700 leading-relaxed whitespace-pre-line font-sans">
               {event.description}
             </div>
           </div>
@@ -196,7 +196,7 @@ export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalPro
               {event.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-xs font-normal"
+                  className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 text-xs font-mono font-medium"
                 >
                   #{tag}
                 </span>
@@ -206,13 +206,13 @@ export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalPro
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/90 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="p-4 sm:p-5 border-t border-stone-100 bg-stone-50/90 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               size="sm"
               onClick={handleShare}
-              className="flex-1 sm:flex-initial"
+              className="flex-1 sm:flex-initial border-stone-200 hover:bg-white text-stone-800"
             >
               {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Share2 className="h-3.5 w-3.5" />}
               {copied ? "Link Copied" : "Share"}
@@ -222,7 +222,7 @@ export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalPro
               href={getGoogleCalendarUrl()}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center font-medium transition-colors border border-slate-200 bg-transparent text-slate-800 hover:bg-slate-50 text-xs px-2.5 py-1.5 h-8 gap-1.5 rounded-lg flex-1 sm:flex-initial"
+              className="inline-flex items-center justify-center font-semibold transition-colors border border-stone-200 bg-transparent text-stone-800 hover:bg-white text-xs px-2.5 py-1.5 h-8 gap-1.5 rounded-lg flex-1 sm:flex-initial"
             >
               <CalendarIcon className="h-3.5 w-3.5" />
               Add to Cal
@@ -235,13 +235,13 @@ export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalPro
               href={event.external_registration_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold bg-slate-900 text-white hover:bg-slate-800 shadow-sm active:scale-[0.99] transition"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#12161f] text-white hover:bg-stone-800 shadow-sm active:scale-[0.99] transition cursor-pointer"
             >
               Register on External Site
               <ExternalLink className="h-4 w-4" />
             </a>
           ) : (
-            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono">
               <Check className="h-3.5 w-3.5 text-emerald-600" />
               Open Event • No registration required
             </div>
