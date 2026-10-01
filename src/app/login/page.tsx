@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Calendar, Lock, Mail, ArrowRight, AlertCircle } from "lucide-react";
+import { Calendar, Lock, Mail, ArrowRight, AlertCircle, ShieldAlert, CheckCircle2 } from "lucide-react";
 
 const DEMO_ACCOUNTS = [
   {
@@ -36,12 +36,43 @@ const DEMO_ACCOUNTS = [
   },
 ];
 
+function LoginParamsHandler({ onSetError }: { onSetError: (msg: string) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("error") === "admin_required") {
+      onSetError("Administrative privileges required to access the Admin Console. Please sign in with an Administrator account.");
+    }
+  }, [searchParams, onSetError]);
+  return null;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentSession, setCurrentSession] = useState<{
+    fullName: string;
+    role: string;
+    isAdmin: boolean;
+    isLead: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    async function checkExistingAuth() {
+      try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        if (data.authenticated && data.user) {
+          setCurrentSession(data.user);
+        }
+      } catch {
+        // Ignored
+      }
+    }
+    checkExistingAuth();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +122,10 @@ export default function LoginPage() {
         </span>
       </div>
 
+      <Suspense fallback={null}>
+        <LoginParamsHandler onSetError={setError} />
+      </Suspense>
+
       <div className="w-full max-w-md relative z-10">
         <div className="p-8 rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
           <div className="text-center mb-8">
@@ -104,6 +139,23 @@ export default function LoginPage() {
               Sign in as Campus Administrator or Community Lead
             </p>
           </div>
+
+          {currentSession && (
+            <div className="mb-6 p-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/70 text-indigo-950 text-xs flex items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span>
+                  Signed in as <strong className="font-semibold">{currentSession.fullName}</strong> ({currentSession.role === "admin" ? "Admin" : "Lead"})
+                </span>
+              </div>
+              <Link
+                href={currentSession.isAdmin ? "/admin" : "/lead"}
+                className="px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-semibold hover:bg-indigo-700 transition-colors shrink-0"
+              >
+                Go to Workspace →
+              </Link>
+            </div>
+          )}
 
           {error && (
             <div className="mb-6 p-3.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-start gap-2.5">

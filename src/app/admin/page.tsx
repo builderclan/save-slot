@@ -71,7 +71,7 @@ export default function AdminConsolePage() {
       const meRes = await fetch("/api/auth/me");
       const meData = await meRes.json();
       if (!meData.authenticated || !meData.user.isAdmin) {
-        router.push("/login");
+        router.push("/login?error=admin_required");
         return;
       }
 
