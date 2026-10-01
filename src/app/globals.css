@@ -45,3 +45,13 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Responsive month grid: compact on mobile, full-height stretch on desktop */
+@media (min-width: 1024px) {
+  .calendar-month-grid {
+    display: grid !important;
+    grid-template-rows: repeat(var(--week-rows, 5), minmax(110px, 1fr)) !important;
+    flex: 1 1 0% !important;
+    height: 100% !important;
+  }
+}

@@ -45,6 +45,7 @@ export function MonthView({
   const endDate = endOfWeek(monthEnd);
 
   const days = eachDayOfInterval({ start: startDate, end: endDate });
+  const weekCount = Math.ceil(days.length / 7);
 
   const getEventsForDay = (day: Date) => {
     return events.filter((ev) => isSameDay(parseISO(ev.start_time), day));
@@ -54,9 +55,9 @@ export function MonthView({
   const selectedDayEvents = getEventsForDay(activeDate);
 
   return (
-    <div className="w-full bg-white flex flex-col flex-1 select-none">
+    <div className="w-full bg-white flex flex-col select-none lg:flex-1 lg:min-h-full">
       {/* Weekday Names Header matching Image 1 */}
-      <div className="grid grid-cols-7 border-b border-slate-200 divide-x divide-slate-200/80 text-center py-2.5 bg-white text-xs font-semibold text-slate-500">
+      <div className="grid grid-cols-7 border-b border-slate-200 divide-x divide-slate-200/80 text-center py-2 bg-white text-xs font-semibold text-slate-500 shrink-0">
         <div><span className="sm:hidden">Sun</span><span className="hidden sm:inline">Sunday</span></div>
         <div><span className="sm:hidden">Mon</span><span className="hidden sm:inline">Monday</span></div>
         <div><span className="sm:hidden">Tue</span><span className="hidden sm:inline">Tuesday</span></div>
@@ -66,8 +67,13 @@ export function MonthView({
         <div><span className="sm:hidden">Sat</span><span className="hidden sm:inline">Saturday</span></div>
       </div>
 
-      {/* Days Grid with crisp thin lines matching Image 1 */}
-      <div className="grid grid-cols-7 divide-x divide-y divide-slate-200/80 bg-white">
+      {/* Days Grid: Compact on mobile (< lg), full-height flex-1 on desktop (lg+) */}
+      <div
+        className="calendar-month-grid grid grid-cols-7 divide-x divide-y divide-slate-200/80 bg-white"
+        style={{
+          ["--week-rows" as string]: weekCount,
+        }}
+      >
         {days.map((day) => {
           const dayEvents = getEventsForDay(day);
           const isCurrentMonth = isSameMonth(day, activeDate);
@@ -87,7 +93,7 @@ export function MonthView({
                   handleDateChange(day);
                 }
               }}
-              className={`min-h-[58px] sm:min-h-[110px] lg:min-h-[125px] p-1 sm:p-2 flex flex-col transition-colors cursor-pointer group focus:outline-none focus:bg-indigo-50/30 ${
+              className={`min-h-[46px] sm:min-h-[64px] lg:min-h-0 h-full p-1 sm:p-1.5 lg:p-2 flex flex-col transition-colors cursor-pointer group focus:outline-none focus:bg-indigo-50/30 ${
                 !isCurrentMonth ? "bg-slate-50/40 text-slate-400" : "hover:bg-slate-50/70"
               }`}
             >

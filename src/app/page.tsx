@@ -480,6 +480,20 @@ export default function StudentNoticeBoardPage() {
               Show {filteredEvents.length} Events
             </button>
           </div>
+
+          {/* Desktop Sidebar Bottom Status Card */}
+          <div className="hidden lg:flex mt-auto pt-4 border-t border-slate-100 flex-col gap-1.5 pb-6">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-semibold text-slate-700">Safe-Slot™ System</span>
+              <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                Active
+              </span>
+            </div>
+            <p className="text-[10px] text-slate-400 leading-tight">
+              Automated conflict-prevention enabled for all campus venues.
+            </p>
+          </div>
         </aside>
 
         {/* ============================================================== */}
