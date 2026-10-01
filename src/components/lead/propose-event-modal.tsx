@@ -660,18 +660,24 @@ export function ProposeEventModal({
             <button
               type="button"
               onClick={handleNextFromStep1}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+              className="px-4 sm:px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
             >
-              <span>Next: Schedule & Venue</span>
+              <span>
+                <span className="hidden sm:inline">Next: Schedule & Venue</span>
+                <span className="sm:hidden">Next: Schedule</span>
+              </span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           ) : currentStep === 2 ? (
             <button
               type="button"
               onClick={handleNextFromStep2}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+              className="px-4 sm:px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
             >
-              <span>Next: Poster & RSVP</span>
+              <span>
+                <span className="hidden sm:inline">Next: Poster & RSVP</span>
+                <span className="sm:hidden">Next: Review</span>
+              </span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           ) : (
@@ -679,13 +685,16 @@ export function ProposeEventModal({
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+              className="px-4 sm:px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
             >
               {submitting ? (
                 <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>Submit for Admin Review</span>
+                  <span>
+                    <span className="hidden sm:inline">Submit for Admin Review</span>
+                    <span className="sm:hidden">Submit Event</span>
+                  </span>
                   <Check className="w-3.5 h-3.5" />
                 </>
               )}

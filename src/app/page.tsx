@@ -9,6 +9,9 @@ import {
   X,
   Filter,
   ChevronDown,
+  Calendar as CalendarIcon,
+  CalendarDays,
+  LayoutGrid,
 } from "lucide-react";
 import {
   parseISO,
@@ -195,47 +198,137 @@ export default function StudentNoticeBoardPage() {
 
   return (
     <div className="w-full flex-1 flex flex-col lg:flex-row bg-white min-h-[calc(100vh-3.5rem)]">
-      {/* Mobile Filter Toggle Header (Visible only on < lg) */}
-      <div className="lg:hidden px-4 py-3 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search club or venue..."
-            className="w-full pl-8.5 pr-7 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 shadow-2xs"
-          />
-          {search && (
+      {/* Mobile Secondary Bar (Visible only on < lg) */}
+      <div className="lg:hidden border-b border-slate-200 bg-white shrink-0">
+        {/* On mobile (< md), show the dedicated View Switcher */}
+        <div className="md:hidden px-4 pt-3 pb-2 border-b border-slate-100 bg-slate-50/50">
+          <div
+            role="tablist"
+            aria-label="Mobile calendar view switcher"
+            className="grid grid-cols-3 p-1 rounded-xl bg-slate-100 border border-slate-200 gap-1 text-xs shadow-2xs"
+          >
             <button
               type="button"
-              onClick={() => setSearch("")}
-              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+              role="tab"
+              aria-selected={viewMode === "month"}
+              onClick={() => calendar?.setViewMode("month")}
+              className={`py-1.5 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                viewMode === "month"
+                  ? "bg-white text-slate-900 font-semibold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
             >
-              <X className="w-3.5 h-3.5" />
+              <CalendarIcon className="w-3.5 h-3.5" />
+              <span>Month</span>
             </button>
-          )}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === "week"}
+              onClick={() => calendar?.setViewMode("week")}
+              className={`py-1.5 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                viewMode === "week"
+                  ? "bg-white text-slate-900 font-semibold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>Week</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === "cards"}
+              onClick={() => calendar?.setViewMode("cards")}
+              className={`py-1.5 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                viewMode === "cards"
+                  ? "bg-white text-slate-900 font-semibold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Board</span>
+            </button>
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMobileFiltersOpen((prev) => !prev)}
-          className="px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer"
-        >
-          <Filter className="w-3.5 h-3.5 text-indigo-600" />
-          <span>Filters</span>
-          <ChevronDown
-            className={`w-3.5 h-3.5 transition-transform ${
-              mobileFiltersOpen ? "rotate-180" : ""
+        {/* Search & Filters Row */}
+        <div className="px-4 py-2.5 flex items-center justify-between gap-2.5 bg-white">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search club or venue..."
+              className="w-full pl-8.5 pr-7 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-500 shadow-2xs"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Create Event button on mobile/tablet for Leads/Admins */}
+          {userSession?.authenticated && (userSession.user?.isLead || userSession.user?.isAdmin) && (
+            <button
+              type="button"
+              onClick={handleCreateEventClick}
+              className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Create</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((prev) => !prev)}
+            className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer transition-colors ${
+              selectedCategories.length < CATEGORIES.length || selectedHorizon !== "all"
+                ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             }`}
-          />
-        </button>
+          >
+            <Filter className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Filters</span>
+            {selectedCategories.length < CATEGORIES.length && (
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+            )}
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform ${
+                mobileFiltersOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* ============================================================== */}
       {/* LEFT SIDEBAR (User Profile, + Create Event, Mini-Cal, Filters) */}
       {/* ============================================================== */}
       <aside className={`w-full lg:w-72 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:self-start border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex-col gap-6 bg-white shrink-0 z-20 ${mobileFiltersOpen ? "flex" : "hidden lg:flex"}`}>
+
+        {/* Mobile Filters Drawer Header (visible only on < lg) */}
+        <div className="lg:hidden flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-indigo-600" />
+            <h3 className="font-bold text-sm text-slate-900">Filter Events</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen(false)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+            aria-label="Close filters"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         {/* "+ Create Event" Primary Action Button (Only for Leads and Admins) */}
         {userSession?.authenticated && (userSession.user?.isLead || userSession.user?.isAdmin) && (
@@ -257,8 +350,8 @@ export default function StudentNoticeBoardPage() {
             />
           </div>
 
-          {/* Quick Search Input matching "Meet With..." in Image 1 */}
-          <div className="relative">
+          {/* Quick Search Input (Visible ONLY on desktop lg+, because mobile/tablet already has it in the top bar) */}
+          <div className="hidden lg:block relative">
             <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
             <input
               type="text"
@@ -364,6 +457,28 @@ export default function StudentNoticeBoardPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Mobile Filter Action Buttons */}
+          <div className="lg:hidden pt-3 border-t border-slate-100 flex items-center gap-2 pb-12">
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setSelectedCategories(CATEGORIES);
+                setSelectedHorizon("all");
+              }}
+              className="flex-1 py-2 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Reset Filters
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileFiltersOpen(false)}
+              className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
+            >
+              Show {filteredEvents.length} Events
+            </button>
           </div>
         </aside>
 

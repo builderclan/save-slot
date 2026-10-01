@@ -276,11 +276,11 @@ export default function AdminConsolePage() {
         </div>
 
         {/* Global Quick Action */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setIsAddUserOpen(true)}
-            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5 text-slate-600" />
             <span>Add User</span>
@@ -289,7 +289,7 @@ export default function AdminConsolePage() {
           <button
             type="button"
             onClick={() => setIsAddVenueOpen(true)}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Add Facility</span>
@@ -298,10 +298,10 @@ export default function AdminConsolePage() {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-8">
         <div
           onClick={() => setActiveTab("triage")}
-          className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+          className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
             activeTab === "triage"
               ? "border-amber-400 bg-amber-50/50 ring-2 ring-amber-400/30"
               : "border-slate-200/90 bg-white hover:border-slate-300"
@@ -316,7 +316,7 @@ export default function AdminConsolePage() {
 
         <div
           onClick={() => setActiveTab("all-events")}
-          className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+          className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
             activeTab === "all-events"
               ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/30"
               : "border-slate-200/90 bg-white hover:border-slate-300"
@@ -331,7 +331,7 @@ export default function AdminConsolePage() {
 
         <div
           onClick={() => setActiveTab("users")}
-          className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+          className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
             activeTab === "users"
               ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/30"
               : "border-slate-200/90 bg-white hover:border-slate-300"
@@ -346,7 +346,7 @@ export default function AdminConsolePage() {
 
         <div
           onClick={() => setActiveTab("venues")}
-          className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+          className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
             activeTab === "venues"
               ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/30"
               : "border-slate-200/90 bg-white hover:border-slate-300"
@@ -361,11 +361,11 @@ export default function AdminConsolePage() {
       </div>
 
       {/* Tabs Switcher matching Image 2 */}
-      <div className="inline-flex p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 mb-6 flex-wrap">
+      <div className="flex p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 mb-6 overflow-x-auto max-w-full">
         <button
           type="button"
           onClick={() => setActiveTab("triage")}
-          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
             activeTab === "triage"
               ? "bg-white text-slate-900 shadow-xs font-semibold"
               : "text-slate-600 hover:text-slate-900"
@@ -378,7 +378,7 @@ export default function AdminConsolePage() {
         <button
           type="button"
           onClick={() => setActiveTab("all-events")}
-          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
             activeTab === "all-events"
               ? "bg-white text-slate-900 shadow-xs font-semibold"
               : "text-slate-600 hover:text-slate-900"
@@ -391,7 +391,7 @@ export default function AdminConsolePage() {
         <button
           type="button"
           onClick={() => setActiveTab("users")}
-          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
             activeTab === "users"
               ? "bg-white text-slate-900 shadow-xs font-semibold"
               : "text-slate-600 hover:text-slate-900"
@@ -404,7 +404,7 @@ export default function AdminConsolePage() {
         <button
           type="button"
           onClick={() => setActiveTab("venues")}
-          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
             activeTab === "venues"
               ? "bg-white text-slate-900 shadow-xs font-semibold"
               : "text-slate-600 hover:text-slate-900"
@@ -587,43 +587,45 @@ export default function AdminConsolePage() {
           </div>
 
           <div className="rounded-3xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
-                <tr>
-                  <th className="p-4 font-semibold">Name & Email</th>
-                  <th className="p-4 font-semibold">Role</th>
-                  <th className="p-4 font-semibold">Assigned Community</th>
-                  <th className="p-4 font-semibold">Provisioned</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-4">
-                      <div className="font-semibold text-slate-900 text-sm">{u.full_name}</div>
-                      <div className="text-slate-400 font-mono text-[11px]">{u.email}</div>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                          u.role === "admin"
-                            ? "bg-amber-50 border-amber-200 text-amber-900"
-                            : "bg-indigo-50 border-indigo-200 text-indigo-800"
-                        }`}
-                      >
-                        {u.role === "admin" ? "Campus Admin" : "Community Lead"}
-                      </span>
-                    </td>
-                    <td className="p-4 font-medium text-slate-800">
-                      {u.community_name || (u.role === "admin" ? "All (Campus-Wide)" : "Unassigned")}
-                    </td>
-                    <td className="p-4 text-slate-400">
-                      {u.created_at ? format(parseISO(u.created_at), "MMM d, yyyy") : "Pre-seeded"}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700 min-w-[540px]">
+                <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
+                  <tr>
+                    <th className="p-4 font-semibold">Name & Email</th>
+                    <th className="p-4 font-semibold">Role</th>
+                    <th className="p-4 font-semibold">Assigned Community</th>
+                    <th className="p-4 font-semibold">Provisioned</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {users.map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="p-4">
+                        <div className="font-semibold text-slate-900 text-sm">{u.full_name}</div>
+                        <div className="text-slate-400 font-mono text-[11px]">{u.email}</div>
+                      </td>
+                      <td className="p-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                            u.role === "admin"
+                              ? "bg-amber-50 border-amber-200 text-amber-900"
+                              : "bg-indigo-50 border-indigo-200 text-indigo-800"
+                          }`}
+                        >
+                          {u.role === "admin" ? "Campus Admin" : "Community Lead"}
+                        </span>
+                      </td>
+                      <td className="p-4 font-medium text-slate-800">
+                        {u.community_name || (u.role === "admin" ? "All (Campus-Wide)" : "Unassigned")}
+                      </td>
+                      <td className="p-4 text-slate-400">
+                        {u.created_at ? format(parseISO(u.created_at), "MMM d, yyyy") : "Pre-seeded"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

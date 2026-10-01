@@ -127,7 +127,7 @@ export default function LoginPage() {
       </Suspense>
 
       <div className="w-full max-w-md relative z-10">
-        <div className="p-8 rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
+        <div className="p-5 sm:p-8 rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
           <div className="text-center mb-8">
             <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold text-2xl flex items-center justify-center mx-auto mb-3 shadow-xs">
               A
@@ -220,7 +220,7 @@ export default function LoginPage() {
             <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">
               <span>One-Click Demo Personas:</span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {DEMO_ACCOUNTS.map((acc) => (
                 <button
                   key={acc.email}

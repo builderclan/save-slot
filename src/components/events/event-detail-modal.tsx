@@ -249,23 +249,23 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         </div>
 
         {/* Action Footer */}
-        <div className="px-5 sm:px-7 py-3.5 border-t border-slate-200/80 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="px-4 sm:px-7 py-3 border-t border-slate-200/80 bg-slate-50/70 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
           {/* Calendar export links */}
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 sm:flex items-center gap-2">
             <a
               href={googleCalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              className="px-3 py-2 sm:py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
             >
               <CalendarIcon className="w-3.5 h-3.5 text-slate-500" />
-              <span>Google Calendar</span>
+              <span>Google Cal</span>
             </a>
 
             <button
               type="button"
               onClick={() => downloadIcsFile(event)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              className="px-3 py-2 sm:py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
             >
               <Download className="w-3.5 h-3.5 text-slate-500" />
               <span>iCal / Apple</span>
@@ -278,7 +278,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               href={event.external_registration_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+              className="px-4 py-2.5 sm:py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
             >
               <span>Register & RSVP</span>
               <ExternalLink className="w-3.5 h-3.5" />
@@ -287,7 +287,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
+              className="px-4 py-2.5 sm:py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all shadow-xs cursor-pointer text-center"
             >
               Close
             </button>

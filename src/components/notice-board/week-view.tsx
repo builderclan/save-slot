@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   format,
   startOfWeek,
@@ -9,9 +10,9 @@ import {
   isToday,
   parseISO,
 } from "date-fns";
-import { MapPin } from "lucide-react";
+import { MapPin, Clock, Calendar as CalendarIcon } from "lucide-react";
 import { CampusEvent } from "@/types/database";
-import { CATEGORY_STYLES } from "@/components/events/category-badge";
+import { CATEGORY_STYLES, CategoryBadge } from "@/components/events/category-badge";
 
 interface WeekViewProps {
   events: CampusEvent[];
@@ -27,6 +28,7 @@ export function WeekView({
   onDateChange,
 }: WeekViewProps) {
   const activeDate = currentDate;
+  const [selectedMobileDay, setSelectedMobileDay] = useState<Date>(activeDate);
 
   const weekStart = startOfWeek(activeDate);
   const weekEnd = endOfWeek(activeDate);
@@ -36,10 +38,136 @@ export function WeekView({
     return events.filter((ev) => isSameDay(parseISO(ev.start_time), day));
   };
 
+  const handleSelectDay = (day: Date) => {
+    setSelectedMobileDay(day);
+    onDateChange?.(day);
+  };
+
+  // Events for active mobile day
+  const mobileDayEvents = getEventsForDay(selectedMobileDay);
+
   return (
     <div className="w-full bg-white flex flex-col flex-1 select-none">
-      {/* Week Timeline Columns matching Image 2 */}
-      <div className="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-slate-200/80 bg-white flex-1 min-h-[640px]">
+      {/* ============================================================== */}
+      {/* MOBILE-ONLY VIEW (< md): Interactive Day Picker + Daily Stream */}
+      {/* ============================================================== */}
+      <div className="md:hidden flex flex-col flex-1 bg-white">
+        {/* Horizontal Week Day Selector Pill Bar */}
+        <div className="p-3 bg-slate-50/70 border-b border-slate-200">
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((day) => {
+              const dayEvents = getEventsForDay(day);
+              const isSelected = isSameDay(day, selectedMobileDay);
+              const isCurrentDay = isToday(day);
+
+              return (
+                <button
+                  key={day.toISOString()}
+                  type="button"
+                  onClick={() => handleSelectDay(day)}
+                  className={`flex flex-col items-center py-2 px-1 rounded-xl transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : isCurrentDay
+                      ? "bg-indigo-50 border border-indigo-200/80 text-indigo-700"
+                      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  <span
+                    className={`text-[10px] font-semibold uppercase tracking-wider ${
+                      isSelected ? "text-indigo-100" : isCurrentDay ? "text-indigo-600" : "text-slate-400"
+                    }`}
+                  >
+                    {format(day, "EEE")}
+                  </span>
+                  <span className="text-xs font-bold my-0.5">
+                    {format(day, "d")}
+                  </span>
+                  {/* Event indicators */}
+                  <div className="h-1.5 flex items-center justify-center gap-0.5">
+                    {dayEvents.length > 0 && (
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isSelected ? "bg-white" : "bg-indigo-500"
+                        }`}
+                      />
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected Day Agenda Header */}
+        <div className="p-4 bg-white border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CalendarIcon className="w-4 h-4 text-indigo-600" />
+            <h3 className="text-xs font-bold text-slate-900">
+              {format(selectedMobileDay, "EEEE, MMMM d, yyyy")}
+            </h3>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-500">
+            {mobileDayEvents.length} {mobileDayEvents.length === 1 ? "event" : "events"}
+          </span>
+        </div>
+
+        {/* Selected Day Event List */}
+        <div className="p-4 space-y-3 flex-1 overflow-y-auto">
+          {mobileDayEvents.length === 0 ? (
+            <div className="py-12 px-4 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 text-slate-400">
+              <CalendarIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-xs font-medium">No events on this day</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Select another day above to see scheduled activities.
+              </p>
+            </div>
+          ) : (
+            mobileDayEvents.map((ev) => {
+              const startStr = format(parseISO(ev.start_time), "h:mm a");
+              const endStr = format(parseISO(ev.end_time), "h:mm a");
+              const catStyle = CATEGORY_STYLES[ev.category] || {
+                bg: "bg-indigo-50/80",
+                text: "text-indigo-700",
+                border: "border-indigo-100",
+                dot: "bg-indigo-500",
+              };
+
+              return (
+                <div
+                  key={ev.id}
+                  onClick={() => onSelectEvent(ev)}
+                  className={`p-3.5 rounded-2xl border ${catStyle.border} bg-white hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <CategoryBadge category={ev.category} size="sm" />
+                    <span className="text-xs font-medium text-slate-600 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      {startStr} – {endStr}
+                    </span>
+                  </div>
+
+                  <h4 className="text-xs font-bold text-slate-900 mb-1.5">
+                    {ev.title}
+                  </h4>
+
+                  <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span className="truncate">{ev.venue?.name || ev.location_name}</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-700 font-medium truncate">{ev.community?.name}</span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* DESKTOP & TABLET VIEW (>= md): 7 Timeline Columns */}
+      {/* ============================================================== */}
+      <div className="hidden md:grid md:grid-cols-7 divide-x divide-slate-200/80 bg-white flex-1 min-h-[640px]">
         {days.map((day) => {
           const dayEvents = getEventsForDay(day);
           const currentDay = isToday(day);
