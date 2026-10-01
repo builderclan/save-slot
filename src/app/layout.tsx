@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Outfit } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/layout/navbar";
-import { Footer } from "@/components/layout/footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,20 +12,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-});
-
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
 };
 
 export const metadata: Metadata = {
-  title: "Campus Calendar — All Campus Events in One Place",
-  description:
-    "Centralized event discovery and coordination platform for college campuses. Discover upcoming club events, hackathons, and workshops.",
+  title: "Calendar BC",
+  description: "Next-generation calendar application",
 };
 
 export default function RootLayout({
@@ -38,14 +30,10 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#fcfbfa] text-[#12161f] selection:bg-blue-100 selection:text-blue-900">
-        <Navbar />
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {children}
-        </main>
-        <Footer />
+      <body className="min-h-full flex flex-col font-sans">
+        {children}
       </body>
     </html>
   );
