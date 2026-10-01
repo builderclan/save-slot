@@ -164,7 +164,7 @@ export default function StudentNoticeBoardPage() {
       {/* ============================================================== */}
       {/* LEFT SIDEBAR (User Profile, + Create Event, Mini-Cal, Filters) */}
       {/* ============================================================== */}
-      <aside className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex flex-col gap-6 bg-white shrink-0">
+      <aside className="w-full lg:w-72 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:self-start border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex flex-col gap-6 bg-white shrink-0 z-20">
 
           {/* "+ Create Event" Primary Action Button matching Image 1 */}
           <button
