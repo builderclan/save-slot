@@ -154,7 +154,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={calendar.handleToday}
-                className="hidden sm:inline-block px-2.5 sm:px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs ml-0.5 shrink-0"
+                className="inline-block px-2 sm:px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] sm:text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs ml-0.5 shrink-0"
               >
                 Today
               </button>
