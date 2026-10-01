@@ -28,7 +28,7 @@ const PRESET_COVERS = [
   },
   {
     name: "Design Workshop",
-    url: "https://images.unsplash.com/photo-1581291518655-9523c932deda?w=800&auto=format&fit=crop&q=80",
+    url: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=800&auto=format&fit=crop&q=80",
   },
   {
     name: "Startup Pitch",
@@ -167,6 +167,10 @@ export function ProposeEventModal({
   const handleNextFromStep2 = () => {
     if (!venueId || !dateStr || !startTimeStr || !endTimeStr) {
       setStepError("Please specify a venue, date, and valid times.");
+      return;
+    }
+    if (conflictResult?.hasConflict) {
+      setStepError("This venue has an active booking conflict during this time. Please select an alternate Safe Slot below.");
       return;
     }
     setStepError(null);
@@ -417,6 +421,7 @@ export function ProposeEventModal({
                     <input
                       type="date"
                       required
+                      min={format(addDays(new Date(), 7), "yyyy-MM-dd")}
                       value={dateStr}
                       onChange={(e) => setDateStr(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs cursor-pointer"
@@ -609,11 +614,13 @@ export function ProposeEventModal({
                 <div className="pt-2 border-t border-slate-200/60 flex items-center gap-4 text-xs text-slate-600 flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{dateStr}</span>
+                    <span>{format(new Date(`${dateStr}T12:00:00`), "EEE, MMM d, yyyy")}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{startTimeStr} – {endTimeStr}</span>
+                    <span>
+                      {format(new Date(`2000-01-01T${startTimeStr}`), "h:mm a")} – {format(new Date(`2000-01-01T${endTimeStr}`), "h:mm a")}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-slate-400" />
