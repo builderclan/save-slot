@@ -1,57 +1,147 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { Sparkles, ShieldCheck, Building, Search } from "lucide-react";
-import { parseISO, isToday, isWeekend, isWithinInterval, addDays } from "date-fns";
-import { CampusEvent, EventCategory } from "@/types/database";
-import { FilterBar, ViewMode, DateHorizon } from "@/components/notice-board/filter-bar";
-import { EventCard } from "@/components/notice-board/event-card";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Plus,
+  Check,
+  X,
+} from "lucide-react";
+import {
+  format,
+  parseISO,
+  isToday,
+  isWeekend,
+  isWithinInterval,
+  addDays,
+  addMonths,
+  subMonths,
+} from "date-fns";
+import { CampusEvent, EventCategory, Venue } from "@/types/database";
+import { CATEGORY_STYLES } from "@/components/events/category-badge";
+import { MiniCalendar } from "@/components/notice-board/mini-calendar";
 import { MonthView } from "@/components/notice-board/month-view";
 import { WeekView } from "@/components/notice-board/week-view";
+import { EventCard } from "@/components/notice-board/event-card";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
+import { ProposeEventModal } from "@/components/lead/propose-event-modal";
 
 const CATEGORIES: EventCategory[] = [
   "Tech",
   "Arts",
-  "Career",
-  "Social",
   "Sports",
+  "Career",
   "Academic",
+  "Social",
   "Workshop",
 ];
 
 export default function StudentNoticeBoardPage() {
+  const router = useRouter();
   const [events, setEvents] = useState<CampusEvent[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Active navigation date (shared across MiniCalendar, MonthView, and WeekView)
+  const [activeDate, setActiveDate] = useState<Date>(new Date());
+
   // Filter States
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedHorizon, setSelectedHorizon] = useState<DateHorizon>("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("cards");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(CATEGORIES);
+  const [selectedHorizon, setSelectedHorizon] = useState<"all" | "today" | "week" | "weekend">("all");
+  const [viewMode, setViewMode] = useState<"month" | "week" | "cards">("month");
 
-  // Selected event for modal details
+  // Auth & Proposal modal
+  const [userSession, setUserSession] = useState<{
+    authenticated: boolean;
+    user?: {
+      fullName: string;
+      isLead: boolean;
+      isAdmin: boolean;
+      leadCommunities?: Array<{ id: string; name: string }>;
+    };
+  } | null>(null);
+  const [isProposeOpen, setIsProposeOpen] = useState(false);
+
+  // Selected event for detail modal
   const [selectedEvent, setSelectedEvent] = useState<CampusEvent | null>(null);
 
-  useEffect(() => {
-    async function fetchEvents() {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/events?status=published");
-        if (!res.ok) throw new Error("Failed to load events");
-        const data = await res.json();
-        setEvents(data.events || []);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Error fetching events");
-      } finally {
-        setLoading(false);
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [eventsRes, venuesRes, authRes] = await Promise.all([
+        fetch("/api/events?status=published"),
+        fetch("/api/venues"),
+        fetch("/api/auth/me"),
+      ]);
+
+      if (!eventsRes.ok) throw new Error("Failed to load events");
+      const eventsData = await eventsRes.json();
+      setEvents(eventsData.events || []);
+
+      if (venuesRes.ok) {
+        const venuesData = await venuesRes.json();
+        setVenues(venuesData.venues || []);
       }
+
+      if (authRes.ok) {
+        const authData = await authRes.json();
+        setUserSession(authData);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error fetching events");
+    } finally {
+      setLoading(false);
     }
-    fetchEvents();
   }, []);
 
-  // Filtered Events computation
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // Toggle category in checklist
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const selectAllCategories = () => setSelectedCategories(CATEGORIES);
+  const clearCategories = () => setSelectedCategories([]);
+
+  // Date controls
+  const handlePrev = () => {
+    if (viewMode === "week") {
+      setActiveDate(addDays(activeDate, -7));
+    } else {
+      setActiveDate(subMonths(activeDate, 1));
+    }
+  };
+
+  const handleNext = () => {
+    if (viewMode === "week") {
+      setActiveDate(addDays(activeDate, 7));
+    } else {
+      setActiveDate(addMonths(activeDate, 1));
+    }
+  };
+
+  const handleToday = () => setActiveDate(new Date());
+
+  // Handle Create Event button
+  const handleCreateEventClick = () => {
+    if (userSession?.authenticated && userSession.user?.isLead) {
+      setIsProposeOpen(true);
+    } else {
+      router.push("/login");
+    }
+  };
+
+  // Filtered events
   const filteredEvents = useMemo(() => {
     return events.filter((ev) => {
       // 1. Search Query
@@ -66,8 +156,8 @@ export default function StudentNoticeBoardPage() {
         }
       }
 
-      // 2. Category
-      if (selectedCategory !== "all" && ev.category !== selectedCategory) {
+      // 2. Category multi-select
+      if (selectedCategories.length > 0 && !selectedCategories.includes(ev.category)) {
         return false;
       }
 
@@ -88,138 +178,345 @@ export default function StudentNoticeBoardPage() {
 
       return true;
     });
-  }, [events, search, selectedCategory, selectedHorizon]);
+  }, [events, search, selectedCategories, selectedHorizon]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Hero Header */}
-      <section className="relative mb-10 pb-8 border-b border-zinc-800/80">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-400 text-xs font-semibold mb-4">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Official Student Notice Board</span>
-            </div>
-
-            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white leading-tight">
-              Campus Events & Notice Hub
-            </h1>
-
-            <p className="mt-3 text-base text-zinc-400 leading-relaxed">
-              Explore upcoming club workshops, tech hackathons, and guest lectures across Apex Institute. Every listing is coordinated with a verified <span className="text-zinc-200 font-medium">Safe Slot</span> to eliminate scheduling clashes.
-            </p>
-          </div>
-
-          {/* Quick Metrics */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="p-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5" />
+    <div className="w-full flex-1 flex flex-col lg:flex-row bg-white min-h-[calc(100vh-3.5rem)]">
+      {/* ============================================================== */}
+      {/* LEFT SIDEBAR (User Profile, + Create Event, Mini-Cal, Filters) */}
+      {/* ============================================================== */}
+      <aside className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex flex-col gap-6 bg-white shrink-0">
+          {/* User / Campus Profile Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center font-bold text-sm">
+                {userSession?.authenticated && userSession.user
+                  ? userSession.user.fullName.charAt(0)
+                  : "A"}
               </div>
-              <div>
-                <div className="text-sm font-bold text-white">100% Conflict-Free</div>
-                <div className="text-[11px] text-zinc-400">7-Day Notice Policy</div>
-              </div>
-            </div>
-
-            <div className="p-3 rounded-2xl border border-zinc-800 bg-zinc-900/60 backdrop-blur-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                <Building className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-white">4 Active Venues</div>
-                <div className="text-[11px] text-zinc-400">Real-Time Capacity</div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-slate-900 truncate">
+                  {userSession?.authenticated && userSession.user
+                    ? userSession.user.fullName
+                    : "Apex Institute"}
+                </div>
+                <div className="text-xs text-slate-500">Fall Term 2026</div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Interactive Controls & Filters */}
-      <FilterBar
-        search={search}
-        onSearchChange={setSearch}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-        selectedHorizon={selectedHorizon}
-        onHorizonChange={setSelectedHorizon}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        categories={CATEGORIES}
-      />
-
-      {/* Content Section */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 py-12">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="h-80 rounded-2xl border border-zinc-800 bg-zinc-900/40 animate-pulse"
-            />
-          ))}
-        </div>
-      ) : error ? (
-        <div className="p-8 text-center rounded-2xl border border-red-500/30 bg-red-500/10 text-red-300">
-          <p className="text-sm font-medium">{error}</p>
-        </div>
-      ) : filteredEvents.length === 0 ? (
-        <div className="text-center py-20 p-8 rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/20">
-          <div className="w-12 h-12 rounded-full bg-zinc-800 text-zinc-500 flex items-center justify-center mx-auto mb-3">
-            <Search className="w-5 h-5" />
-          </div>
-          <h3 className="text-base font-semibold text-zinc-300 mb-1">
-            No events found matching your criteria
-          </h3>
-          <p className="text-xs text-zinc-500 max-w-sm mx-auto mb-4">
-            Try adjusting your search terms, changing the category filter, or resetting the date horizon.
-          </p>
+          {/* "+ Create Event" Primary Action Button matching Image 1 */}
           <button
             type="button"
-            onClick={() => {
-              setSearch("");
-              setSelectedCategory("all");
-              setSelectedHorizon("all");
-            }}
-            className="px-4 py-2 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-white transition-colors cursor-pointer"
+            onClick={handleCreateEventClick}
+            className="w-full py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
           >
-            Reset Filters
+            <Plus className="w-4 h-4 text-indigo-600" />
+            <span>+ Create Event</span>
           </button>
-        </div>
-      ) : (
-        <div>
-          {viewMode === "cards" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredEvents.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  onSelect={(ev) => setSelectedEvent(ev)}
-                />
+
+          {/* Mini Calendar Picker matching Image 1 */}
+          <div className="pt-1">
+            <MiniCalendar
+              currentDate={activeDate}
+              onSelectDate={(newDate) => setActiveDate(newDate)}
+            />
+          </div>
+
+          {/* Quick Search Input matching "Meet With..." in Image 1 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search club or venue..."
+              className="w-full pl-8.5 pr-7 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-500 transition-colors"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* "My calendars" / Categories Checklist matching Image 1 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900 tracking-tight">
+                My calendars
+              </span>
+              <div className="flex items-center gap-2 text-[10px]">
+                <button
+                  type="button"
+                  onClick={selectAllCategories}
+                  className="text-indigo-600 hover:underline cursor-pointer"
+                >
+                  All
+                </button>
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={clearCategories}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {CATEGORIES.map((cat) => {
+                const isChecked = selectedCategories.includes(cat);
+                const catStyle = CATEGORY_STYLES[cat] || {
+                  bg: "bg-indigo-50",
+                  text: "text-indigo-700",
+                  border: "border-indigo-100",
+                  dot: "bg-indigo-500",
+                };
+
+                return (
+                  <label
+                    key={cat}
+                    onClick={() => toggleCategory(cat)}
+                    className="flex items-center gap-2.5 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-0.5 group"
+                  >
+                    <div
+                      className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                        isChecked
+                          ? `${catStyle.dot} text-white shadow-2xs`
+                          : "border border-slate-300 bg-white group-hover:border-slate-400"
+                      }`}
+                    >
+                      {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <span className="flex-1 font-medium">{cat}</span>
+                    <span className={`w-2 h-2 rounded-full ${catStyle.dot} opacity-70`} />
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Date Horizon Quick Filter */}
+          <div className="pt-2 border-t border-slate-100">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
+              Time Horizon
+            </span>
+            <div className="grid grid-cols-2 gap-1.5 text-xs">
+              {(
+                [
+                  { id: "all", label: "All Dates" },
+                  { id: "today", label: "Today" },
+                  { id: "week", label: "Next 7 Days" },
+                  { id: "weekend", label: "Weekend" },
+                ] as const
+              ).map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => setSelectedHorizon(h.id)}
+                  className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all cursor-pointer ${
+                    selectedHorizon === h.id
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {h.label}
+                </button>
               ))}
             </div>
-          )}
+          </div>
+        </aside>
 
-          {viewMode === "month" && (
-            <MonthView
-              events={filteredEvents}
-              onSelectEvent={(ev) => setSelectedEvent(ev)}
-            />
-          )}
+        {/* ============================================================== */}
+        {/* MAIN CALENDAR SECTION (Month/Week/Board Views) */}
+        {/* ============================================================== */}
+        <section className="flex-1 flex flex-col min-w-0 bg-white">
+          {/* Top Calendar Controls matching Image 1 Header */}
+          <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white">
+            {/* Left: Active Month Title + Chevrons + Today Button */}
+            <div className="flex items-center gap-3">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                {format(activeDate, "MMMM yyyy")}
+              </h2>
 
-          {viewMode === "week" && (
-            <WeekView
-              events={filteredEvents}
-              onSelectEvent={(ev) => setSelectedEvent(ev)}
-            />
-          )}
-        </div>
-      )}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                  aria-label="Next"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleToday}
+                className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs ml-1"
+              >
+                Today
+              </button>
+            </div>
+
+            {/* Right: View Switcher Tabs (Month, Week, Board) + Global Search */}
+            <div className="flex items-center gap-3 self-end sm:self-auto">
+              {/* Segmented View Mode Tabs matching Image 2 */}
+              <div className="flex items-center p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("month")}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                    viewMode === "month"
+                      ? "bg-white text-slate-900 font-semibold shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Month
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setViewMode("week")}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                    viewMode === "week"
+                      ? "bg-white text-slate-900 font-semibold shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Week
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setViewMode("cards")}
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
+                    viewMode === "cards"
+                      ? "bg-white text-slate-900 font-semibold shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  Board
+                </button>
+              </div>
+
+              {/* Find Events Search Bar matching Image 1 */}
+              <div className="relative hidden md:block w-56">
+                <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Find Events..."
+                  className="w-full pl-8.5 pr-4 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-500 transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Calendar Content Area */}
+          <div className="flex-1 overflow-auto bg-white">
+            {loading ? (
+              <div className="p-16 text-center">
+                <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-xs text-slate-400">Loading campus calendar...</p>
+              </div>
+            ) : error ? (
+              <div className="p-8 m-6 text-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-800">
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            ) : filteredEvents.length === 0 && viewMode === "cards" ? (
+              <div className="text-center py-24 p-8">
+                <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                  <Search className="w-5 h-5" />
+                </div>
+                <h3 className="text-base font-semibold text-slate-800 mb-1">
+                  No events found matching your filters
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+                  Try adjusting your search terms or selecting more categories in the sidebar.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setSelectedCategories(CATEGORIES);
+                    setSelectedHorizon("all");
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs"
+                >
+                  Reset All Filters
+                </button>
+              </div>
+            ) : (
+              <>
+                {viewMode === "month" && (
+                  <MonthView
+                    events={filteredEvents}
+                    onSelectEvent={(ev) => setSelectedEvent(ev)}
+                    currentDate={activeDate}
+                    onDateChange={(newDate) => setActiveDate(newDate)}
+                  />
+                )}
+
+                {viewMode === "week" && (
+                  <WeekView
+                    events={filteredEvents}
+                    onSelectEvent={(ev) => setSelectedEvent(ev)}
+                    currentDate={activeDate}
+                    onDateChange={(newDate) => setActiveDate(newDate)}
+                  />
+                )}
+
+                {viewMode === "cards" && (
+                  <div className="p-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filteredEvents.map((event) => (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        onSelect={(ev) => setSelectedEvent(ev)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
 
       {/* Event Detail Modal */}
       <EventDetailModal
         event={selectedEvent}
         onClose={() => setSelectedEvent(null)}
       />
+
+      {/* Proposal Modal for Community Leads */}
+      {isProposeOpen && (
+        <ProposeEventModal
+          venues={venues}
+          communityId={userSession?.user?.leadCommunities?.[0]?.id}
+          communityName={userSession?.user?.leadCommunities?.[0]?.name}
+          onClose={() => setIsProposeOpen(false)}
+          onSuccess={() => {
+            setIsProposeOpen(false);
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

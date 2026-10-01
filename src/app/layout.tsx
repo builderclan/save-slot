@@ -19,7 +19,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Campus Notice Board & Safe-Slot Calendar",
+  title: "Campus Events & Safe-Slot Calendar • Apex Institute",
   description:
     "Official centralized student notice board and conflict-free event scheduling platform for Apex Institute of Technology.",
 };
@@ -34,9 +34,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#090a0f] text-zinc-100 selection:bg-indigo-500/30 selection:text-indigo-200">
+      <body className="min-h-screen flex flex-col bg-white text-slate-800 selection:bg-indigo-100 selection:text-indigo-900 font-sans">
         <Navbar />
-        <main className="flex-1 w-full">{children}</main>
+        <main className="flex-1 w-full flex flex-col">{children}</main>
       </body>
     </html>
   );

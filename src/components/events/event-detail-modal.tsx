@@ -10,7 +10,6 @@ import {
   MapPin,
   ExternalLink,
   Download,
-  CheckCircle2,
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "./category-badge";
@@ -45,18 +44,18 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
       />
 
       {/* Modal Dialog */}
-      <div className="relative w-full max-w-2xl rounded-2xl border border-zinc-800 bg-[#0d0f17] text-zinc-100 shadow-2xl overflow-hidden z-10 my-8">
+      <div className="relative w-full max-w-2xl rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-2xl overflow-hidden z-10 my-8">
         {/* Close Button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/60 hover:bg-black/80 text-zinc-300 hover:text-white backdrop-blur-md transition-colors cursor-pointer"
+          className="absolute top-4 right-4 z-20 p-2 rounded-full bg-slate-900/70 hover:bg-slate-900 text-white backdrop-blur-md transition-colors cursor-pointer"
         >
-          <X className="w-5 h-5" />
+          <X className="w-4 h-4" />
         </button>
 
         {/* Cover Image & Banner */}
-        <div className="relative h-56 sm:h-72 w-full bg-zinc-900 overflow-hidden">
+        <div className="relative h-64 sm:h-80 w-full bg-slate-100 overflow-hidden">
           {event.cover_image_url ? (
             <Image
               src={event.cover_image_url}
@@ -67,17 +66,17 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               priority
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-indigo-900/40 via-purple-900/20 to-zinc-900 flex items-center justify-center">
-              <Calendar className="w-16 h-16 text-indigo-400/40" />
+            <div className="w-full h-full bg-slate-100 flex items-center justify-center text-3xl text-slate-400 font-bold">
+              Apex Campus
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0f17] via-transparent to-black/30 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
           {/* Badges Overlay */}
           <div className="absolute bottom-4 left-6 flex items-center gap-2 flex-wrap z-10">
             <CategoryBadge category={event.category} />
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-medium">
-              <CheckCircle2 className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 text-slate-900 text-xs font-semibold shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
               <span>Safe-Slot Verified</span>
             </span>
           </div>
@@ -87,68 +86,65 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         <div className="p-6 sm:p-8 space-y-6">
           {/* Title & Host info */}
           <div>
-            <div className="flex items-center gap-2 text-xs text-zinc-400 mb-2">
-              <span>Organized by</span>
-              <span className="font-semibold text-zinc-200">
-                {event.community?.name || "Campus Community"}
-              </span>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+              Organized by {event.community?.name || "Campus Community"}
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white leading-tight">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 leading-tight">
               {event.title}
             </h2>
           </div>
 
           {/* Logistics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl border border-zinc-800/80 bg-zinc-900/40">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-2xl border border-slate-100 bg-slate-50/80">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mt-0.5">
-                <Calendar className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-xs mt-0.5">
+                <Calendar className="w-4 h-4 text-indigo-600" />
               </div>
               <div>
-                <div className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Date
                 </div>
-                <div className="text-sm font-semibold text-zinc-100">
+                <div className="text-sm font-semibold text-slate-900">
                   {format(startDate, "EEEE, MMMM d, yyyy")}
                 </div>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mt-0.5">
-                <Clock className="w-4 h-4" />
+              <div className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-xs mt-0.5">
+                <Clock className="w-4 h-4 text-indigo-600" />
               </div>
               <div>
-                <div className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Time
                 </div>
-                <div className="text-sm font-semibold text-zinc-100">
+                <div className="text-sm font-semibold text-slate-900">
                   {format(startDate, "h:mm a")} – {format(endDate, "h:mm a")}
                 </div>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 sm:col-span-2 pt-2 border-t border-zinc-800/60">
-              <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 mt-0.5">
-                <MapPin className="w-4 h-4" />
+            <div className="flex items-start gap-3 sm:col-span-2 pt-2 border-t border-slate-200/60">
+              <div className="p-2 rounded-xl bg-white border border-slate-200 text-slate-700 shadow-xs mt-0.5">
+                <MapPin className="w-4 h-4 text-indigo-600" />
               </div>
               <div>
-                <div className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
-                  Venue & Location
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Venue & Facility
                 </div>
-                <div className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                <div className="text-sm font-semibold text-slate-900 flex items-center gap-2">
                   <span>{event.venue?.name || event.location_name}</span>
                   {event.venue?.capacity && (
-                    <span className="text-xs text-zinc-400 font-normal">
-                      (Capacity: {event.venue.capacity} seats)
+                    <span className="text-xs text-slate-500 font-normal">
+                      ({event.venue.capacity} capacity)
                     </span>
                   )}
                 </div>
                 {event.venue?.address && (
-                  <div className="text-xs text-zinc-400 mt-0.5">{event.venue.address}</div>
+                  <div className="text-xs text-slate-600 mt-0.5">{event.venue.address}</div>
                 )}
                 {event.venue?.notes && (
-                  <div className="text-[11px] text-zinc-500 mt-1 italic">
+                  <div className="text-[11px] text-slate-500 mt-1 italic">
                     ℹ️ {event.venue.notes}
                   </div>
                 )}
@@ -158,25 +154,25 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
           {/* Description */}
           <div>
-            <h3 className="text-xs uppercase font-semibold text-zinc-400 tracking-wider mb-2">
-              About This Event
+            <h3 className="text-xs uppercase font-semibold text-slate-400 tracking-wider mb-2">
+              Event Details
             </h3>
-            <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line">
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line font-normal">
               {event.description}
             </p>
           </div>
 
           {/* Action Bar */}
-          <div className="pt-4 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+          <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               {/* Google Cal */}
               <a
                 href={googleCalUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3.5 py-2 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition-colors flex items-center gap-2"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
               >
-                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Google Calendar</span>
               </a>
 
@@ -184,10 +180,10 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               <button
                 type="button"
                 onClick={() => downloadIcsFile(event)}
-                className="px-3.5 py-2 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition-colors flex items-center gap-2 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-2 cursor-pointer shadow-xs"
               >
-                <Download className="w-3.5 h-3.5 text-zinc-400" />
-                <span>iCal / Apple (.ics)</span>
+                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <span>iCal / Apple</span>
               </button>
             </div>
 
@@ -197,7 +193,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                 href={event.external_registration_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white transition-all flex items-center gap-1.5 shadow-lg shadow-indigo-600/20"
+                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
                 <span>Register & RSVP</span>
                 <ExternalLink className="w-3.5 h-3.5" />

@@ -34,19 +34,19 @@ export function FilterBar({
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         {/* Search Input */}
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-3 w-4 h-4 text-zinc-500" />
+          <Search className="absolute left-3.5 top-3 w-4 h-4 text-stone-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search events by title, keyword, or club..."
-            className="w-full pl-10 pr-9 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900/60 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all shadow-inner"
+            placeholder="Search events, keywords, or clubs..."
+            className="w-full pl-10 pr-9 py-2.5 rounded-full border border-stone-200 bg-white text-sm text-stone-900 placeholder-stone-400 focus:outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all shadow-xs"
           />
           {search && (
             <button
               type="button"
               onClick={() => onSearchChange("")}
-              className="absolute right-3 top-3 text-zinc-500 hover:text-zinc-300"
+              className="absolute right-3.5 top-3 text-stone-400 hover:text-stone-700 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -54,14 +54,14 @@ export function FilterBar({
         </div>
 
         {/* View Mode Switcher */}
-        <div className="flex items-center gap-1 p-1 rounded-xl border border-zinc-800 bg-zinc-900/60 self-start sm:self-auto">
+        <div className="flex items-center gap-1 p-1 rounded-full border border-stone-200 bg-stone-100/90 self-start sm:self-auto">
           <button
             type="button"
             onClick={() => onViewModeChange("cards")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
               viewMode === "cards"
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-white text-stone-900 font-semibold shadow-xs"
+                : "text-stone-600 hover:text-stone-900"
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
@@ -71,10 +71,10 @@ export function FilterBar({
           <button
             type="button"
             onClick={() => onViewModeChange("month")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
               viewMode === "month"
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-white text-stone-900 font-semibold shadow-xs"
+                : "text-stone-600 hover:text-stone-900"
             }`}
           >
             <CalendarDays className="w-3.5 h-3.5" />
@@ -84,10 +84,10 @@ export function FilterBar({
           <button
             type="button"
             onClick={() => onViewModeChange("week")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer ${
               viewMode === "week"
-                ? "bg-indigo-600 text-white shadow-sm"
-                : "text-zinc-400 hover:text-zinc-200"
+                ? "bg-white text-stone-900 font-semibold shadow-xs"
+                : "text-stone-600 hover:text-stone-900"
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
@@ -103,13 +103,13 @@ export function FilterBar({
           <button
             type="button"
             onClick={() => onCategoryChange("all")}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap shadow-xs ${
               selectedCategory === "all"
-                ? "bg-zinc-100 text-zinc-950 font-semibold shadow-sm"
-                : "border border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
+                ? "bg-stone-900 text-white font-semibold"
+                : "border border-stone-200 bg-white text-stone-600 hover:text-stone-900 hover:border-stone-300"
             }`}
           >
-            All Categories
+            All Events
           </button>
 
           {categories.map((cat) => (
@@ -117,10 +117,10 @@ export function FilterBar({
               key={cat}
               type="button"
               onClick={() => onCategoryChange(cat)}
-              className={`px-3 py-1 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer whitespace-nowrap shadow-xs ${
                 selectedCategory === cat
-                  ? "bg-indigo-500/20 border border-indigo-500/40 text-indigo-300 font-semibold shadow-sm"
-                  : "border border-zinc-800 bg-zinc-900/50 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700"
+                  ? "bg-stone-900 text-white font-semibold"
+                  : "border border-stone-200 bg-white text-stone-600 hover:text-stone-900 hover:border-stone-300"
               }`}
             >
               {cat}
@@ -130,8 +130,8 @@ export function FilterBar({
 
         {/* Date Horizon Filters */}
         <div className="flex items-center gap-1 text-xs">
-          <span className="text-[11px] font-medium text-zinc-500 mr-1 hidden lg:inline">
-            Horizon:
+          <span className="text-[11px] font-medium text-stone-400 mr-1 hidden lg:inline uppercase font-mono tracking-wider">
+            When:
           </span>
           {(
             [
@@ -145,10 +145,10 @@ export function FilterBar({
               key={h.id}
               type="button"
               onClick={() => onHorizonChange(h.id)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
                 selectedHorizon === h.id
-                  ? "bg-zinc-800 text-zinc-100 border border-zinc-700 font-semibold"
-                  : "text-zinc-500 hover:text-zinc-300"
+                  ? "bg-stone-200/90 text-stone-900 font-semibold"
+                  : "text-stone-500 hover:text-stone-800"
               }`}
             >
               {h.label}

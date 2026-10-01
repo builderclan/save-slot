@@ -3,8 +3,6 @@
 import { useState } from "react";
 import {
   format,
-  addMonths,
-  subMonths,
   startOfMonth,
   endOfMonth,
   startOfWeek,
@@ -15,18 +13,31 @@ import {
   isToday,
   parseISO,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { CampusEvent } from "@/types/database";
+import { CATEGORY_STYLES } from "@/components/events/category-badge";
 
 interface MonthViewProps {
   events: CampusEvent[];
   onSelectEvent: (event: CampusEvent) => void;
+  currentDate?: Date;
+  onDateChange?: (date: Date) => void;
 }
 
-export function MonthView({ events, onSelectEvent }: MonthViewProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+export function MonthView({
+  events,
+  onSelectEvent,
+  currentDate = new Date(),
+  onDateChange,
+}: MonthViewProps) {
+  const [internalDate, setInternalDate] = useState<Date>(currentDate);
+  const activeDate = currentDate || internalDate;
 
-  const monthStart = startOfMonth(currentMonth);
+  const handleDateChange = (newDate: Date) => {
+    setInternalDate(newDate);
+    onDateChange?.(newDate);
+  };
+
+  const monthStart = startOfMonth(activeDate);
   const monthEnd = endOfMonth(monthStart);
   const startDate = startOfWeek(monthStart);
   const endDate = endOfWeek(monthEnd);
@@ -38,112 +49,90 @@ export function MonthView({ events, onSelectEvent }: MonthViewProps) {
   };
 
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 backdrop-blur-md overflow-hidden shadow-xl">
-      {/* Calendar Header */}
-      <div className="p-4 sm:p-6 flex items-center justify-between border-b border-zinc-800/80 bg-zinc-900/60">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-            <CalendarIcon className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-              {format(currentMonth, "MMMM yyyy")}
-            </h2>
-            <p className="text-xs text-zinc-400">
-              {events.length} campus event{events.length === 1 ? "" : "s"} scheduled
-            </p>
-          </div>
-        </div>
-
-        {/* Month Navigation */}
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => setCurrentMonth(new Date())}
-            className="px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition-colors cursor-pointer"
-          >
-            Today
-          </button>
-          <button
-            type="button"
-            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-            className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-            className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors cursor-pointer"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+    <div className="w-full bg-white flex flex-col flex-1 select-none">
+      {/* Weekday Names Header matching Image 1 */}
+      <div className="grid grid-cols-7 border-b border-slate-200 text-center py-3 bg-white text-xs font-semibold text-slate-500">
+        <div>Sunday</div>
+        <div>Monday</div>
+        <div>Tuesday</div>
+        <div>Wednesday</div>
+        <div>Thursday</div>
+        <div>Friday</div>
+        <div>Saturday</div>
       </div>
 
-      {/* Weekday Names */}
-      <div className="grid grid-cols-7 border-b border-zinc-800/80 text-center py-2.5 bg-zinc-950/40 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
-        <div>Sun</div>
-        <div>Mon</div>
-        <div>Tue</div>
-        <div>Wed</div>
-        <div>Thu</div>
-        <div>Fri</div>
-        <div>Sat</div>
-      </div>
-
-      {/* Days Grid */}
-      <div className="grid grid-cols-7 divide-x divide-y divide-zinc-800/50 bg-[#090a0f]/40">
+      {/* Days Grid with crisp thin lines matching Image 1 */}
+      <div className="grid grid-cols-7 divide-x divide-y divide-slate-100 bg-white flex-1 min-h-[640px]">
         {days.map((day) => {
           const dayEvents = getEventsForDay(day);
-          const isCurrentMonth = isSameMonth(day, currentMonth);
+          const isCurrentMonth = isSameMonth(day, activeDate);
           const isCurrentDay = isToday(day);
+          const isDay1 = format(day, "d") === "1";
 
           return (
             <div
               key={day.toISOString()}
-              className={`min-h-[110px] sm:min-h-[130px] p-2 flex flex-col justify-between transition-colors ${
-                !isCurrentMonth ? "bg-zinc-950/40 opacity-40" : "hover:bg-zinc-900/30"
+              onClick={() => handleDateChange(day)}
+              className={`min-h-[110px] sm:min-h-[125px] p-2 flex flex-col justify-between transition-colors cursor-pointer group ${
+                !isCurrentMonth ? "bg-slate-50/40 text-slate-300" : "hover:bg-slate-50/70"
               }`}
             >
-              <div className="flex items-center justify-between mb-1.5">
-                <span
-                  className={`text-xs font-semibold w-6 h-6 flex items-center justify-center rounded-full ${
-                    isCurrentDay
-                      ? "bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/30"
-                      : isCurrentMonth
-                      ? "text-zinc-300"
-                      : "text-zinc-600"
-                  }`}
-                >
-                  {format(day, "d")}
-                </span>
+              {/* Day header inside cell */}
+              <div className="flex items-center justify-between mb-1">
+                {isCurrentDay ? (
+                  <span className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                    {format(day, "d")}
+                  </span>
+                ) : (
+                  <span
+                    className={`text-xs font-medium px-1.5 py-0.5 rounded-md ${
+                      isCurrentMonth
+                        ? "text-slate-700 group-hover:text-indigo-600"
+                        : "text-slate-300"
+                    }`}
+                  >
+                    {isDay1 ? format(day, "MMM 1") : format(day, "d")}
+                  </span>
+                )}
 
                 {dayEvents.length > 0 && (
-                  <span className="text-[10px] font-mono text-zinc-500">
+                  <span className="text-[10px] font-medium text-slate-400">
                     {dayEvents.length}
                   </span>
                 )}
               </div>
 
-              {/* Event Pills inside Day Cell */}
-              <div className="flex-1 space-y-1 overflow-hidden">
-                {dayEvents.slice(0, 3).map((ev) => (
-                  <button
-                    key={ev.id}
-                    type="button"
-                    onClick={() => onSelectEvent(ev)}
-                    className="w-full text-left px-2 py-1 rounded-md text-[11px] font-medium truncate block transition-all bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 hover:border-indigo-500/40 cursor-pointer"
-                  >
-                    <span className="font-semibold text-[10px] opacity-75 mr-1">
-                      {format(parseISO(ev.start_time), "h:mm")}
-                    </span>
-                    {ev.title}
-                  </button>
-                ))}
+              {/* Event Chips inside Day Cell matching Image 1 pastel badges */}
+              <div className="flex-1 space-y-1 overflow-hidden mt-0.5">
+                {dayEvents.slice(0, 3).map((ev) => {
+                  const startTime = format(parseISO(ev.start_time), "H:mm");
+                  const catStyle = CATEGORY_STYLES[ev.category] || {
+                    bg: "bg-indigo-50/80",
+                    text: "text-indigo-700",
+                    border: "border-indigo-100",
+                  };
+
+                  return (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectEvent(ev);
+                      }}
+                      className={`w-full text-left px-2 py-1 rounded-md text-[11px] font-medium truncate block transition-all ${catStyle.bg} ${catStyle.text} border ${catStyle.border} hover:opacity-90 hover:shadow-2xs cursor-pointer`}
+                      title={`${startTime} ${ev.title} (${ev.venue?.name || ev.location_name})`}
+                    >
+                      <span className="font-semibold text-[10px] opacity-80 mr-1">
+                        {startTime}
+                      </span>
+                      <span>{ev.title}</span>
+                    </button>
+                  );
+                })}
 
                 {dayEvents.length > 3 && (
-                  <div className="text-[10px] text-zinc-500 pl-1 font-medium">
+                  <div className="text-[10px] text-slate-500 pl-1 font-medium">
                     +{dayEvents.length - 3} more
                   </div>
                 )}

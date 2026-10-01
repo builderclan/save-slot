@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Calendar, Lock, Mail, ArrowRight, Shield, Sparkles, AlertCircle } from "lucide-react";
+import { Calendar, Lock, Mail, ArrowRight, AlertCircle } from "lucide-react";
 
 const DEMO_ACCOUNTS = [
   {
@@ -76,73 +76,73 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 py-12 bg-[#090a0f] text-zinc-100">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.15),rgba(255,255,255,0))] pointer-events-none" />
-
-      {/* Back to Notice Board */}
+    <div className="min-h-[85vh] flex flex-col justify-center items-center px-4 py-12 text-slate-800">
+      {/* Back to Calendar */}
       <div className="w-full max-w-md mb-6 flex justify-between items-center z-10">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-xs font-medium text-zinc-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
         >
-          <Calendar className="w-4 h-4 text-indigo-400" />
-          <span>← Back to Student Notice Board</span>
+          <Calendar className="w-4 h-4 text-slate-400" />
+          <span>← Back to Public Calendar</span>
         </Link>
-        <span className="text-[11px] font-mono text-zinc-500 px-2.5 py-1 rounded-full border border-zinc-800 bg-zinc-900/50">
+        <span className="text-[11px] text-slate-500 px-2.5 py-0.5 rounded-full border border-slate-200 bg-white shadow-2xs font-medium">
           Apex Institute
         </span>
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        <div className="p-8 rounded-2xl border border-zinc-800/80 bg-zinc-900/70 backdrop-blur-xl shadow-2xl shadow-indigo-950/20">
+        <div className="p-8 rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-3 shadow-inner">
-              <Shield className="w-6 h-6" />
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold text-2xl flex items-center justify-center mx-auto mb-3 shadow-xs">
+              A
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Campus Portal</h1>
-            <p className="text-xs text-zinc-400 mt-1">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Campus Staff Portal
+            </h1>
+            <p className="text-xs text-slate-500 mt-1">
               Sign in as Campus Administrator or Community Lead
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 p-3.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-300 text-xs flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="mb-6 p-3.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
               <span>{error}</span>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
                 Campus Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-3 w-4 h-4 text-zinc-500" />
+                <Mail className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@campus.edu"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 transition-all shadow-xs"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-zinc-500" />
+                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-zinc-800 bg-zinc-950/60 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 transition-all shadow-xs"
                 />
               </div>
             </div>
@@ -150,10 +150,10 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 cursor-pointer mt-2"
+              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 shadow-xs cursor-pointer mt-2"
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
                   <span>Sign In to Workspace</span>
@@ -164,9 +164,8 @@ export default function LoginPage() {
           </form>
 
           {/* Quick Demo Credentials Autofill */}
-          <div className="mt-8 pt-6 border-t border-zinc-800/80">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-400 mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-slate-400 font-semibold mb-3">
               <span>One-Click Demo Personas:</span>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -175,17 +174,17 @@ export default function LoginPage() {
                   key={acc.email}
                   type="button"
                   onClick={() => fillDemoAccount(acc.email, acc.password)}
-                  className={`text-left p-2.5 rounded-xl border bg-gradient-to-br ${acc.color} hover:brightness-125 transition-all text-xs cursor-pointer`}
+                  className="text-left p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition-all text-xs cursor-pointer shadow-xs"
                 >
-                  <div className="font-semibold">{acc.role}</div>
-                  <div className="text-[10px] opacity-75 truncate">{acc.email}</div>
+                  <div className="font-semibold text-slate-900">{acc.role}</div>
+                  <div className="text-[10px] text-slate-400 truncate">{acc.email}</div>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        <p className="text-center text-[11px] text-zinc-500 mt-4">
+        <p className="text-center text-[11px] text-slate-400 mt-4">
           Notice: Public student registration is disabled. Accounts are provisioned exclusively by Campus Administration.
         </p>
       </div>

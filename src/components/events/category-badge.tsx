@@ -6,58 +6,79 @@ interface CategoryBadgeProps {
   size?: "sm" | "md";
 }
 
-const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string }> = {
+export interface CategoryStyle {
+  bg: string;
+  text: string;
+  border: string;
+  dot: string;
+}
+
+export const CATEGORY_STYLES: Record<string, CategoryStyle> = {
   Tech: {
-    bg: "bg-blue-500/10",
-    text: "text-blue-400",
-    border: "border-blue-500/30",
+    bg: "bg-indigo-50/80",
+    text: "text-indigo-700",
+    border: "border-indigo-100",
+    dot: "bg-indigo-500",
   },
   Arts: {
-    bg: "bg-purple-500/10",
-    text: "text-purple-400",
-    border: "border-purple-500/30",
+    bg: "bg-pink-50/80",
+    text: "text-pink-700",
+    border: "border-pink-100",
+    dot: "bg-pink-500",
   },
   Career: {
-    bg: "bg-amber-500/10",
-    text: "text-amber-400",
-    border: "border-amber-500/30",
+    bg: "bg-amber-50/80",
+    text: "text-amber-800",
+    border: "border-amber-200/70",
+    dot: "bg-amber-500",
   },
   Social: {
-    bg: "bg-rose-500/10",
-    text: "text-rose-400",
-    border: "border-rose-500/30",
+    bg: "bg-purple-50/80",
+    text: "text-purple-700",
+    border: "border-purple-100",
+    dot: "bg-purple-500",
   },
   Sports: {
-    bg: "bg-emerald-500/10",
-    text: "text-emerald-400",
-    border: "border-emerald-500/30",
+    bg: "bg-teal-50/80",
+    text: "text-teal-700",
+    border: "border-teal-100",
+    dot: "bg-teal-500",
   },
   Academic: {
-    bg: "bg-cyan-500/10",
-    text: "text-cyan-400",
-    border: "border-cyan-500/30",
+    bg: "bg-blue-50/80",
+    text: "text-blue-700",
+    border: "border-blue-100",
+    dot: "bg-blue-500",
   },
   Workshop: {
-    bg: "bg-indigo-500/10",
-    text: "text-indigo-400",
-    border: "border-indigo-500/30",
+    bg: "bg-orange-50/80",
+    text: "text-orange-700",
+    border: "border-orange-100",
+    dot: "bg-orange-500",
   },
 };
 
-export function CategoryBadge({ category, className = "", size = "md" }: CategoryBadgeProps) {
+export function CategoryBadge({
+  category,
+  className = "",
+  size = "md",
+  showDot = false,
+}: CategoryBadgeProps & { showDot?: boolean }) {
   const style = CATEGORY_STYLES[category] || {
-    bg: "bg-zinc-800",
-    text: "text-zinc-300",
-    border: "border-zinc-700",
+    bg: "bg-slate-100",
+    text: "text-slate-700",
+    border: "border-slate-200",
+    dot: "bg-slate-400",
   };
 
-  const sizeClasses = size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs";
+  const sizeClasses = size === "sm" ? "px-2 py-0.5 text-[11px]" : "px-2.5 py-1 text-xs";
 
   return (
     <span
-      className={`inline-flex items-center font-medium rounded-full border ${style.bg} ${style.text} ${style.border} ${sizeClasses} ${className}`}
+      className={`inline-flex items-center gap-1.5 font-medium rounded-full border ${style.bg} ${style.text} ${style.border} ${sizeClasses} ${className}`}
     >
-      {category}
+      {showDot && <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />}
+      <span>{category}</span>
     </span>
   );
 }
