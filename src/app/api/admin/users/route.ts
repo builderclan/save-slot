@@ -54,19 +54,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "A user with this email already exists." }, { status: 400 });
     }
 
-    // 1. Insert into auth.users
+    // 1. Insert into auth.users with empty string tokens for GoTrue scanner compatibility
     const insAuth = await query<{ id: string }>(
       `INSERT INTO auth.users (
         id, instance_id, aud, role, email, encrypted_password,
         email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-        is_super_admin, is_sso_user, is_anonymous, created_at, updated_at
+        is_super_admin, is_sso_user, is_anonymous, created_at, updated_at,
+        confirmation_token, recovery_token, email_change_token_new, email_change,
+        email_change_token_current, phone_change, phone_change_token
       )
       VALUES (
         gen_random_uuid(), '00000000-0000-0000-0000-000000000000',
         'authenticated', 'authenticated', $1, crypt($2, gen_salt('bf')),
         NOW(), '{"provider":"email","providers":["email"]}',
         jsonb_build_object('full_name', $3::text, 'role', $4::text),
-        false, false, false, NOW(), NOW()
+        false, false, false, NOW(), NOW(),
+        '', '', '', '', '', '', ''
       )
       RETURNING id;`,
       [normalizedEmail, password, fullName.trim(), role]
