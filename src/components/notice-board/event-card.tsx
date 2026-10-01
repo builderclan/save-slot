@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
-import { format, parseISO } from "date-fns";
-import { MapPin, Clock, ArrowUpRight } from "lucide-react";
+import { format, parseISO, isSameDay } from "date-fns";
+import { MapPin, Clock, ArrowUpRight, Calendar as CalendarIcon } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
 
@@ -12,27 +13,40 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onSelect }: EventCardProps) {
+  const [imageError, setImageError] = useState(false);
   const startDate = parseISO(event.start_time);
   const endDate = parseISO(event.end_time);
+  const isSameDayEvent = isSameDay(startDate, endDate);
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => onSelect(event)}
-      className="group relative flex flex-col rounded-2xl border border-slate-200/90 bg-white hover:border-indigo-300 hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer shadow-xs"
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect(event);
+        }
+      }}
+      className="group relative flex flex-col rounded-2xl border border-slate-200/90 bg-white hover:border-indigo-300 hover:shadow-lg transition-all duration-300 overflow-hidden cursor-pointer shadow-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
     >
       {/* Event Banner */}
-      <div className="relative h-48 w-full bg-slate-100 overflow-hidden">
-        {event.cover_image_url ? (
+      <div className="relative h-48 w-full bg-gradient-to-br from-indigo-50 via-slate-100 to-indigo-100/40 overflow-hidden">
+        {event.cover_image_url && !imageError ? (
           <Image
             src={event.cover_image_url}
             alt={event.title}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-slate-100 to-indigo-50/50 flex items-center justify-center text-slate-400 font-bold text-xl">
-            Apex Event
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+            <CalendarIcon className="w-10 h-10 text-indigo-300 mb-2 opacity-70" />
+            <span className="font-bold text-sm text-slate-600 line-clamp-1">{event.title}</span>
+            <span className="text-[11px] text-slate-400 mt-0.5">{event.community?.name || "Apex Event"}</span>
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent pointer-events-none" />
@@ -84,7 +98,9 @@ export function EventCard({ event, onSelect }: EventCardProps) {
           <div className="flex items-center gap-2 truncate">
             <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="font-medium text-slate-700">
-              {format(startDate, "h:mm a")} – {format(endDate, "h:mm a")}
+              {isSameDayEvent
+                ? `${format(startDate, "h:mm a")} – ${format(endDate, "h:mm a")}`
+                : `${format(startDate, "MMM d, h:mm a")} – ${format(endDate, "MMM d, h:mm a")}`}
             </span>
           </div>
 

@@ -13,8 +13,9 @@ import {
   isToday,
   parseISO,
 } from "date-fns";
+import { X, Calendar as CalendarIcon, Clock, MapPin } from "lucide-react";
 import { CampusEvent } from "@/types/database";
-import { CATEGORY_STYLES } from "@/components/events/category-badge";
+import { CATEGORY_STYLES, CategoryBadge } from "@/components/events/category-badge";
 
 interface MonthViewProps {
   events: CampusEvent[];
@@ -30,6 +31,7 @@ export function MonthView({
   onDateChange,
 }: MonthViewProps) {
   const [internalDate, setInternalDate] = useState<Date>(currentDate);
+  const [popoverDay, setPopoverDay] = useState<Date | null>(null);
   const activeDate = currentDate || internalDate;
 
   const handleDateChange = (newDate: Date) => {
@@ -48,17 +50,19 @@ export function MonthView({
     return events.filter((ev) => isSameDay(parseISO(ev.start_time), day));
   };
 
+  const popoverEvents = popoverDay ? getEventsForDay(popoverDay) : [];
+
   return (
     <div className="w-full bg-white flex flex-col flex-1 select-none">
       {/* Weekday Names Header matching Image 1 */}
       <div className="grid grid-cols-7 border-b border-slate-200 divide-x divide-slate-200/80 text-center py-2.5 bg-white text-xs font-semibold text-slate-500">
-        <div>Sunday</div>
-        <div>Monday</div>
-        <div>Tuesday</div>
-        <div>Wednesday</div>
-        <div>Thursday</div>
-        <div>Friday</div>
-        <div>Saturday</div>
+        <div><span className="sm:hidden">Sun</span><span className="hidden sm:inline">Sunday</span></div>
+        <div><span className="sm:hidden">Mon</span><span className="hidden sm:inline">Monday</span></div>
+        <div><span className="sm:hidden">Tue</span><span className="hidden sm:inline">Tuesday</span></div>
+        <div><span className="sm:hidden">Wed</span><span className="hidden sm:inline">Wednesday</span></div>
+        <div><span className="sm:hidden">Thu</span><span className="hidden sm:inline">Thursday</span></div>
+        <div><span className="sm:hidden">Fri</span><span className="hidden sm:inline">Friday</span></div>
+        <div><span className="sm:hidden">Sat</span><span className="hidden sm:inline">Saturday</span></div>
       </div>
 
       {/* Days Grid with crisp thin lines matching Image 1 */}
@@ -73,9 +77,17 @@ export function MonthView({
           return (
             <div
               key={day.toISOString()}
+              role="button"
+              tabIndex={0}
               onClick={() => handleDateChange(day)}
-              className={`min-h-[110px] sm:min-h-[125px] p-2 flex flex-col transition-colors cursor-pointer group ${
-                !isCurrentMonth ? "bg-slate-50/40 text-slate-300" : "hover:bg-slate-50/70"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleDateChange(day);
+                }
+              }}
+              className={`min-h-[110px] sm:min-h-[125px] p-2 flex flex-col transition-colors cursor-pointer group focus:outline-none focus:bg-indigo-50/30 ${
+                !isCurrentMonth ? "bg-slate-50/40 text-slate-400" : "hover:bg-slate-50/70"
               }`}
             >
               {/* Day header inside cell centered matching Image 1 */}
@@ -104,7 +116,7 @@ export function MonthView({
               {/* Event Chips inside Day Cell matching Image 1 pastel badges */}
               <div className="flex-1 space-y-1 overflow-hidden mt-0.5">
                 {dayEvents.slice(0, 3).map((ev) => {
-                  const startTime = format(parseISO(ev.start_time), "H:mm");
+                  const startTime = format(parseISO(ev.start_time), "h:mm a");
                   const catStyle = CATEGORY_STYLES[ev.category] || {
                     bg: "bg-indigo-50/80",
                     text: "text-indigo-700",
@@ -131,15 +143,85 @@ export function MonthView({
                 })}
 
                 {dayEvents.length > 3 && (
-                  <div className="text-[10px] text-slate-500 pl-1 font-medium">
-                    +{dayEvents.length - 3} more
-                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPopoverDay(day);
+                    }}
+                    className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50/80 px-1.5 py-0.5 rounded-md font-semibold text-left transition-colors cursor-pointer block w-full truncate"
+                  >
+                    +{dayEvents.length - 3} more events
+                  </button>
                 )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* Popover for Day Overflow (+N more) */}
+      {popoverDay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl z-10 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-indigo-600" />
+                <h3 className="font-bold text-sm text-slate-900">
+                  {format(popoverDay, "EEEE, MMMM d, yyyy")}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPopoverDay(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {popoverEvents.map((ev) => (
+                <div
+                  key={ev.id}
+                  onClick={() => {
+                    setPopoverDay(null);
+                    onSelectEvent(ev);
+                  }}
+                  className="p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <CategoryBadge category={ev.category} size="sm" />
+                    <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-slate-400" />
+                      {format(parseISO(ev.start_time), "h:mm a")}
+                    </span>
+                  </div>
+                  <h4 className="font-semibold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                    {ev.title}
+                  </h4>
+                  <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 truncate">
+                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                    <span className="truncate">{ev.venue?.name || ev.location_name}</span>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-600 font-medium truncate">{ev.community?.name}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 mt-3 text-right">
+              <button
+                type="button"
+                onClick={() => setPopoverDay(null)}
+                className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

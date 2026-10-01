@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { format, parseISO, differenceInMinutes } from "date-fns";
+import { format, parseISO, differenceInMinutes, isSameDay } from "date-fns";
 import {
   X,
   MapPin,
@@ -25,6 +25,11 @@ interface EventDetailModalProps {
 
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   const [copied, setCopied] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [event?.id]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -39,6 +44,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   const startDate = parseISO(event.start_time);
   const endDate = parseISO(event.end_time);
   const googleCalUrl = getGoogleCalendarUrl(event);
+  const isSameDayEvent = isSameDay(startDate, endDate);
 
   const durationMinutes = differenceInMinutes(endDate, startDate);
   const hours = Math.floor(durationMinutes / 60);
@@ -115,7 +121,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto">
           {/* Framed Cover Media */}
-          {event.cover_image_url && (
+          {event.cover_image_url && !imageError && (
             <div className="p-5 pb-0">
               <div className="relative h-48 sm:h-56 w-full rounded-xl overflow-hidden border border-slate-200/80 bg-slate-100 shadow-inner">
                 <Image
@@ -125,6 +131,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                   sizes="(max-width: 768px) 100vw, 640px"
                   className="object-cover"
                   priority
+                  onError={() => setImageError(true)}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent pointer-events-none" />
 
@@ -141,7 +148,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
           <div className="p-5 sm:p-7 space-y-6">
             {/* Title & Safe Slot badge if no cover */}
             <div>
-              {!event.cover_image_url && (
+              {(!event.cover_image_url || imageError) && (
                 <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-800 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/70 mb-3">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Safe-Slot Conflict-Free</span>
@@ -171,12 +178,16 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-slate-900">
-                    {format(startDate, "EEEE, MMMM d, yyyy")}
+                    {isSameDayEvent
+                      ? format(startDate, "EEEE, MMMM d, yyyy")
+                      : `${format(startDate, "EEE, MMM d")} – ${format(endDate, "EEE, MMM d, yyyy")}`}
                   </div>
                   <div className="text-xs text-slate-600 mt-1 flex items-center gap-1.5 flex-wrap">
                     <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     <span>
-                      {format(startDate, "h:mm a")} – {format(endDate, "h:mm a")}
+                      {isSameDayEvent
+                        ? `${format(startDate, "h:mm a")} – ${format(endDate, "h:mm a")}`
+                        : `${format(startDate, "h:mm a")} – ${format(endDate, "h:mm a")}`}
                     </span>
                     <span className="text-slate-300">•</span>
                     <span className="text-slate-500 text-[11px] font-medium">{durationLabel}</span>
