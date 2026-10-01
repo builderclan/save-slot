@@ -189,7 +189,7 @@ export function ProposeEventModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={onClose} />
 
-      <div className="relative w-full max-w-3xl rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-2xl overflow-hidden z-10 my-8">
+      <div className="relative w-full max-w-3xl rounded-2xl border border-slate-200/90 bg-white text-slate-900 shadow-2xl overflow-hidden z-10 my-8">
         {/* Header */}
         <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-white">
           <div>
