@@ -12,8 +12,6 @@ import {
   LogIn,
   ChevronLeft,
   ChevronRight,
-  Search,
-  X,
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isSameMonth, isSameYear } from "date-fns";
 import { useCalendar } from "@/context/calendar-context";
@@ -266,32 +264,8 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Right side: Global Search + Workspaces + Auth */}
+        {/* Right side: Workspaces + Auth */}
         <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-          {/* Quick Find Events input on calendar home */}
-          {isCalendarHome && calendar && (
-            <div className="relative hidden xl:block w-52 2xl:w-60">
-              <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-              <input
-                type="text"
-                value={calendar.search}
-                onChange={(e) => calendar.setSearch(e.target.value)}
-                placeholder="Find events..."
-                aria-label="Find events"
-                className="w-full pl-8.5 pr-7 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-500 transition-colors"
-              />
-              {calendar.search && (
-                <button
-                  type="button"
-                  onClick={() => calendar.setSearch("")}
-                  aria-label="Clear search"
-                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          )}
 
           {/* Quick link to workspaces when on calendar home */}
           {isCalendarHome && user?.isLead && (
