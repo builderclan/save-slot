@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
+import { CalendarProvider } from "@/context/calendar-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,8 +36,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-screen flex flex-col bg-white text-slate-800 selection:bg-indigo-100 selection:text-indigo-900 font-sans">
-        <Navbar />
-        <main className="flex-1 w-full flex flex-col">{children}</main>
+        <CalendarProvider>
+          <Navbar />
+          <main className="flex-1 w-full flex flex-col">{children}</main>
+        </CalendarProvider>
       </body>
     </html>
   );

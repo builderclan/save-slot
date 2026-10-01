@@ -3,23 +3,19 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ChevronLeft,
-  ChevronRight,
   Search,
   Plus,
   Check,
   X,
 } from "lucide-react";
 import {
-  format,
   parseISO,
   isToday,
   isWeekend,
   isWithinInterval,
   addDays,
-  addMonths,
-  subMonths,
 } from "date-fns";
+import { useCalendar } from "@/context/calendar-context";
 import { CampusEvent, EventCategory, Venue } from "@/types/database";
 import { CATEGORY_STYLES } from "@/components/events/category-badge";
 import { MiniCalendar } from "@/components/notice-board/mini-calendar";
@@ -46,14 +42,16 @@ export default function StudentNoticeBoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Active navigation date (shared across MiniCalendar, MonthView, and WeekView)
-  const [activeDate, setActiveDate] = useState<Date>(new Date());
+  const calendar = useCalendar();
+  const activeDate = calendar?.activeDate || new Date();
+  const setActiveDate = calendar?.setActiveDate || (() => {});
+  const viewMode = calendar?.viewMode || "month";
+  const search = calendar?.search || "";
+  const setSearch = calendar?.setSearch || (() => {});
 
   // Filter States
-  const [search, setSearch] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>(CATEGORIES);
   const [selectedHorizon, setSelectedHorizon] = useState<"all" | "today" | "week" | "weekend">("all");
-  const [viewMode, setViewMode] = useState<"month" | "week" | "cards">("month");
 
   // Auth & Proposal modal
   const [userSession, setUserSession] = useState<{
@@ -113,25 +111,6 @@ export default function StudentNoticeBoardPage() {
   const selectAllCategories = () => setSelectedCategories(CATEGORIES);
   const clearCategories = () => setSelectedCategories([]);
 
-  // Date controls
-  const handlePrev = () => {
-    if (viewMode === "week") {
-      setActiveDate(addDays(activeDate, -7));
-    } else {
-      setActiveDate(subMonths(activeDate, 1));
-    }
-  };
-
-  const handleNext = () => {
-    if (viewMode === "week") {
-      setActiveDate(addDays(activeDate, 7));
-    } else {
-      setActiveDate(addMonths(activeDate, 1));
-    }
-  };
-
-  const handleToday = () => setActiveDate(new Date());
-
   // Handle Create Event button
   const handleCreateEventClick = () => {
     if (userSession?.authenticated && userSession.user?.isLead) {
@@ -186,24 +165,6 @@ export default function StudentNoticeBoardPage() {
       {/* LEFT SIDEBAR (User Profile, + Create Event, Mini-Cal, Filters) */}
       {/* ============================================================== */}
       <aside className="w-full lg:w-72 border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex flex-col gap-6 bg-white shrink-0">
-          {/* User / Campus Profile Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 text-slate-800 flex items-center justify-center font-bold text-sm">
-                {userSession?.authenticated && userSession.user
-                  ? userSession.user.fullName.charAt(0)
-                  : "A"}
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-slate-900 truncate">
-                  {userSession?.authenticated && userSession.user
-                    ? userSession.user.fullName
-                    : "Apex Institute"}
-                </div>
-                <div className="text-xs text-slate-500">Fall Term 2026</div>
-              </div>
-            </div>
-          </div>
 
           {/* "+ Create Event" Primary Action Button matching Image 1 */}
           <button
@@ -337,99 +298,8 @@ export default function StudentNoticeBoardPage() {
         {/* MAIN CALENDAR SECTION (Month/Week/Board Views) */}
         {/* ============================================================== */}
         <section className="flex-1 flex flex-col min-w-0 bg-white">
-          {/* Top Calendar Controls matching Image 1 Header */}
-          <div className="p-4 sm:p-5 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white">
-            {/* Left: Active Month Title + Chevrons + Today Button */}
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                {format(activeDate, "MMMM yyyy")}
-              </h2>
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-                  aria-label="Previous"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-                  aria-label="Next"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleToday}
-                className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs ml-1"
-              >
-                Today
-              </button>
-            </div>
-
-            {/* Right: View Switcher Tabs (Month, Week, Board) + Global Search */}
-            <div className="flex items-center gap-3 self-end sm:self-auto">
-              {/* Segmented View Mode Tabs matching Image 2 */}
-              <div className="flex items-center p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("month")}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                    viewMode === "month"
-                      ? "bg-white text-slate-900 font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Month
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setViewMode("week")}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                    viewMode === "week"
-                      ? "bg-white text-slate-900 font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Week
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setViewMode("cards")}
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer ${
-                    viewMode === "cards"
-                      ? "bg-white text-slate-900 font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Board
-                </button>
-              </div>
-
-              {/* Find Events Search Bar matching Image 1 */}
-              <div className="relative hidden md:block w-56">
-                <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Find Events..."
-                  className="w-full pl-8.5 pr-4 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-500 transition-colors"
-                />
-              </div>
-            </div>
-          </div>
-
           {/* Calendar Content Area */}
-          <div className="flex-1 overflow-auto bg-white">
+          <div className="flex-1 flex flex-col overflow-auto bg-white">
             {loading ? (
               <div className="p-16 text-center">
                 <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />

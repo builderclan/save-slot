@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   format,
   addMonths,
@@ -23,6 +23,10 @@ interface MiniCalendarProps {
 
 export function MiniCalendar({ currentDate, onSelectDate }: MiniCalendarProps) {
   const [displayMonth, setDisplayMonth] = useState<Date>(currentDate);
+
+  useEffect(() => {
+    setDisplayMonth(currentDate);
+  }, [currentDate]);
 
   const prevMonth = () => setDisplayMonth(subMonths(displayMonth, 1));
   const nextMonth = () => setDisplayMonth(addMonths(displayMonth, 1));

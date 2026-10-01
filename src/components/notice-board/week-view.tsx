@@ -39,7 +39,7 @@ export function WeekView({
   return (
     <div className="w-full bg-white flex flex-col flex-1 select-none">
       {/* Week Timeline Columns matching Image 2 */}
-      <div className="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white flex-1 min-h-[640px]">
+      <div className="grid grid-cols-1 md:grid-cols-7 divide-y md:divide-y-0 md:divide-x divide-slate-200/80 bg-white flex-1 min-h-[640px]">
         {days.map((day) => {
           const dayEvents = getEventsForDay(day);
           const currentDay = isToday(day);
