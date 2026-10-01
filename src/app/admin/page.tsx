@@ -1,373 +1,937 @@
 "use client";
 
-import * as React from "react";
-import { eventService } from "@/lib/data/store";
-import { Event, Community, Venue, ConflictReport } from "@/types/database";
-import { formatEventDate, formatEventTimeRange } from "@/lib/utils";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { format, parseISO } from "date-fns";
 import {
-  ShieldCheck,
-  AlertTriangle,
+  Shield,
   CheckCircle2,
-  XCircle,
-  Users,
-  Calendar,
   Clock,
+  Calendar,
+  MapPin,
+  Users,
+  Building,
+  Plus,
+  Trash2,
+  ExternalLink,
+  Check,
+  X,
 } from "lucide-react";
-import { RejectionModal } from "@/components/admin/rejection-modal";
+import { CampusEvent, Venue } from "@/types/database";
+import { CategoryBadge } from "@/components/events/category-badge";
 
-export default function AdminDashboardPage() {
-  const [version, setVersion] = React.useState(0);
-  const [events, setEvents] = React.useState<Event[]>([]);
-  const [communities, setCommunities] = React.useState<Community[]>([]);
-  const [venues, setVenues] = React.useState<Venue[]>([]);
-  const [conflictsMap, setConflictsMap] = React.useState<Record<string, ConflictReport>>({});
-  const [conflictCount, setConflictCount] = React.useState(0);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-  const [rejectingEvent, setRejectingEvent] = React.useState<{ id: string; title: string } | null>(null);
-  const [isRejecting, setIsRejecting] = React.useState(false);
+interface AdminUserRow {
+  id: string;
+  email: string;
+  full_name: string;
+  role: string;
+  created_at: string;
+  community_name?: string;
+  community_slug?: string;
+}
 
-  const refreshData = React.useCallback(() => {
-    setVersion((v) => v + 1);
-  }, []);
+export default function AdminConsolePage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"triage" | "all-events" | "users" | "venues">("triage");
 
-  React.useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    setError(null);
+  const [allEvents, setAllEvents] = useState<CampusEvent[]>([]);
+  const [users, setUsers] = useState<AdminUserRow[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [communities, setCommunities] = useState<Array<{ id: string; name: string }>>([]);
 
-    Promise.all([
-      eventService.getEvents({ status: "All" }),
-      eventService.getCommunities({ all: true }),
-      eventService.getAllVenues(),
-    ])
-      .then(async ([eventData, commData, venueData]) => {
-        if (!isMounted) return;
-        setEvents(eventData);
-        setCommunities(commData);
-        setVenues(venueData);
+  // Modals state
+  const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
+  const [rejectionNote, setRejectionNote] = useState("");
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
-        const reportMap: Record<string, ConflictReport> = {};
-        let conflicts = 0;
-        await Promise.all(
-          eventData.map(async (e) => {
-            if (e.venue_id && e.status !== "cancelled" && e.status !== "rejected") {
-              try {
-                const rep = await eventService.checkConflicts({
-                  eventId: e.id,
-                  venueId: e.venue_id,
-                  startTime: e.start_time,
-                  endTime: e.end_time,
-                });
-                reportMap[e.id] = rep;
-                if (rep.hasVenueConflict) conflicts++;
-              } catch {
-                // ignore
-              }
-            }
-          })
+  // New User Modal State
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("lead123");
+  const [newUserRole, setNewUserRole] = useState<"admin" | "organizer">("organizer");
+  const [newUserCommId, setNewUserCommId] = useState("");
+  const [userModalError, setUserModalError] = useState<string | null>(null);
+
+  // New Venue Modal State
+  const [isAddVenueOpen, setIsAddVenueOpen] = useState(false);
+  const [newVenueName, setNewVenueName] = useState("");
+  const [newVenueBuilding, setNewVenueBuilding] = useState("");
+  const [newVenueCapacity, setNewVenueCapacity] = useState("100");
+  const [newVenueAddress, setNewVenueAddress] = useState("");
+  const [newVenueNotes, setNewVenueNotes] = useState("");
+
+  const loadAllData = useCallback(async () => {
+    try {
+      setLoading(true);
+
+      // 1. Auth check
+      const meRes = await fetch("/api/auth/me");
+      const meData = await meRes.json();
+      if (!meData.authenticated || !meData.user.isAdmin) {
+        router.push("/login");
+        return;
+      }
+
+      // 2. Fetch all events (including pending and rejected)
+      const evRes = await fetch("/api/lead/events");
+      const evData = await evRes.json();
+      setAllEvents(evData.events || []);
+
+      // 3. Fetch users
+      const usersRes = await fetch("/api/admin/users");
+      const usersData = await usersRes.json();
+      setUsers(usersData.users || []);
+
+      // 4. Fetch venues
+      const venuesRes = await fetch("/api/admin/venues");
+      const venuesData = await venuesRes.json();
+      setVenues(venuesData.venues || []);
+
+      // 5. Extract communities from users/events for dropdown
+      const uniqueComms = Array.from(
+        new Map(
+          (evData.events || [])
+            .filter((e: CampusEvent) => e.community)
+            .map((e: CampusEvent) => [e.community?.id, e.community])
+        ).values()
+      ) as Array<{ id: string; name: string }>;
+      setCommunities(uniqueComms);
+    } catch (err) {
+      console.error("Admin data load error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
+    loadAllData();
+  }, [loadAllData]);
+
+  const handleApprove = async (eventId: string) => {
+    setActionInProgress(eventId);
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "published" }),
+      });
+      if (res.ok) {
+        setAllEvents((prev) =>
+          prev.map((e) => (e.id === eventId ? { ...e, status: "published" } : e))
         );
+      }
+    } finally {
+      setActionInProgress(null);
+    }
+  };
 
-        if (isMounted) {
-          setConflictsMap(reportMap);
-          setConflictCount(conflicts);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) setError(err.message || "Failed to load admin dashboard data");
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
+  const handleReject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rejectingEvent) return;
+
+    setActionInProgress(rejectingEvent.id);
+    try {
+      const res = await fetch(`/api/admin/events/${rejectingEvent.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "rejected",
+          rejectionReason: rejectionNote,
+        }),
       });
 
-    return () => {
-      isMounted = false;
-    };
-  }, [version]);
-
-  const pendingEvents = events.filter((e) => e.status === "pending");
-  const publishedEvents = events.filter((e) => e.status === "published");
-  const pendingCommunities = communities.filter((c) => c.status === "pending");
-  const approvedCommunities = communities.filter((c) => c.status === "approved");
-
-  const handleApproveEvent = async (id: string) => {
-    try {
-      await eventService.updateEventStatus(id, "published");
-      refreshData();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to approve event");
-    }
-  };
-
-  const handleConfirmReject = async (reason: string) => {
-    if (!rejectingEvent) return;
-    setIsRejecting(true);
-    try {
-      await eventService.updateEventStatus(rejectingEvent.id, "rejected", { rejection_reason: reason });
-      setRejectingEvent(null);
-      refreshData();
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to reject event");
+      if (res.ok) {
+        setAllEvents((prev) =>
+          prev.map((ev) =>
+            ev.id === rejectingEvent.id
+              ? { ...ev, status: "rejected", rejection_reason: rejectionNote }
+              : ev
+          )
+        );
+        setRejectingEvent(null);
+        setRejectionNote("");
+      }
     } finally {
-      setIsRejecting(false);
+      setActionInProgress(null);
     }
   };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this event?")) return;
+
+    setActionInProgress(eventId);
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setAllEvents((prev) => prev.filter((e) => e.id !== eventId));
+      }
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUserModalError(null);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: newUserName,
+          email: newUserEmail,
+          password: newUserPassword,
+          role: newUserRole,
+          communityId: newUserRole === "organizer" ? newUserCommId : null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create user");
+
+      setIsAddUserOpen(false);
+      setNewUserName("");
+      setNewUserEmail("");
+      loadAllData();
+    } catch (err: unknown) {
+      setUserModalError(err instanceof Error ? err.message : "Error creating user");
+    }
+  };
+
+  const handleCreateVenue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("/api/admin/venues", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newVenueName,
+          building: newVenueBuilding,
+          capacity: newVenueCapacity,
+          address: newVenueAddress,
+          notes: newVenueNotes,
+        }),
+      });
+
+      if (res.ok) {
+        setIsAddVenueOpen(false);
+        setNewVenueName("");
+        setNewVenueBuilding("");
+        loadAllData();
+      }
+    } catch (err) {
+      console.error("Create venue error:", err);
+    }
+  };
+
+  const handleToggleVenueActive = async (venue: Venue) => {
+    try {
+      const res = await fetch("/api/admin/venues", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: venue.id, is_active: !venue.is_active }),
+      });
+      if (res.ok) {
+        setVenues((prev) =>
+          prev.map((v) => (v.id === venue.id ? { ...v, is_active: !v.is_active } : v))
+        );
+      }
+    } catch (err) {
+      console.error("Toggle venue error:", err);
+    }
+  };
+
+  const pendingEvents = allEvents.filter((e) => e.status === "pending");
+  const publishedEvents = allEvents.filter((e) => e.status === "published");
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center animate-pulse">
-        <p className="text-sm font-semibold text-slate-700">Loading campus administration...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 rounded-2xl border border-red-200 p-8 text-center space-y-3">
-        <p className="text-base font-bold text-red-800">Database Administration Error</p>
-        <p className="text-xs text-red-600 max-w-md mx-auto">{error}</p>
-        <button
-          onClick={refreshData}
-          className="px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition cursor-pointer"
-        >
-          Retry
-        </button>
+      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs text-slate-400">Loading Admin Operations Console...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header Banner */}
-      <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-8 mb-8 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-2 text-blue-600 font-semibold text-xs uppercase tracking-wider">
-            <ShieldCheck className="h-4 w-4" />
-            Campus Administration
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-900 text-xs font-semibold mb-2">
+            <Shield className="w-3.5 h-3.5 text-amber-600" />
+            <span>Campus Administration</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-            Command Center
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+            Central Triage & Operations Console
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Supervise published schedules, resolve room scheduling conflicts, and manage student communities.
+          <p className="text-xs sm:text-sm text-slate-500 mt-1">
+            Apex Institute of Technology · Institutional calendar oversight, safety audit, and staff provisioning
           </p>
         </div>
 
-        <div className="flex items-center flex-wrap gap-2.5">
-          <Link
-            href="/admin/events"
-            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition shadow-2xs"
+        {/* Global Quick Action */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsAddUserOpen(true)}
+            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            Moderate Events ({pendingEvents.length})
-          </Link>
-          <Link
-            href="/admin/communities"
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition ${
-              pendingCommunities.length > 0
-                ? "bg-amber-500 text-white hover:bg-amber-600 shadow-2xs"
-                : "border border-slate-200 text-slate-700 hover:bg-slate-50"
-            }`}
+            <Plus className="w-3.5 h-3.5 text-slate-600" />
+            <span>Add User</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setIsAddVenueOpen(true)}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
           >
-            Club Requests ({pendingCommunities.length})
-          </Link>
-          <Link
-            href="/admin/venues"
-            className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 text-slate-700 hover:bg-slate-50 transition"
-          >
-            Manage Venues ({venues.length})
-          </Link>
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Facility</span>
+          </button>
         </div>
       </div>
 
-      {/* Pending Community Alert Banner */}
-      {pendingCommunities.length > 0 && (
-        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-4 text-xs">
-          <div className="flex items-center gap-3 text-amber-800">
-            <Clock className="h-5 w-5 text-amber-600 shrink-0" />
-            <div>
-              <span className="font-bold">
-                {pendingCommunities.length} Community Onboarding Request{pendingCommunities.length > 1 ? "s" : ""}
-              </span>{" "}
-              awaiting administrative review and organizer lead assignment.
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <div
+          onClick={() => setActiveTab("triage")}
+          className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+            activeTab === "triage"
+              ? "border-amber-400 bg-amber-50/50 ring-2 ring-amber-400/30"
+              : "border-slate-200/90 bg-white hover:border-slate-300"
+          }`}
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-800 mb-1 flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-amber-600" />
+            <span>Pending Triage</span>
+          </div>
+          <div className="text-2xl font-bold text-slate-900">{pendingEvents.length}</div>
+        </div>
+
+        <div
+          onClick={() => setActiveTab("all-events")}
+          className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+            activeTab === "all-events"
+              ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/30"
+              : "border-slate-200/90 bg-white hover:border-slate-300"
+          }`}
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Live on Board</span>
+          </div>
+          <div className="text-2xl font-bold text-slate-900">{publishedEvents.length}</div>
+        </div>
+
+        <div
+          onClick={() => setActiveTab("users")}
+          className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+            activeTab === "users"
+              ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/30"
+              : "border-slate-200/90 bg-white hover:border-slate-300"
+          }`}
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Staff & Leads</span>
+          </div>
+          <div className="text-2xl font-bold text-slate-900">{users.length}</div>
+        </div>
+
+        <div
+          onClick={() => setActiveTab("venues")}
+          className={`p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+            activeTab === "venues"
+              ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/30"
+              : "border-slate-200/90 bg-white hover:border-slate-300"
+          }`}
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1.5">
+            <Building className="w-3.5 h-3.5 text-purple-600" />
+            <span>Campus Venues</span>
+          </div>
+          <div className="text-2xl font-bold text-slate-900">{venues.length}</div>
+        </div>
+      </div>
+
+      {/* Tabs Switcher matching Image 2 */}
+      <div className="inline-flex p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 mb-6 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setActiveTab("triage")}
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === "triage"
+              ? "bg-white text-slate-900 shadow-xs font-semibold"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <Clock className="w-3.5 h-3.5 text-amber-600" />
+          <span>Pending Submissions ({pendingEvents.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("all-events")}
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === "all-events"
+              ? "bg-white text-slate-900 shadow-xs font-semibold"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5 text-slate-500" />
+          <span>Master Calendar ({allEvents.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("users")}
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === "users"
+              ? "bg-white text-slate-900 shadow-xs font-semibold"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <Users className="w-3.5 h-3.5 text-slate-500" />
+          <span>User Accounts ({users.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("venues")}
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === "venues"
+              ? "bg-white text-slate-900 shadow-xs font-semibold"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          <Building className="w-3.5 h-3.5 text-slate-500" />
+          <span>Campus Venues ({venues.length})</span>
+        </button>
+      </div>
+
+      {/* TAB 1: PENDING TRIAGE QUEUE */}
+      {activeTab === "triage" && (
+        <div className="space-y-4">
+          {pendingEvents.length === 0 ? (
+            <div className="text-center py-16 rounded-3xl border border-dashed border-slate-200 bg-white p-8">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-2" />
+              <h3 className="text-base font-semibold text-slate-900 mb-1">Triage Queue is Clean!</h3>
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                All community event submissions have been evaluated and scheduled.
+              </p>
             </div>
-          </div>
-          <Link
-            href="/admin/communities"
-            className="px-3 py-1.5 rounded-lg bg-amber-600 text-white font-semibold hover:bg-amber-700 transition shrink-0"
-          >
-            Review Requests &rarr;
-          </Link>
-        </div>
-      )}
-
-      {/* Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Pending Events</span>
-            <Clock className="h-4 w-4 text-amber-500" />
-          </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">
-            {pendingEvents.length}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">Awaiting approval</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Club Requests</span>
-            <Users className="h-4 w-4 text-amber-500" />
-          </div>
-          <p className="text-2xl font-bold text-amber-600 mt-2">
-            {pendingCommunities.length}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">Pending onboarding</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Active Conflicts</span>
-            <AlertTriangle className="h-4 w-4 text-rose-500" />
-          </div>
-          <p className="text-2xl font-bold text-rose-600 mt-2">
-            {conflictCount}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">Double-booked venues</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Published Events</span>
-            <Calendar className="h-4 w-4 text-emerald-500" />
-          </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">
-            {publishedEvents.length}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">Visible on calendar</p>
-        </div>
-
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Organizations</span>
-            <Users className="h-4 w-4 text-blue-500" />
-          </div>
-          <p className="text-2xl font-bold text-slate-900 mt-2">
-            {approvedCommunities.length}
-          </p>
-          <p className="text-[11px] text-slate-400 mt-1">Active student clubs</p>
-        </div>
-      </div>
-
-      {/* Moderation Queue */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">
-              Pending Submissions Queue
-            </h2>
-            <p className="text-xs text-slate-500">
-              Events submitted by student organizations requiring administrative sign-off.
-            </p>
-          </div>
-
-          <Link
-            href="/admin/events"
-            className="text-xs font-semibold text-blue-600 hover:text-blue-700 transition"
-          >
-            View all ({events.length}) &rarr;
-          </Link>
-        </div>
-
-        {pendingEvents.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-            <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
-            <h3 className="text-sm font-bold text-slate-900 mt-2">
-              Queue is completely clear!
-            </h3>
-            <p className="text-xs text-slate-400 mt-1">
-              New submissions from student organizations will appear here automatically.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {pendingEvents.map((evt) => {
-              const conflictReport = conflictsMap[evt.id];
+          ) : (
+            pendingEvents.map((ev) => {
+              const startDate = parseISO(ev.start_time);
+              const endDate = parseISO(ev.end_time);
 
               return (
                 <div
-                  key={evt.id}
-                  className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                  key={ev.id}
+                  className="p-5 rounded-2xl border border-amber-200/90 bg-white shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6"
                 >
-                  <div className="space-y-1.5 flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800">
-                        Needs Review
+                  <div className="space-y-2 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CategoryBadge category={ev.category} size="sm" />
+                      <span className="text-xs font-semibold text-amber-800">
+                        {ev.community?.name || "Campus Community"}
                       </span>
-                      <span className="text-xs font-medium text-slate-500">
-                        by {evt.community?.name || "Student Club"}
+                    </div>
+
+                    <h3 className="text-base font-bold text-slate-900">{ev.title}</h3>
+                    <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                      {ev.description}
+                    </p>
+
+                    <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap pt-1">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <span>{format(startDate, "EEEE, MMMM d, yyyy")}</span>
                       </span>
-                      {conflictReport?.hasVenueConflict && (
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 text-red-800 animate-pulse flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3" />
-                          Venue Double-Booking Conflict!
+
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <Clock className="w-4 h-4 text-slate-400" />
+                        <span>
+                          {format(startDate, "h:mm a")} – {format(endDate, "h:mm a")}
                         </span>
-                      )}
-                    </div>
+                      </span>
 
-                    <h3 className="text-base font-bold text-slate-900">
-                      {evt.title}
-                    </h3>
-
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                      <span>{formatEventDate(evt.start_time)}</span>
-                      <span>•</span>
-                      <span>{formatEventTimeRange(evt.start_time, evt.end_time)}</span>
-                      <span>•</span>
-                      <span className="font-semibold text-slate-700">
-                        {evt.location_name}
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <MapPin className="w-4 h-4 text-slate-400" />
+                        <span>{ev.venue?.name || ev.location_name}</span>
                       </span>
                     </div>
-
-                    {conflictReport?.hasVenueConflict && conflictReport.venueConflicts.length > 0 && (
-                      <p className="text-xs text-red-700 font-medium bg-red-50 p-2 rounded-lg border border-red-200">
-                        ⚠️ Conflict Warning: {conflictReport.venueConflicts[0].message}
-                      </p>
-                    )}
                   </div>
 
-                  {/* Admin Approve / Reject Actions */}
-                  <div className="flex items-center gap-2 self-end md:self-center">
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-2.5 shrink-0">
                     <button
-                      onClick={() => setRejectingEvent({ id: evt.id, title: evt.title })}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-semibold transition cursor-pointer"
+                      type="button"
+                      disabled={actionInProgress === ev.id}
+                      onClick={() => handleApprove(ev.id)}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-all flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
                     >
-                      <XCircle className="h-3.5 w-3.5" />
-                      Reject
+                      <Check className="w-4 h-4" />
+                      <span>Approve & Publish</span>
                     </button>
+
                     <button
-                      onClick={() => handleApproveEvent(evt.id)}
-                      className="inline-flex items-center gap-1 px-3.5 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-semibold transition cursor-pointer shadow-2xs"
+                      type="button"
+                      disabled={actionInProgress === ev.id}
+                      onClick={() => {
+                        setRejectingEvent(ev);
+                        setRejectionNote("");
+                      }}
+                      className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-rose-600 font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Approve & Publish
+                      <X className="w-4 h-4" />
+                      <span>Reject with Note</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* TAB 2: MASTER CALENDAR (ALL EVENTS) */}
+      {activeTab === "all-events" && (
+        <div className="rounded-3xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+          <div className="p-4 sm:p-5 border-b border-slate-200 bg-slate-50/60 flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">All Scheduled Events ({allEvents.length})</h3>
+            <span className="text-xs text-slate-400">Live Institutional Master Index</span>
+          </div>
+
+          <div className="divide-y divide-slate-100 overflow-x-auto">
+            {allEvents.map((ev) => {
+              const startDate = parseISO(ev.start_time);
+
+              return (
+                <div
+                  key={ev.id}
+                  className="p-4 sm:p-5 flex items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors"
+                >
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <CategoryBadge category={ev.category} size="sm" />
+                      <span
+                        className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                          ev.status === "published"
+                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                            : ev.status === "pending"
+                            ? "bg-amber-50 border-amber-200 text-amber-800"
+                            : "bg-rose-50 border-rose-200 text-rose-800"
+                        }`}
+                      >
+                        {ev.status}
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-semibold text-slate-900 truncate">{ev.title}</h4>
+                    <div className="flex items-center gap-4 text-xs text-slate-500">
+                      <span>{format(startDate, "MMM d, yyyy · h:mm a")}</span>
+                      <span>{ev.venue?.name || ev.location_name}</span>
+                      <span className="text-slate-700 font-medium">{ev.community?.name}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {ev.status === "published" && (
+                      <Link
+                        href="/"
+                        className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-900 transition-colors"
+                        title="View on Notice Board"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteEvent(ev.id)}
+                      className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                      title="Delete Event"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Styled Rejection Modal */}
-      <RejectionModal
-        isOpen={Boolean(rejectingEvent)}
-        eventTitle={rejectingEvent?.title || ""}
-        onClose={() => setRejectingEvent(null)}
-        onConfirm={handleConfirmReject}
-        isSubmitting={isRejecting}
-      />
+      {/* TAB 3: USER MANAGEMENT */}
+      {activeTab === "users" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500">
+              Administrators provision user accounts directly. Public registration is closed.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsAddUserOpen(true)}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create User Account</span>
+            </button>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200/90 bg-white shadow-xs overflow-hidden">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
+                <tr>
+                  <th className="p-4 font-semibold">Name & Email</th>
+                  <th className="p-4 font-semibold">Role</th>
+                  <th className="p-4 font-semibold">Assigned Community</th>
+                  <th className="p-4 font-semibold">Provisioned</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {users.map((u) => (
+                  <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="p-4">
+                      <div className="font-semibold text-slate-900 text-sm">{u.full_name}</div>
+                      <div className="text-slate-400 font-mono text-[11px]">{u.email}</div>
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
+                          u.role === "admin"
+                            ? "bg-amber-50 border-amber-200 text-amber-900"
+                            : "bg-indigo-50 border-indigo-200 text-indigo-800"
+                        }`}
+                      >
+                        {u.role === "admin" ? "Campus Admin" : "Community Lead"}
+                      </span>
+                    </td>
+                    <td className="p-4 font-medium text-slate-800">
+                      {u.community_name || (u.role === "admin" ? "All (Campus-Wide)" : "Unassigned")}
+                    </td>
+                    <td className="p-4 text-slate-400">
+                      {u.created_at ? format(parseISO(u.created_at), "MMM d, yyyy") : "Pre-seeded"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: VENUE MANAGEMENT */}
+      {activeTab === "venues" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500">
+              Physical campus facilities used for collision detection and scheduling.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsAddVenueOpen(true)}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Facility</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {venues.map((v) => (
+              <div
+                key={v.id}
+                className="p-5 rounded-3xl border border-slate-200/90 bg-white shadow-xs flex flex-col justify-between hover:border-slate-300 transition-all"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-slate-500">
+                      {v.building || "Campus Building"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleVenueActive(v)}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border cursor-pointer ${
+                        v.is_active
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                          : "bg-slate-100 border-slate-200 text-slate-500"
+                      }`}
+                    >
+                      {v.is_active ? "Active" : "Under Maintenance"}
+                    </button>
+                  </div>
+
+                  <h4 className="text-base font-bold text-slate-900 mb-1">{v.name}</h4>
+                  <div className="text-xs text-slate-500 mb-3 flex items-center gap-2">
+                    <span>Capacity: <strong className="text-slate-800 font-semibold">{v.capacity}</strong> attendees</span>
+                  </div>
+
+                  {v.notes && (
+                    <p className="text-[11px] text-slate-400 italic mb-2">
+                      {v.notes}
+                    </p>
+                  )}
+                </div>
+
+                <div className="text-[11px] text-slate-400 pt-3 border-t border-slate-100">
+                  {v.address || "Main Campus Grounds"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* REJECT MODAL WITH NOTE */}
+      {rejectingEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setRejectingEvent(null)} />
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white text-slate-900 p-6 z-10 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 mb-1">
+              Reject Event Proposal
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Provide actionable guidance for <strong className="text-slate-800 font-semibold">{rejectingEvent.community?.name}</strong> so they can adjust their date or venue.
+            </p>
+
+            <form onSubmit={handleReject} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Administrative Reason / Venue Guidance *
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={rejectionNote}
+                  onChange={(e) => setRejectionNote(e.target.value)}
+                  placeholder="e.g. The Main Auditorium is undergoing stage maintenance. Please re-submit your proposal for Seminar Hall A or select next Tuesday."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setRejectingEvent(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionInProgress === rejectingEvent.id}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-all shadow-xs cursor-pointer"
+                >
+                  Submit Rejection
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD USER MODAL */}
+      {isAddUserOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setIsAddUserOpen(false)} />
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white text-slate-900 p-6 z-10 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 mb-1">
+              Provision New User Account
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Create official credentials for an Administrator or Community Lead.
+            </p>
+
+            {userModalError && (
+              <div className="p-3 mb-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs">
+                {userModalError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  placeholder="e.g. Elena Rostova"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Campus Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  placeholder="e.g. elena@campus.edu"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Temporary Password *</label>
+                <input
+                  type="text"
+                  required
+                  value={newUserPassword}
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Role *</label>
+                <select
+                  value={newUserRole}
+                  onChange={(e) => setNewUserRole(e.target.value as "admin" | "organizer")}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                >
+                  <option value="organizer">Community Lead</option>
+                  <option value="admin">Campus Administrator</option>
+                </select>
+              </div>
+
+              {newUserRole === "organizer" && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Assigned Community</label>
+                  <select
+                    value={newUserCommId}
+                    onChange={(e) => setNewUserCommId(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                  >
+                    <option value="">Select Club...</option>
+                    {communities.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddUserOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer"
+                >
+                  Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD VENUE MODAL */}
+      {isAddVenueOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setIsAddVenueOpen(false)} />
+          <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white text-slate-900 p-6 z-10 shadow-2xl">
+            <h3 className="text-base font-bold text-slate-900 mb-1">
+              Add Campus Facility / Venue
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Add a bookable space for deterministic conflict checking and community scheduling.
+            </p>
+
+            <form onSubmit={handleCreateVenue} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Venue Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newVenueName}
+                  onChange={(e) => setNewVenueName(e.target.value)}
+                  placeholder="e.g. Media Lab 304"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Building</label>
+                  <input
+                    type="text"
+                    value={newVenueBuilding}
+                    onChange={(e) => setNewVenueBuilding(e.target.value)}
+                    placeholder="e.g. Arts Wing"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Capacity</label>
+                  <input
+                    type="number"
+                    value={newVenueCapacity}
+                    onChange={(e) => setNewVenueCapacity(e.target.value)}
+                    placeholder="80"
+                    className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Address / Level</label>
+                <input
+                  type="text"
+                  value={newVenueAddress}
+                  onChange={(e) => setNewVenueAddress(e.target.value)}
+                  placeholder="e.g. 3rd Floor, West Wing"
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Notes / Equipment</label>
+                <textarea
+                  rows={2}
+                  value={newVenueNotes}
+                  onChange={(e) => setNewVenueNotes(e.target.value)}
+                  placeholder="e.g. Dual projectors, microphones, lab computers..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddVenueOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer"
+                >
+                  Save Venue
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

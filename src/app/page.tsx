@@ -1,537 +1,392 @@
 "use client";
 
-import * as React from "react";
-import { eventService } from "@/lib/data/store";
-import { Event, EventCategory, Community, Venue, Campus } from "@/types/database";
-import { FilterBar, ViewMode } from "@/components/events/filter-bar";
-import { PublicEventCard } from "@/components/events/public-event-card";
-import { ListView } from "@/components/calendar/list-view";
-import { MonthView } from "@/components/calendar/month-view";
-import { WeekView } from "@/components/calendar/week-view";
-import { EventDetailModal } from "@/components/events/event-detail-modal";
-import { groupEventsByCampusDate, isValidTimezone } from "@/lib/date-grouping";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
-  Calendar as CalendarIcon,
-  Sparkles,
-  ArrowRight,
-  AlertCircle,
-  RefreshCw,
   Search,
-  Clock,
+  Plus,
+  Check,
+  X,
 } from "lucide-react";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
+import {
+  parseISO,
+  isToday,
+  isWeekend,
+  isWithinInterval,
+  addDays,
+} from "date-fns";
+import { useCalendar } from "@/context/calendar-context";
+import { CampusEvent, EventCategory, Venue } from "@/types/database";
+import { CATEGORY_STYLES } from "@/components/events/category-badge";
+import { MiniCalendar } from "@/components/notice-board/mini-calendar";
+import { MonthView } from "@/components/notice-board/month-view";
+import { WeekView } from "@/components/notice-board/week-view";
+import { EventCard } from "@/components/notice-board/event-card";
+import { EventDetailModal } from "@/components/events/event-detail-modal";
+import { ProposeEventModal } from "@/components/lead/propose-event-modal";
 
-interface CalendarHomePageProps {
-  campusSlug?: string;
-}
+const CATEGORIES: EventCategory[] = [
+  "Tech",
+  "Arts",
+  "Sports",
+  "Career",
+  "Academic",
+  "Social",
+  "Workshop",
+];
 
-export default function CalendarHomePage({ campusSlug }: CalendarHomePageProps) {
-  const [campus, setCampus] = React.useState<Campus | null>(null);
-  const [communities, setCommunities] = React.useState<Community[]>([]);
-  const [venues, setVenues] = React.useState<Venue[]>([]);
-  const [events, setEvents] = React.useState<Event[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
+export default function StudentNoticeBoardPage() {
+  const router = useRouter();
+  const [events, setEvents] = useState<CampusEvent[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Tab State: "feed" (What's Happening) vs "calendar" (Full Calendar)
-  const [activeTab, setActiveTab] = React.useState<"feed" | "calendar">("feed");
+  const calendar = useCalendar();
+  const activeDate = calendar?.activeDate || new Date();
+  const setActiveDate = calendar?.setActiveDate || (() => {});
+  const viewMode = calendar?.viewMode || "month";
+  const search = calendar?.search || "";
+  const setSearch = calendar?.setSearch || (() => {});
 
   // Filter States
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [selectedCategory, setSelectedCategory] = React.useState<EventCategory | "All">("All");
-  const [selectedCommunityId, setSelectedCommunityId] = React.useState<string | "All">("All");
-  const [selectedVenueId, setSelectedVenueId] = React.useState<string | "All">("All");
-  const [selectedDateFilter, setSelectedDateFilter] = React.useState<"all" | "today" | "tomorrow" | "this-week">("all");
-  const [viewMode, setViewMode] = React.useState<ViewMode>("list");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(CATEGORIES);
+  const [selectedHorizon, setSelectedHorizon] = useState<"all" | "today" | "week" | "weekend">("all");
 
-  // Detail Modal State
-  const [selectedEvent, setSelectedEvent] = React.useState<Event | null>(null);
+  // Auth & Proposal modal
+  const [userSession, setUserSession] = useState<{
+    authenticated: boolean;
+    user?: {
+      fullName: string;
+      isLead: boolean;
+      isAdmin: boolean;
+      leadCommunities?: Array<{ id: string; name: string }>;
+    };
+  } | null>(null);
+  const [isProposeOpen, setIsProposeOpen] = useState(false);
 
-  // Sync modal state with shallow URL query parameter (?event=slug) for shareability
-  const handleSelectEvent = React.useCallback((event: Event | null) => {
-    setSelectedEvent(event);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (event) {
-        url.searchParams.set("event", event.slug);
-      } else {
-        url.searchParams.delete("event");
-      }
-      window.history.replaceState({}, "", url.toString());
-    }
-  }, []);
+  // Selected event for detail modal
+  const [selectedEvent, setSelectedEvent] = useState<CampusEvent | null>(null);
 
-  // Auto-switch to list/agenda on small screens for calendar view
-  React.useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) {
-      setViewMode("list");
-    }
-  }, []);
-
-  // Load campus details, communities, venues, and published events
-  const loadData = React.useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
+  const loadData = useCallback(async () => {
     try {
-      const [campusData, commData, venueData, eventData] = await Promise.all([
-        eventService.getCampus(campusSlug),
-        eventService.getCommunities({ campusSlug }),
-        eventService.getVenues({ campusSlug }),
-        eventService.getEvents({
-          campusSlug,
-          status: "published",
-        }),
+      setLoading(true);
+      const [eventsRes, venuesRes, authRes] = await Promise.all([
+        fetch("/api/events?status=published"),
+        fetch("/api/venues"),
+        fetch("/api/auth/me"),
       ]);
 
-      if (!campusData.timezone || !isValidTimezone(campusData.timezone)) {
-        throw new Error(
-          `Database configuration error: Campus "${campusData.name}" has an invalid timezone ("${campusData.timezone || "null"}").`
-        );
+      if (!eventsRes.ok) throw new Error("Failed to load events");
+      const eventsData = await eventsRes.json();
+      setEvents(eventsData.events || []);
+
+      if (venuesRes.ok) {
+        const venuesData = await venuesRes.json();
+        setVenues(venuesData.venues || []);
       }
 
-      setCampus(campusData);
-      setCommunities(commData);
-      setVenues(venueData);
-      setEvents(eventData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load campus events");
+      if (authRes.ok) {
+        const authData = await authRes.json();
+        setUserSession(authData);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Error fetching events");
     } finally {
       setLoading(false);
     }
-  }, [campusSlug]);
+  }, []);
 
-  React.useEffect(() => {
+  useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Auto-open modal if ?event=[slug] query param exists on load or URL share
-  React.useEffect(() => {
-    if (typeof window !== "undefined" && events.length > 0 && !selectedEvent) {
-      const params = new URLSearchParams(window.location.search);
-      const eventSlug = params.get("event");
-      if (eventSlug) {
-        const match = events.find((e) => e.slug === eventSlug);
-        if (match) setSelectedEvent(match);
-      }
+  // Toggle category in checklist
+  const toggleCategory = (cat: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const selectAllCategories = () => setSelectedCategories(CATEGORIES);
+  const clearCategories = () => setSelectedCategories([]);
+
+  // Handle Create Event button
+  const handleCreateEventClick = () => {
+    if (userSession?.authenticated && userSession.user?.isLead) {
+      setIsProposeOpen(true);
+    } else {
+      router.push("/login");
     }
-  }, [events, selectedEvent]);
+  };
 
-  // Client-side search and filtering across Title, Community, Venue, Category, Description
-  const filteredEvents = React.useMemo(() => {
-    return events.filter((evt) => {
-      // Status check (only published)
-      if (evt.status !== "published") return false;
-
-      // Category filter
-      if (selectedCategory !== "All" && evt.category !== selectedCategory) {
-        return false;
-      }
-
-      // Community filter
-      if (selectedCommunityId !== "All" && evt.community_id !== selectedCommunityId) {
-        return false;
-      }
-
-      // Venue filter
-      if (selectedVenueId !== "All" && evt.venue_id !== selectedVenueId) {
-        return false;
-      }
-
-      // Search query (title, community name, venue name, category, description)
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const titleMatch = evt.title.toLowerCase().includes(q);
-        const commMatch = evt.community?.name?.toLowerCase().includes(q) || false;
-        const venueMatch = evt.location_name.toLowerCase().includes(q);
-        const categoryMatch = evt.category.toLowerCase().includes(q);
-        const descMatch = evt.description.toLowerCase().includes(q);
-
-        if (!titleMatch && !commMatch && !venueMatch && !categoryMatch && !descMatch) {
+  // Filtered events
+  const filteredEvents = useMemo(() => {
+    return events.filter((ev) => {
+      // 1. Search Query
+      if (search.trim() !== "") {
+        const q = search.toLowerCase();
+        const matchesTitle = ev.title.toLowerCase().includes(q);
+        const matchesDesc = ev.description.toLowerCase().includes(q);
+        const matchesClub = ev.community?.name.toLowerCase().includes(q) || false;
+        const matchesVenue = ev.venue?.name.toLowerCase().includes(q) || false;
+        if (!matchesTitle && !matchesDesc && !matchesClub && !matchesVenue) {
           return false;
+        }
+      }
+
+      // 2. Category multi-select
+      if (selectedCategories.length > 0 && !selectedCategories.includes(ev.category)) {
+        return false;
+      }
+
+      // 3. Date Horizon
+      if (selectedHorizon !== "all") {
+        const evDate = parseISO(ev.start_time);
+        const now = new Date();
+
+        if (selectedHorizon === "today") {
+          if (!isToday(evDate)) return false;
+        } else if (selectedHorizon === "weekend") {
+          if (!isWeekend(evDate)) return false;
+        } else if (selectedHorizon === "week") {
+          const nextWeek = addDays(now, 7);
+          if (!isWithinInterval(evDate, { start: now, end: nextWeek })) return false;
         }
       }
 
       return true;
     });
-  }, [events, selectedCategory, selectedCommunityId, selectedVenueId, searchQuery]);
-
-  // Date Grouping using campus database timezone
-  const eventGroups = React.useMemo(() => {
-    if (!campus?.timezone || !isValidTimezone(campus.timezone)) {
-      return { today: [], tomorrow: [], thisWeek: [], upcoming: [] };
-    }
-    return groupEventsByCampusDate(filteredEvents, campus.timezone);
-  }, [filteredEvents, campus]);
-
-  // Campus local date labels
-  const dateLabels = React.useMemo(() => {
-    if (!campus?.timezone || !isValidTimezone(campus.timezone)) {
-      return { todayLabel: "Today", tomorrowLabel: "Tomorrow" };
-    }
-    try {
-      const now = new Date();
-      const todayFormatted = new Intl.DateTimeFormat("en-US", {
-        timeZone: campus.timezone,
-        weekday: "long",
-        month: "short",
-        day: "numeric",
-      }).format(now);
-
-      const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      const tomorrowFormatted = new Intl.DateTimeFormat("en-US", {
-        timeZone: campus.timezone,
-        weekday: "long",
-        month: "short",
-        day: "numeric",
-      }).format(tomorrow);
-
-      return {
-        todayLabel: todayFormatted,
-        tomorrowLabel: tomorrowFormatted,
-      };
-    } catch {
-      return { todayLabel: "Today", tomorrowLabel: "Tomorrow" };
-    }
-  }, [campus]);
-
-  // Filter events further if selectedDateFilter is active
-  const displayedEvents = React.useMemo(() => {
-    if (selectedDateFilter === "today") return eventGroups.today;
-    if (selectedDateFilter === "tomorrow") return eventGroups.tomorrow;
-    if (selectedDateFilter === "this-week") {
-      const weekIds = new Set([
-        ...eventGroups.today.map((e) => e.id),
-        ...eventGroups.tomorrow.map((e) => e.id),
-        ...eventGroups.thisWeek.map((e) => e.id),
-      ]);
-      return filteredEvents.filter((e) => weekIds.has(e.id));
-    }
-    return filteredEvents;
-  }, [eventGroups, filteredEvents, selectedDateFilter]);
-
-  const todayEvents = React.useMemo(() => {
-    const todayIds = new Set(eventGroups.today.map((e) => e.id));
-    return displayedEvents.filter((e) => todayIds.has(e.id));
-  }, [displayedEvents, eventGroups.today]);
-
-  const tomorrowEvents = React.useMemo(() => {
-    const tomorrowIds = new Set(eventGroups.tomorrow.map((e) => e.id));
-    return displayedEvents.filter((e) => tomorrowIds.has(e.id));
-  }, [displayedEvents, eventGroups.tomorrow]);
-
-  const thisWeekEvents = React.useMemo(() => {
-    const weekIds = new Set(eventGroups.thisWeek.map((e) => e.id));
-    return displayedEvents.filter((e) => weekIds.has(e.id));
-  }, [displayedEvents, eventGroups.thisWeek]);
-
-  const otherEvents = React.useMemo(() => {
-    const categorizedIds = new Set([
-      ...todayEvents.map((e) => e.id),
-      ...tomorrowEvents.map((e) => e.id),
-      ...thisWeekEvents.map((e) => e.id),
-    ]);
-    return displayedEvents.filter((e) => !categorizedIds.has(e.id));
-  }, [displayedEvents, todayEvents, tomorrowEvents, thisWeekEvents]);
-
-  const totalFilteredCount = displayedEvents.length;
-  const isSearchActive = searchQuery.trim().length > 0;
-  const isAnyFilterActive =
-    selectedCategory !== "All" ||
-    selectedCommunityId !== "All" ||
-    selectedVenueId !== "All" ||
-    selectedDateFilter !== "all" ||
-    isSearchActive;
+  }, [events, search, selectedCategories, selectedHorizon]);
 
   return (
-    <div className="space-y-6">
-      {/* Compact Editorial Campus Masthead */}
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-stone-200">
-        <div className="space-y-0.5">
-          <div className="inline-flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600" />
-            </span>
-            <span className="font-mono text-[11px] font-bold tracking-widest uppercase text-stone-500">
-              CAMPUS DISPATCH
-            </span>
-            <span className="text-stone-300">•</span>
-            <span className="text-xs font-semibold text-stone-700">
-              {campus ? campus.name : "Campus Calendar"}
-            </span>
-            <span className="text-stone-300 hidden sm:inline">•</span>
-            <span className="text-xs text-stone-500 font-mono hidden sm:inline">
-              {dateLabels.todayLabel}
-            </span>
+    <div className="w-full flex-1 flex flex-col lg:flex-row bg-white min-h-[calc(100vh-3.5rem)]">
+      {/* ============================================================== */}
+      {/* LEFT SIDEBAR (User Profile, + Create Event, Mini-Cal, Filters) */}
+      {/* ============================================================== */}
+      <aside className="w-full lg:w-72 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:self-start border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex flex-col gap-6 bg-white shrink-0 z-20">
+
+          {/* "+ Create Event" Primary Action Button matching Image 1 */}
+          <button
+            type="button"
+            onClick={handleCreateEventClick}
+            className="w-full py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
+          >
+            <Plus className="w-4 h-4 text-indigo-600" />
+            <span>+ Create Event</span>
+          </button>
+
+          {/* Mini Calendar Picker matching Image 1 */}
+          <div className="pt-1">
+            <MiniCalendar
+              currentDate={activeDate}
+              onSelectDate={(newDate) => setActiveDate(newDate)}
+            />
           </div>
 
-          <h1 className="font-display font-extrabold text-2xl sm:text-3xl text-[#12161f] tracking-tight">
-            Campus Life, <span className="font-serif italic font-normal text-stone-500">Live.</span>
-          </h1>
-        </div>
-
-        {/* Primary View Switcher: "Feed" vs "Full Calendar" */}
-        <div className="inline-flex items-center p-1 bg-stone-100 rounded-xl border border-stone-200/80 self-start sm:self-center shrink-0">
-          <button
-            onClick={() => setActiveTab("feed")}
-            className={cn(
-              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer",
-              activeTab === "feed"
-                ? "bg-[#12161f] text-white shadow-2xs"
-                : "text-stone-600 hover:text-stone-900 hover:bg-white/60"
+          {/* Quick Search Input matching "Meet With..." in Image 1 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search club or venue..."
+              className="w-full pl-8.5 pr-7 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-500 transition-colors"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             )}
-          >
-            <Sparkles className={cn("h-3.5 w-3.5", activeTab === "feed" ? "text-amber-400" : "text-stone-400")} />
-            <span>Feed View</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("calendar")}
-            className={cn(
-              "px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer",
-              activeTab === "calendar"
-                ? "bg-[#12161f] text-white shadow-2xs"
-                : "text-stone-600 hover:text-stone-900 hover:bg-white/60"
-            )}
-          >
-            <CalendarIcon className={cn("h-3.5 w-3.5", activeTab === "calendar" ? "text-amber-400" : "text-stone-400")} />
-            <span>Full Calendar</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Database Error Alert (Never silent fallback to mock in production) */}
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start justify-between gap-3 shadow-xs">
-          <div className="flex items-start gap-2.5">
-            <AlertCircle className="h-5 w-5 text-rose-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold">Campus Data Unavailable</p>
-              <p className="text-xs text-rose-700 mt-0.5">{error}</p>
-            </div>
-          </div>
-          <button
-            onClick={loadData}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-100 hover:bg-rose-200 text-rose-900 transition shrink-0"
-          >
-            <RefreshCw className="h-3 w-3" />
-            Retry
-          </button>
-        </div>
-      )}
-
-      {/* Filter and Search Bar with embedded quick date selector */}
-      <FilterBar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-        selectedCommunityId={selectedCommunityId}
-        onCommunityChange={setSelectedCommunityId}
-        selectedVenueId={selectedVenueId}
-        onVenueChange={setSelectedVenueId}
-        selectedDateFilter={selectedDateFilter}
-        onDateFilterChange={setSelectedDateFilter}
-        communities={communities}
-        venues={venues}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        totalEventsCount={totalFilteredCount}
-        showViewToggle={activeTab === "calendar"}
-      />
-
-      {/* Content Rendering */}
-      {loading && events.length === 0 ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-stone-200/90 shadow-2xs space-y-3">
-          <div className="w-8 h-8 mx-auto border-3 border-stone-900 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-stone-500 font-medium">
-            Loading events for {campus?.name || "campus"}...
-          </p>
-        </div>
-      ) : activeTab === "calendar" ? (
-        /* Full Calendar System (Preserving Month, Week, and List Views) */
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2 font-display">
-              <CalendarIcon className="h-4 w-4 text-stone-800" />
-              Campus Calendar View
-            </h2>
-            <button
-              onClick={() => setActiveTab("feed")}
-              className="text-xs font-semibold text-stone-600 hover:text-stone-900 cursor-pointer"
-            >
-              &larr; Back to Feed
-            </button>
           </div>
 
-          {viewMode === "list" && (
-            <ListView events={filteredEvents} onSelectEvent={handleSelectEvent} />
-          )}
-          {viewMode === "week" && (
-            <WeekView events={filteredEvents} onSelectEvent={handleSelectEvent} />
-          )}
-          {viewMode === "month" && (
-            <MonthView events={filteredEvents} onSelectEvent={handleSelectEvent} />
-          )}
-        </section>
-      ) : (
-        /* Streamlined Event Feed Experience */
-        <section className="space-y-6">
-          {/* Global Empty State (Search / Filter Mismatch) */}
-          {totalFilteredCount === 0 && (
-            <div className="bg-white rounded-2xl border border-stone-200 p-8 sm:p-12 text-center space-y-3 shadow-2xs">
-              <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto text-stone-400">
-                <Search className="h-6 w-6" />
-              </div>
-              <h3 className="text-base font-bold text-stone-800 font-display">No events found</h3>
-              <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                {isSearchActive
-                  ? `No events matching "${searchQuery}". Try searching for another topic, club, or venue.`
-                  : selectedDateFilter !== "all"
-                  ? `No events scheduled for ${selectedDateFilter.replace("-", " ")}. Try checking all dates.`
-                  : "No events match the selected filters. Try choosing a different category or clearing your filters."}
-              </p>
-              {isAnyFilterActive && (
+          {/* "My calendars" / Categories Checklist matching Image 1 */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-900 tracking-tight">
+                My calendars
+              </span>
+              <div className="flex items-center gap-2 text-[10px]">
                 <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setSelectedCategory("All");
-                    setSelectedCommunityId("All");
-                    setSelectedVenueId("All");
-                    setSelectedDateFilter("all");
-                  }}
-                  className="px-4 py-2 bg-[#12161f] text-white rounded-xl text-xs font-semibold hover:bg-stone-800 transition cursor-pointer"
+                  type="button"
+                  onClick={selectAllCategories}
+                  className="text-indigo-600 hover:underline cursor-pointer"
                 >
-                  Clear all filters
+                  All
                 </button>
-              )}
+                <span className="text-slate-300">•</span>
+                <button
+                  type="button"
+                  onClick={clearCategories}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
-          )}
 
-          {/* 1. TODAY ON CAMPUS */}
-          {todayEvents.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <h2 className="text-sm sm:text-base font-black text-stone-900 tracking-tight uppercase font-display">
-                    Today on Campus
-                  </h2>
-                  <span className="text-xs font-medium text-stone-500 hidden sm:inline">
-                    • {dateLabels.todayLabel}
-                  </span>
+            <div className="space-y-2">
+              {CATEGORIES.map((cat) => {
+                const isChecked = selectedCategories.includes(cat);
+                const catStyle = CATEGORY_STYLES[cat] || {
+                  bg: "bg-indigo-50",
+                  text: "text-indigo-700",
+                  border: "border-indigo-100",
+                  dot: "bg-indigo-500",
+                };
+
+                return (
+                  <label
+                    key={cat}
+                    onClick={() => toggleCategory(cat)}
+                    className="flex items-center gap-2.5 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-0.5 group"
+                  >
+                    <div
+                      className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                        isChecked
+                          ? `${catStyle.dot} text-white shadow-2xs`
+                          : "border border-slate-300 bg-white group-hover:border-slate-400"
+                      }`}
+                    >
+                      {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                    </div>
+                    <span className="flex-1 font-medium">{cat}</span>
+                    <span className={`w-2 h-2 rounded-full ${catStyle.dot} opacity-70`} />
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Date Horizon Quick Filter */}
+          <div className="pt-2 border-t border-slate-100">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
+              Time Horizon
+            </span>
+            <div className="grid grid-cols-2 gap-1.5 text-xs">
+              {(
+                [
+                  { id: "all", label: "All Dates" },
+                  { id: "today", label: "Today" },
+                  { id: "week", label: "Next 7 Days" },
+                  { id: "weekend", label: "Weekend" },
+                ] as const
+              ).map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => setSelectedHorizon(h.id)}
+                  className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all cursor-pointer ${
+                    selectedHorizon === h.id
+                      ? "bg-slate-900 text-white shadow-xs"
+                      : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {h.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* ============================================================== */}
+        {/* MAIN CALENDAR SECTION (Month/Week/Board Views) */}
+        {/* ============================================================== */}
+        <section className="flex-1 flex flex-col min-w-0 bg-white">
+          {/* Calendar Content Area */}
+          <div className="flex-1 flex flex-col overflow-auto bg-white">
+            {loading ? (
+              <div className="p-16 text-center">
+                <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                <p className="text-xs text-slate-400">Loading campus calendar...</p>
+              </div>
+            ) : error ? (
+              <div className="p-8 m-6 text-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-800">
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            ) : filteredEvents.length === 0 && viewMode === "cards" ? (
+              <div className="text-center py-24 p-8">
+                <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                  <Search className="w-5 h-5" />
                 </div>
-                <span className="text-xs font-bold text-stone-800 bg-stone-100 px-2.5 py-0.5 rounded-full font-mono">
-                  {todayEvents.length} {todayEvents.length === 1 ? "EVENT" : "EVENTS"}
-                </span>
+                <h3 className="text-base font-semibold text-slate-800 mb-1">
+                  No events found matching your filters
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+                  Try adjusting your search terms or selecting more categories in the sidebar.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setSelectedCategories(CATEGORIES);
+                    setSelectedHorizon("all");
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs"
+                >
+                  Reset All Filters
+                </button>
               </div>
-
-              <div className="grid grid-cols-1 gap-2.5">
-                {todayEvents.map((evt) => (
-                  <PublicEventCard
-                    key={evt.id}
-                    event={evt}
-                    onSelect={handleSelectEvent}
+            ) : (
+              <>
+                {viewMode === "month" && (
+                  <MonthView
+                    events={filteredEvents}
+                    onSelectEvent={(ev) => setSelectedEvent(ev)}
+                    currentDate={activeDate}
+                    onDateChange={(newDate) => setActiveDate(newDate)}
                   />
-                ))}
-              </div>
-            </div>
-          )}
+                )}
 
-          {/* 2. TOMORROW */}
-          {tomorrowEvents.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-extrabold text-stone-900 tracking-tight font-display">
-                    Tomorrow
-                  </h2>
-                  <span className="text-xs font-medium text-stone-500 hidden sm:inline">
-                    • {dateLabels.tomorrowLabel}
-                  </span>
-                </div>
-                <span className="text-xs font-semibold text-stone-500 font-mono">
-                  {tomorrowEvents.length} {tomorrowEvents.length === 1 ? "event" : "events"}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5">
-                {tomorrowEvents.map((evt) => (
-                  <PublicEventCard
-                    key={evt.id}
-                    event={evt}
-                    onSelect={handleSelectEvent}
+                {viewMode === "week" && (
+                  <WeekView
+                    events={filteredEvents}
+                    onSelectEvent={(ev) => setSelectedEvent(ev)}
+                    currentDate={activeDate}
+                    onDateChange={(newDate) => setActiveDate(newDate)}
                   />
-                ))}
-              </div>
-            </div>
-          )}
+                )}
 
-          {/* 3. THIS WEEK */}
-          {thisWeekEvents.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
-                <div>
-                  <h2 className="text-sm sm:text-base font-extrabold text-stone-900 tracking-tight font-display">
-                    This Week
-                  </h2>
-                  <p className="text-[11px] text-stone-500">
-                    Remaining schedule through Sunday
-                  </p>
-                </div>
-                <span className="text-xs font-semibold text-stone-500 font-mono">
-                  {thisWeekEvents.length} {thisWeekEvents.length === 1 ? "event" : "events"}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5">
-                {thisWeekEvents.map((evt) => (
-                  <PublicEventCard
-                    key={evt.id}
-                    event={evt}
-                    showDate={true}
-                    onSelect={handleSelectEvent}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 4. UPCOMING & OTHER EVENTS (Guarantees every remaining event is shown!) */}
-          {otherEvents.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-1.5 border-b border-stone-200">
-                <h2 className="text-sm sm:text-base font-extrabold text-stone-900 tracking-tight font-display">
-                  {selectedDateFilter === "all" ? "Upcoming & Campus Schedule" : "Events"}
-                </h2>
-                <span className="text-xs font-semibold text-stone-500 font-mono">
-                  {otherEvents.length} {otherEvents.length === 1 ? "event" : "events"}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2.5">
-                {otherEvents.map((evt) => (
-                  <PublicEventCard
-                    key={evt.id}
-                    event={evt}
-                    showDate={true}
-                    onSelect={handleSelectEvent}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+                {viewMode === "cards" && (
+                  <div className="p-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filteredEvents.map((event) => (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        onSelect={(ev) => setSelectedEvent(ev)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </section>
-      )}
 
-      {/* Quick Event Inspection Modal */}
+      {/* Event Detail Modal */}
       <EventDetailModal
         event={selectedEvent}
-        isOpen={Boolean(selectedEvent)}
-        onClose={() => handleSelectEvent(null)}
+        onClose={() => setSelectedEvent(null)}
       />
+
+      {/* Proposal Modal for Community Leads */}
+      {isProposeOpen && (
+        <ProposeEventModal
+          venues={venues}
+          communityId={userSession?.user?.leadCommunities?.[0]?.id}
+          communityName={userSession?.user?.leadCommunities?.[0]?.name}
+          onClose={() => setIsProposeOpen(false)}
+          onSuccess={() => {
+            setIsProposeOpen(false);
+            loadData();
+          }}
+        />
+      )}
     </div>
   );
 }

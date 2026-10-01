@@ -1,250 +1,285 @@
 "use client";
 
-import * as React from "react";
-import { Event } from "@/types/database";
-import { CategoryBadge } from "./category-badge";
-import { formatEventDate, formatEventTimeRange } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import { format, parseISO, differenceInMinutes } from "date-fns";
 import {
   X,
-  ExternalLink,
-  Calendar as CalendarIcon,
   MapPin,
-  Users,
+  Clock,
+  ExternalLink,
+  Download,
+  Calendar as CalendarIcon,
+  CheckCircle2,
   Share2,
   Check,
-  Globe,
-  Radio,
 } from "lucide-react";
-import Link from "next/link";
+import { CampusEvent } from "@/types/database";
+import { CategoryBadge } from "./category-badge";
+import { getGoogleCalendarUrl, downloadIcsFile } from "@/lib/calendar-export";
 
 interface EventDetailModalProps {
-  event: Event | null;
-  isOpen: boolean;
+  event: CampusEvent | null;
   onClose: () => void;
 }
 
-export function EventDetailModal({ event, isOpen, onClose }: EventDetailModalProps) {
-  const [copied, setCopied] = React.useState(false);
+export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
+  const [copied, setCopied] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-      window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  if (!event) return null;
+
+  const startDate = parseISO(event.start_time);
+  const endDate = parseISO(event.end_time);
+  const googleCalUrl = getGoogleCalendarUrl(event);
+
+  const durationMinutes = differenceInMinutes(endDate, startDate);
+  const hours = Math.floor(durationMinutes / 60);
+  const mins = durationMinutes % 60;
+  const durationLabel =
+    hours > 0 ? (mins > 0 ? `${hours}h ${mins}m` : `${hours}h`) : `${mins}m`;
+
+  const handleCopyLink = async () => {
+    try {
+      const url = `${window.location.origin}/?event=${event.id}`;
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback
     }
-    return () => {
-      document.body.style.overflow = "unset";
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen, onClose]);
-
-  if (!isOpen || !event) return null;
-
-  const handleShare = () => {
-    const url = `${window.location.origin}/events/${event.slug}`;
-    navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  // Google Calendar URL generator
-  const getGoogleCalendarUrl = () => {
-    const startIso = new Date(event.start_time).toISOString().replace(/-|:|\.\d\d\d/g, "");
-    const endIso = new Date(event.end_time).toISOString().replace(/-|:|\.\d\d\d/g, "");
-    const text = encodeURIComponent(event.title);
-    const registrationDetail = event.external_registration_url
-      ? `\n\nExternal Registration: ${event.external_registration_url}`
-      : "\n\nOpen Event - No registration required";
-    const details = encodeURIComponent(event.description + registrationDetail);
-    const location = encodeURIComponent(event.location_name);
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${startIso}/${endIso}&details=${details}&location=${location}`;
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#12161f]/60 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      {/* Backdrop */}
       <div
-        className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-stone-200 overflow-hidden max-h-[90vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Modal Dialog */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="event-title"
+        className="relative w-full max-w-2xl rounded-2xl border border-slate-200/90 bg-white text-slate-900 shadow-2xl shadow-slate-900/15 overflow-hidden z-10 my-6 flex flex-col max-h-[92vh]"
       >
-        {/* Cover Image or Accent Header */}
-        {event.cover_image_url ? (
-          <div className="relative h-48 sm:h-56 w-full bg-stone-100 overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={event.cover_image_url}
-              alt={event.title}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
-            <button
-              onClick={onClose}
-              className="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition cursor-pointer"
-              aria-label="Close modal"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between">
-              <CategoryBadge category={event.category} />
-              {event.is_virtual && (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-600/90 text-white backdrop-blur-xs font-mono">
-                  <Radio className="h-3 w-3 animate-pulse" /> Virtual Event
-                </span>
-              )}
-            </div>
+        {/* Editorial Top Navigation Bar */}
+        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+              <span className="truncate">{event.community?.name || "Campus Community"}</span>
+            </span>
+            <span className="text-slate-300">•</span>
+            <CategoryBadge category={event.category} size="sm" />
           </div>
-        ) : (
-          <div className="p-4 sm:p-6 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
-            <div className="flex items-center gap-2">
-              <CategoryBadge category={event.category} />
-              {event.is_virtual && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 font-mono">
-                  <Radio className="h-3 w-3" /> Virtual
-                </span>
-              )}
-            </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Share / Copy Link */}
             <button
-              onClick={onClose}
-              className="p-1 rounded-full text-stone-500 hover:text-[#12161f] hover:bg-stone-200 transition cursor-pointer"
-              aria-label="Close modal"
+              type="button"
+              onClick={handleCopyLink}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Copy event link"
+              aria-label="Copy event link"
             >
-              <X className="h-5 w-5" />
+              {copied ? (
+                <Check className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <Share2 className="w-4 h-4" />
+              )}
+            </button>
+
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Close dialog"
+            >
+              <X className="w-4 h-4" />
             </button>
           </div>
-        )}
+        </div>
 
-        {/* Scrollable Body */}
-        <div className="p-6 overflow-y-auto space-y-6">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-black text-[#12161f] tracking-tight leading-snug font-display">
-              {event.title}
-            </h2>
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Framed Cover Media */}
+          {event.cover_image_url && (
+            <div className="p-5 pb-0">
+              <div className="relative h-48 sm:h-56 w-full rounded-xl overflow-hidden border border-slate-200/80 bg-slate-100 shadow-inner">
+                <Image
+                  src={event.cover_image_url}
+                  alt={event.title}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 640px"
+                  className="object-cover"
+                  priority
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent pointer-events-none" />
 
-            {/* Organizing Community */}
-            {event.community && (
-              <div className="mt-2.5 flex items-center gap-2 text-sm text-stone-600">
-                <span className="text-stone-400">Hosted by</span>
-                <Link
-                  href={`/communities/${event.community.slug}`}
-                  className="font-semibold text-stone-900 hover:underline inline-flex items-center gap-1.5"
-                >
-                  <Users className="h-3.5 w-3.5 text-stone-500" />
-                  {event.community.name}
-                </Link>
+                {/* Safe-Slot Conflict-Free Badge */}
+                <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-[11px] font-medium text-slate-800 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200/90 shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                  <span>Safe-Slot Conflict-Free</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Main Content Info */}
+          <div className="p-5 sm:p-7 space-y-6">
+            {/* Title & Safe Slot badge if no cover */}
+            <div>
+              {!event.cover_image_url && (
+                <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-800 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200/70 mb-3">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Safe-Slot Conflict-Free</span>
+                </div>
+              )}
+              <h2
+                id="event-title"
+                className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 leading-snug font-sans"
+              >
+                {event.title}
+              </h2>
+            </div>
+
+            {/* Logistics Grid (in sync with mini-calendar & sidebar) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-slate-200/90 bg-slate-50/70 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/70">
+              {/* Left Column: Date & Time */}
+              <div className="flex items-start gap-3.5">
+                {/* Modern date badge matching mini-calendar */}
+                <div className="flex flex-col items-center justify-center w-11 h-12 rounded-xl bg-white border border-slate-200/90 text-center shadow-xs overflow-hidden shrink-0 mt-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 leading-tight pt-1">
+                    {format(startDate, "MMM")}
+                  </span>
+                  <span className="text-base font-extrabold leading-none text-slate-900 pb-1">
+                    {format(startDate, "d")}
+                  </span>
+                </div>
+
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-slate-900">
+                    {format(startDate, "EEEE, MMMM d, yyyy")}
+                  </div>
+                  <div className="text-xs text-slate-600 mt-1 flex items-center gap-1.5 flex-wrap">
+                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span>
+                      {format(startDate, "h:mm a")} – {format(endDate, "h:mm a")}
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <span className="text-slate-500 text-[11px] font-medium">{durationLabel}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Venue & Space */}
+              <div className="flex items-start gap-3.5 pt-3 sm:pt-0 sm:pl-4">
+                <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-xs shrink-0 mt-0.5">
+                  <MapPin className="w-4 h-4 text-slate-600" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                    <span>{event.venue?.name || event.location_name}</span>
+                    {event.venue?.capacity && (
+                      <span className="text-[11px] font-normal text-slate-500 bg-white border border-slate-200/90 px-1.5 py-0.5 rounded-md">
+                        {event.venue.capacity} cap
+                      </span>
+                    )}
+                  </div>
+                  {event.venue?.address && (
+                    <div className="text-xs text-slate-600 mt-0.5">{event.venue.address}</div>
+                  )}
+                  {event.venue?.notes && (
+                    <div className="text-[11px] text-slate-500 mt-1 leading-normal">
+                      {event.venue.notes}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Overview / Description */}
+            <div>
+              <h3 className="text-xs uppercase tracking-wider font-semibold text-slate-400 mb-2">
+                Overview
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line font-normal">
+                {event.description}
+              </p>
+            </div>
+
+            {/* Tags */}
+            {event.tags && event.tags.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                {event.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200/60 font-medium"
+                  >
+                    #{tag}
+                  </span>
+                ))}
               </div>
             )}
           </div>
-
-          {/* Key Info Strip */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-stone-50 rounded-xl border border-stone-100 text-sm">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shadow-xs shrink-0">
-                <CalendarIcon className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="font-bold text-[#12161f]">
-                  {formatEventDate(event.start_time)}
-                </p>
-                <p className="text-xs text-stone-500 font-mono">
-                  {formatEventTimeRange(event.start_time, event.end_time)}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-white border border-stone-200 text-stone-700 shadow-xs shrink-0">
-                <MapPin className="h-4 w-4" />
-              </div>
-              <div>
-                <p className="font-bold text-[#12161f]">
-                  {event.location_name}
-                </p>
-                {event.venue?.building && (
-                  <p className="text-xs text-stone-500 font-mono">
-                    {event.venue.building} {event.venue.capacity ? `(Cap: ${event.venue.capacity})` : ""}
-                  </p>
-                )}
-                {event.is_virtual && event.virtual_link && (
-                  <a
-                    href={event.virtual_link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-0.5"
-                  >
-                    <Globe className="h-3 w-3" /> Join Virtual Stream
-                  </a>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-bold text-stone-400 uppercase tracking-wider font-mono">
-              About This Event
-            </h4>
-            <div className="text-sm text-stone-700 leading-relaxed whitespace-pre-line font-sans">
-              {event.description}
-            </div>
-          </div>
-
-          {/* Tags */}
-          {event.tags && event.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {event.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 text-xs font-mono font-medium"
-                >
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-4 sm:p-5 border-t border-stone-100 bg-stone-50/90 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleShare}
-              className="flex-1 sm:flex-initial border-stone-200 hover:bg-white text-stone-800"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Share2 className="h-3.5 w-3.5" />}
-              {copied ? "Link Copied" : "Share"}
-            </Button>
-
+        {/* Action Footer */}
+        <div className="px-5 sm:px-7 py-3.5 border-t border-slate-200/80 bg-slate-50/70 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          {/* Calendar export links */}
+          <div className="flex items-center gap-2">
             <a
-              href={getGoogleCalendarUrl()}
+              href={googleCalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center font-semibold transition-colors border border-stone-200 bg-transparent text-stone-800 hover:bg-white text-xs px-2.5 py-1.5 h-8 gap-1.5 rounded-lg flex-1 sm:flex-initial"
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
             >
-              <CalendarIcon className="h-3.5 w-3.5" />
-              Add to Cal
+              <CalendarIcon className="w-3.5 h-3.5 text-slate-500" />
+              <span>Google Calendar</span>
             </a>
+
+            <button
+              type="button"
+              onClick={() => downloadIcsFile(event)}
+              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>iCal / Apple</span>
+            </button>
           </div>
 
-          {/* Registration CTA */}
+          {/* Primary Action Button */}
           {event.external_registration_url ? (
             <a
               href={event.external_registration_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-[#12161f] text-white hover:bg-stone-800 shadow-sm active:scale-[0.99] transition cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
             >
-              Register on External Site
-              <ExternalLink className="h-4 w-4" />
+              <span>Register & RSVP</span>
+              <ExternalLink className="w-3.5 h-3.5" />
             </a>
           ) : (
-            <div className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono">
-              <Check className="h-3.5 w-3.5 text-emerald-600" />
-              Open Event • No registration required
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
+            >
+              Close
+            </button>
           )}
         </div>
       </div>

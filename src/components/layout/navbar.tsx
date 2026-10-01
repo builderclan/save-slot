@@ -1,212 +1,340 @@
 "use client";
 
-import * as React from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Calendar as CalendarIcon,
-  Users,
-  PlusCircle,
-  Menu,
-  X,
+  CalendarDays,
+  LayoutGrid,
+  Shield,
+  LogOut,
+  LogIn,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { UserNav } from "@/components/auth/user-nav";
-import { CampusSelector } from "@/components/layout/campus-selector";
+import { format, startOfWeek, endOfWeek, isSameMonth, isSameYear } from "date-fns";
+import { useCalendar } from "@/context/calendar-context";
+
+interface UserSession {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  isAdmin: boolean;
+  isLead: boolean;
+  leadCommunities: Array<{ id: string; name: string; slug: string }>;
+}
+
+function getDateHeading(
+  date: Date,
+  viewMode: "month" | "week" | "cards",
+  isShort: boolean
+): string {
+  if (viewMode === "week") {
+    const start = startOfWeek(date);
+    const end = endOfWeek(date);
+    if (isSameMonth(start, end)) {
+      return `${format(start, "MMM d")} – ${format(end, isShort ? "d" : "d, yyyy")}`;
+    }
+    if (isSameYear(start, end)) {
+      return `${format(start, "MMM d")} – ${format(end, isShort ? "MMM d" : "MMM d, yyyy")}`;
+    }
+    return `${format(start, "MMM d, yyyy")} – ${format(end, "MMM d, yyyy")}`;
+  }
+  return format(date, isShort ? "MMM yyyy" : "MMMM yyyy");
+}
 
 export function Navbar() {
   const pathname = usePathname();
-  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const router = useRouter();
+  const calendar = useCalendar();
+  const [user, setUser] = useState<UserSession | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const isOrganizerArea = pathname.startsWith("/organizer");
-  const isAdminArea = pathname.startsWith("/admin");
+  const isCalendarHome = pathname === "/";
 
-  const navLinks = [
-    {
-      href: "/",
-      label: "What's Happening",
-      icon: CalendarIcon,
-      active: pathname === "/" || pathname.startsWith("/campus"),
-    },
-    {
-      href: "/communities",
-      label: "Communities",
-      icon: Users,
-      active: pathname.startsWith("/communities"),
-    },
-  ];
+  useEffect(() => {
+    let isMounted = true;
+    async function checkAuth() {
+      try {
+        const res = await fetch("/api/auth/me");
+        const data = await res.json();
+        if (isMounted) {
+          if (data.authenticated && data.user) {
+            setUser(data.user);
+          } else {
+            setUser(null);
+          }
+        }
+      } catch {
+        if (isMounted) setUser(null);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    }
+    checkAuth();
+    return () => {
+      isMounted = false;
+    };
+  }, [pathname]);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    try {
+      setLoggingOut(true);
+      await fetch("/api/auth/logout", { method: "POST" });
+      setUser(null);
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#fcfbfa]/90 backdrop-blur-md border-b border-[#e8e5de]">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Left: Brand & Campus Selector */}
-        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-            <div className="w-8 h-8 rounded-xl bg-[#12161f] text-[#fcfbfa] flex items-center justify-center font-display font-black text-xs shadow-xs group-hover:bg-blue-700 transition">
-              BC
+    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
+      {/* Accessible h1 heading for document hierarchy */}
+      <h1 className="sr-only">Campus Events & Safe-Slot Calendar • Apex Institute</h1>
+
+      <div className="w-full px-4 sm:px-6 h-14 relative flex items-center justify-between gap-2 sm:gap-4">
+        {/* Left: Brand + Date Controls if on Calendar Home */}
+        <div className="flex items-center gap-2 sm:gap-4 lg:gap-6 min-w-0">
+          {/* Brand & Campus Badge */}
+          <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs group-hover:bg-indigo-700 transition-colors">
+              A
             </div>
-            <div className="hidden sm:flex flex-col">
-              <span className="text-sm font-black tracking-tight text-[#12161f] leading-none font-display">
-                Campus Calendar
-              </span>
-              <span className="text-[10px] text-[#8c827a] font-semibold tracking-wider uppercase leading-tight mt-0.5">
-                BuilderClan
-              </span>
+            <div className="hidden sm:block">
+              <div className="flex items-center gap-1.5">
+                <span className="font-semibold text-sm tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
+                  Apex Calendar
+                </span>
+                <span className="text-[10px] px-1.5 py-0.5 rounded-full border border-indigo-100 bg-indigo-50 text-indigo-700 font-semibold">
+                  Safe-Slot
+                </span>
+              </div>
             </div>
           </Link>
 
-          {/* Campus Selector Dropdown */}
-          <CampusSelector />
+          {/* Date Controls (Active Month/Week range, < >, Today) when on Calendar Home */}
+          {isCalendarHome && calendar && (
+            <div className="flex items-center gap-1 sm:gap-2 border-l border-slate-200 pl-2.5 sm:pl-4 lg:pl-6 min-w-0">
+              <h2 className="text-xs sm:text-base lg:text-lg font-bold text-slate-900 tracking-tight select-none truncate">
+                <span className="sm:hidden">
+                  {getDateHeading(calendar.activeDate, calendar.viewMode, true)}
+                </span>
+                <span className="hidden sm:inline">
+                  {getDateHeading(calendar.activeDate, calendar.viewMode, false)}
+                </span>
+              </h2>
 
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-1 ml-4 pl-4 border-l border-slate-200">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition",
-                    link.active
-                      ? "bg-slate-100 text-slate-900 font-semibold"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                  )}
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={calendar.handlePrev}
+                  className="p-1 sm:p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                  aria-label={calendar.viewMode === "week" ? "Previous week" : "Previous month"}
                 >
-                  <Icon className="h-3.5 w-3.5 text-slate-500" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Right: Dashboard Switcher & Quick Actions */}
-        <div className="hidden sm:flex items-center gap-2.5">
-          {/* Quick Create Event button */}
-          <Link
-            href="/organizer/events/new"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#12161f] text-white hover:bg-black transition shadow-xs active:scale-[0.98]"
-          >
-            <PlusCircle className="h-3.5 w-3.5 text-white/80" />
-            Post Event
-          </Link>
-
-          {/* Portal Switcher */}
-          <div className="flex items-center bg-[#f4f2ec] p-0.5 rounded-xl border border-[#e8e5de] text-xs">
-            <Link
-              href="/"
-              className={cn(
-                "px-2.5 py-1 rounded-lg font-medium transition",
-                !isOrganizerArea && !isAdminArea
-                  ? "bg-white text-[#12161f] shadow-xs font-bold"
-                  : "text-[#6b7280] hover:text-[#12161f]"
-              )}
-            >
-              Student
-            </Link>
-            <Link
-              href="/organizer"
-              className={cn(
-                "px-2.5 py-1 rounded-lg font-medium transition",
-                isOrganizerArea
-                  ? "bg-white text-[#12161f] shadow-xs font-bold"
-                  : "text-[#6b7280] hover:text-[#12161f]"
-              )}
-            >
-              Organizer
-            </Link>
-            <Link
-              href="/admin"
-              className={cn(
-                "px-2.5 py-1 rounded-lg font-medium transition",
-                isAdminArea
-                  ? "bg-white text-[#12161f] shadow-xs font-bold"
-                  : "text-[#6b7280] hover:text-[#12161f]"
-              )}
-            >
-              Admin
-            </Link>
-          </div>
-
-          {/* User Session & Switcher */}
-          <UserNav />
-        </div>
-
-        {/* Mobile menu button */}
-        <div className="flex md:hidden items-center gap-1.5 shrink-0">
-          <Link
-            href="/organizer/events/new"
-            className="p-1.5 rounded-lg bg-blue-600 text-white"
-            title="Post Event"
-          >
-            <PlusCircle className="h-4 w-4" />
-          </Link>
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition"
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-5 space-y-3 animate-in slide-in-from-top-2 duration-150">
-          <div className="space-y-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={cn(
-                    "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition",
-                    link.active
-                      ? "bg-slate-100 text-slate-900 font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={calendar.handleNext}
+                  className="p-1 sm:p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                  aria-label={calendar.viewMode === "week" ? "Next week" : "Next month"}
                 >
-                  <Icon className="h-4 w-4 text-slate-500" />
-                  {link.label}
-                </Link>
-              );
-            })}
-          </div>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
 
-          <div className="pt-2 border-t border-slate-100 space-y-2">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3">
-              Switch Portal
-            </p>
-            <div className="grid grid-cols-3 gap-2 px-1">
+              <button
+                type="button"
+                onClick={calendar.handleToday}
+                className="hidden sm:inline-block px-2.5 sm:px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs ml-0.5 shrink-0"
+              >
+                Today
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Center: View Switcher (Month | Week | Board) or Nav Links */}
+        <div className="flex items-center justify-center shrink-0 md:absolute md:left-1/2 md:-translate-x-1/2">
+          {isCalendarHome && calendar ? (
+            <div
+              role="tablist"
+              aria-label="Calendar view switcher"
+              className="flex items-center p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 text-xs shadow-2xs"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={calendar.viewMode === "month"}
+                onClick={() => calendar.setViewMode("month")}
+                title="Month View"
+                className={`px-2 sm:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  calendar.viewMode === "month"
+                    ? "bg-white text-slate-900 font-semibold shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <CalendarIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Month</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={calendar.viewMode === "week"}
+                onClick={() => calendar.setViewMode("week")}
+                title="Week View"
+                className={`px-2 sm:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  calendar.viewMode === "week"
+                    ? "bg-white text-slate-900 font-semibold shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Week</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={calendar.viewMode === "cards"}
+                onClick={() => calendar.setViewMode("cards")}
+                title="Board View"
+                className={`px-2 sm:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                  calendar.viewMode === "cards"
+                    ? "bg-white text-slate-900 font-semibold shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Board</span>
+              </button>
+            </div>
+          ) : (
+            <nav
+              aria-label="Main navigation"
+              className="hidden md:flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-2xs"
+            >
               <Link
                 href="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-center py-2 px-2 rounded-lg bg-slate-100 text-xs font-medium text-slate-800"
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  pathname === "/"
+                    ? "bg-white text-slate-900 font-semibold shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
               >
-                Student
+                <CalendarIcon className="w-3.5 h-3.5" />
+                <span>Calendar</span>
               </Link>
-              <Link
-                href="/organizer"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-center py-2 px-2 rounded-lg bg-slate-100 text-xs font-medium text-slate-800"
-              >
-                Organizer
-              </Link>
-              <Link
-                href="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-center py-2 px-2 rounded-lg bg-slate-100 text-xs font-medium text-slate-800"
-              >
-                Admin
-              </Link>
-            </div>
-          </div>
+
+              {user?.isLead && (
+                <Link
+                  href="/lead"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    pathname.startsWith("/lead")
+                      ? "bg-white text-slate-900 font-semibold shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Lead Workspace</span>
+                </Link>
+              )}
+
+              {user?.isAdmin && (
+                <Link
+                  href="/admin"
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                    pathname.startsWith("/admin")
+                      ? "bg-white text-slate-900 font-semibold shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <Shield className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Admin Console</span>
+                </Link>
+              )}
+            </nav>
+          )}
         </div>
-      )}
+
+        {/* Right side: Workspaces + Auth */}
+        <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+
+          {/* Quick link to workspaces when on calendar home */}
+          {isCalendarHome && user?.isLead && (
+            <Link
+              href="/lead"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors shadow-2xs"
+            >
+              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+              <span>Lead Workspace</span>
+            </Link>
+          )}
+
+          {isCalendarHome && user?.isAdmin && (
+            <Link
+              href="/admin"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-100/60 text-xs font-semibold text-amber-900 transition-colors shadow-2xs"
+            >
+              <Shield className="w-3.5 h-3.5 text-amber-600" />
+              <span>Admin Console</span>
+            </Link>
+          )}
+
+          {/* Auth session / logout / login */}
+          {loading ? (
+            <div className="w-24 h-8 rounded-xl bg-slate-100 animate-pulse" />
+          ) : user ? (
+            <div className="flex items-center gap-2">
+              <div className="text-right hidden sm:block">
+                <div className="text-xs font-semibold text-slate-900 truncate max-w-[130px]">
+                  {user.fullName}
+                </div>
+                <div className="text-[10px] text-slate-500 capitalize">
+                  {user.role === "admin" ? "Campus Admin" : "Community Lead"}
+                </div>
+              </div>
+
+              {/* Role avatar badge */}
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border shadow-xs ${
+                  user.role === "admin"
+                    ? "bg-amber-100 border-amber-200 text-amber-800"
+                    : "bg-indigo-100 border-indigo-200 text-indigo-800"
+                }`}
+              >
+                {user.fullName.charAt(0)}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                disabled={loggingOut}
+                title="Sign Out"
+                aria-label="Sign out"
+                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-400 hover:text-rose-600 disabled:opacity-50 transition-colors cursor-pointer shadow-2xs"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="px-3 sm:px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-all flex items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Staff Login</span>
+            </Link>
+          )}
+        </div>
+      </div>
     </header>
   );
 }
