@@ -1,63 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Campus Notice Board & Safe-Slot Calendar SaaS
 
-## Getting Started
+A centralized, conflict-free event discovery and scheduling platform built specifically for college campuses. Ensures every student event receives a verified **"Safe Slot"** (free of venue double-bookings and split audience clashes) while enforcing a mandatory **7-day prior notice policy**.
 
-First, run the development server:
+---
 
+## 📚 Project Documentation
+
+Detailed design documents, specifications, and architecture are maintained in [`docs/`](./docs):
+
+- **[Product Specification (`docs/PRODUCT_SPEC.md`)](./docs/PRODUCT_SPEC.md)**: Product philosophy, user personas, lead-time rules, and feature requirements.
+- **[System Architecture (`docs/ARCHITECTURE.md`)](./docs/ARCHITECTURE.md)**: Database ERD, deterministic conflict engine algorithms, and RBAC matrix.
+- **[Development Plan (`docs/DEVELOPMENT_PLAN.md`)](./docs/DEVELOPMENT_PLAN.md)**: Phased implementation roadmap, milestone checklist, and test scenarios.
+
+---
+
+## 👥 User Roles & Access
+
+| Role | Access Level | Description |
+| :--- | :--- | :--- |
+| **Students** | Public (No login) | Browse visual notice board, month/week calendar views, filter by club/category, and export to Google/Apple Calendar. |
+| **Community Leads** | Authenticated (`/lead`) | Propose events for their assigned club with real-time clash warnings and automatic "Safe Slot" suggestions. |
+| **Campus Admin** | Authenticated (`/admin`) | Triage and approve event submissions, manage venues, and invite/manage leads. |
+
+### Pre-seeded Demo Accounts
+
+| Role | Email | Password | Assigned Community |
+| :--- | :--- | :--- | :--- |
+| **Campus Admin** | `admin@campus.edu` | `admin123` | Campus-Wide |
+| **Coding Club Lead** | `lead.coding@campus.edu` | `lead123` | Coding Club |
+| **Design Society Lead** | `lead.design@campus.edu` | `lead123` | Design Society |
+| **E-Cell Lead** | `lead.ecell@campus.edu` | `lead123` | Entrepreneurship Cell |
+
+---
+
+## 🛠️ Tech Stack
+
+- **Framework**: [Next.js 16](https://nextjs.org) (App Router, Turbopack)
+- **Frontend**: [React 19](https://react.dev), [Tailwind CSS v4](https://tailwindcss.com)
+- **Database**: PostgreSQL / [Supabase](https://supabase.com)
+- **Icons & Utilities**: `lucide-react`, `date-fns` v4, `clsx`, `tailwind-merge`
+
+---
+
+## 🚀 Getting Started
+
+### 1. Install Dependencies
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure Environment
+Ensure your `.env` contains valid Supabase database credentials (see `.env.example`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Run Development Server
+```bash
+pnpm dev
+```
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Docker
-
-### Using Docker Compose (Recommended)
-
-1. Ensure your environment variables are configured in `.env` (see `.env.example`).
-2. Build and start the container:
-   ```bash
-   docker compose up --build -d
-   ```
-3. Open [http://localhost:3000](http://localhost:3000) in your browser.
-4. To view logs or stop the application:
-   ```bash
-   docker compose logs -f
-   docker compose down
-   ```
-
-### Using Docker CLI
-
-1. Build the production Docker image:
-   ```bash
-   docker build -t calendar-bc .
-   ```
-2. Run the container:
-   ```bash
-   docker run -d -p 3000:3000 --env-file .env --name calendar-bc-app calendar-bc
-   ```
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 4. Build for Production
+```bash
+pnpm build
+pnpm start
+```
