@@ -11,11 +11,15 @@ import {
   CheckCircle2,
   AlertCircle,
   ArrowRight,
+  ArrowLeft,
   Link as LinkIcon,
-  Image as ImageIcon,
+  ImageIcon,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { Venue, ConflictCheckResult, SafeSlotSuggestion, EventCategory } from "@/types/database";
+import { CategoryBadge } from "@/components/events/category-badge";
 
 const PRESET_COVERS = [
   {
@@ -61,6 +65,9 @@ export function ProposeEventModal({
   onClose,
   onSuccess,
 }: ProposeEventModalProps) {
+  // Multi-stage step state (1: Details, 2: Schedule & Venue, 3: Poster & Review)
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
   // Default date to 8 days in the future to satisfy 7-day rule
   const defaultDate = format(addDays(new Date(), 8), "yyyy-MM-dd");
 
@@ -74,6 +81,7 @@ export function ProposeEventModal({
   const [coverImageUrl, setCoverImageUrl] = useState(PRESET_COVERS[0].url);
   const [registrationUrl, setRegistrationUrl] = useState("");
 
+  const [stepError, setStepError] = useState<string | null>(null);
   const [checkingConflict, setCheckingConflict] = useState(false);
   const [conflictResult, setConflictResult] = useState<ConflictCheckResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -143,6 +151,28 @@ export function ProposeEventModal({
     }
   };
 
+  const handleNextFromStep1 = () => {
+    if (!title.trim()) {
+      setStepError("Please provide an event title before proceeding.");
+      return;
+    }
+    if (!description.trim()) {
+      setStepError("Please provide a brief event description.");
+      return;
+    }
+    setStepError(null);
+    setCurrentStep(2);
+  };
+
+  const handleNextFromStep2 = () => {
+    if (!venueId || !dateStr || !startTimeStr || !endTimeStr) {
+      setStepError("Please specify a venue, date, and valid times.");
+      return;
+    }
+    setStepError(null);
+    setCurrentStep(3);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -185,19 +215,21 @@ export function ProposeEventModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={onClose} />
+  const selectedVenue = venues.find((v) => v.id === venueId);
 
-      <div className="relative w-full max-w-3xl rounded-2xl border border-slate-200/90 bg-white text-slate-900 shadow-2xl overflow-hidden z-10 my-8">
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs" onClick={onClose} />
+
+      <div className="relative w-full max-w-2xl rounded-2xl border border-slate-200/90 bg-white text-slate-900 shadow-2xl overflow-hidden z-10 my-6 flex flex-col max-h-[92vh]">
         {/* Header */}
-        <div className="p-6 border-b border-slate-200 flex items-center justify-between bg-white">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white shrink-0">
           <div>
-            <div className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-1 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            <div className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold mb-0.5 flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
               <span>Safe-Slot Assistant</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
               Propose New Campus Event
             </h2>
             <p className="text-xs text-slate-500">
@@ -208,275 +240,437 @@ export function ProposeEventModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer shadow-xs"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
+        {/* Step Progress Tracker */}
+        <div className="px-6 py-3.5 bg-slate-50/70 border-b border-slate-100 shrink-0">
+          <div className="flex items-center justify-between">
+            {[
+              { step: 1, title: "Event Details", desc: "Title & category" },
+              { step: 2, title: "Schedule & Venue", desc: "Conflict-free slot" },
+              { step: 3, title: "Poster & RSVP", desc: "Media & review" },
+            ].map((s, idx) => (
+              <div key={s.step} className="flex items-center flex-1">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+                      currentStep === s.step
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : currentStep > s.step
+                        ? "bg-emerald-500 text-white shadow-2xs"
+                        : "bg-slate-200 text-slate-500"
+                    }`}
+                  >
+                    {currentStep > s.step ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : s.step}
+                  </div>
+                  <div className="hidden sm:block">
+                    <div
+                      className={`text-xs font-semibold ${
+                        currentStep >= s.step ? "text-slate-900" : "text-slate-400"
+                      }`}
+                    >
+                      {s.title}
+                    </div>
+                    <div className="text-[10px] text-slate-400">{s.desc}</div>
+                  </div>
+                </div>
+                {idx < 2 && (
+                  <div
+                    className={`flex-1 h-0.5 mx-3 sm:mx-4 transition-all ${
+                      currentStep > s.step ? "bg-emerald-500" : "bg-slate-200"
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Error Banners */}
+        {stepError && (
+          <div className="mx-6 mt-4 p-3.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-start gap-2.5 shrink-0">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+            <span>{stepError}</span>
+          </div>
+        )}
+
         {submitError && (
-          <div className="m-6 p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-start gap-2.5">
+          <div className="mx-6 mt-4 p-3.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-start gap-2.5 shrink-0">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
             <span>{submitError}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Title & Category */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
-                Event Title *
-              </label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Systems Programming Workshop & Hack"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
-                Category *
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as EventCategory)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Logistics: Venue, Date, Start Time, End Time */}
-          <div className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-4">
-            <div className="text-xs font-semibold uppercase tracking-wider text-slate-600">
-              Schedule & Venue Selection
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Target Campus Venue *</span>
-                </label>
-                <select
-                  value={venueId}
-                  onChange={(e) => setVenueId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs"
-                >
-                  {venues.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name} ({v.capacity} seats) — {v.building || "Campus"}
-                    </option>
-                  ))}
-                </select>
+        {/* Scrollable Stage Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* ======================================================== */}
+          {/* STAGE 1: EVENT DETAILS */}
+          {/* ======================================================== */}
+          {currentStep === 1 && (
+            <div className="space-y-5">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-900">Step 1: Event Information</h3>
+                <p className="text-xs text-slate-500">
+                  Give your event a clear title and description so students know what to expect.
+                </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Date * (Must be ≥ 7 days ahead)</span>
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={dateStr}
-                  onChange={(e) => setDateStr(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Start Time *</span>
-                </label>
-                <input
-                  type="time"
-                  required
-                  value={startTimeStr}
-                  onChange={(e) => setStartTimeStr(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>End Time *</span>
-                </label>
-                <input
-                  type="time"
-                  required
-                  value={endTimeStr}
-                  onChange={(e) => setEndTimeStr(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs"
-                />
-              </div>
-            </div>
-
-            {/* REAL-TIME SAFE SLOT ASSISTANT PANEL */}
-            <div className="pt-3 border-t border-slate-200">
-              {checkingConflict ? (
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-500 flex items-center gap-2 shadow-xs">
-                  <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
-                  <span>Checking room availability against 7-day advance notice rule...</span>
+              {/* Title & Category */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
+                    Event Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={title}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      if (stepError) setStepError(null);
+                    }}
+                    placeholder="e.g. Systems Programming Workshop & Hack"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
+                  />
                 </div>
-              ) : conflictResult ? (
-                <div className="space-y-3">
-                  {/* Status Banner */}
-                  {!conflictResult.hasConflict && !conflictResult.hasLeadTimeViolation ? (
-                    <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 text-xs flex items-center gap-2.5 shadow-xs">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>
-                        <strong>Safe Slot Verified:</strong> No venue collisions and satisfies the 7-day advance notice rule ({conflictResult.leadTimeDays} days notice).
-                      </span>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
+                    Category *
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as EventCategory)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs cursor-pointer"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
+                  Event Description *
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    if (stepError) setStepError(null);
+                  }}
+                  placeholder="Outline what attendees will learn or experience, prerequisites, schedule highlights, and key speakers..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* STAGE 2: SCHEDULE & VENUE (SAFE-SLOT INTELLIGENCE) */}
+          {/* ======================================================== */}
+          {currentStep === 2 && (
+            <div className="space-y-5">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-900">Step 2: Schedule & Safe-Slot Venue</h3>
+                <p className="text-xs text-slate-500">
+                  Select your preferred venue and time window. The Safe-Slot engine validates campus rules and checks for conflicts in real-time.
+                </p>
+              </div>
+
+              <div className="p-5 rounded-xl border border-slate-200/90 bg-slate-50/70 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Target Campus Venue *</span>
+                    </label>
+                    <select
+                      value={venueId}
+                      onChange={(e) => setVenueId(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs cursor-pointer"
+                    >
+                      {venues.map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.name} ({v.capacity} seats) — {v.building || "Campus"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Date * (Must be ≥ 7 days ahead)</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={dateStr}
+                      onChange={(e) => setDateStr(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Start Time *</span>
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={startTimeStr}
+                      onChange={(e) => setStartTimeStr(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs cursor-pointer"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      <span>End Time *</span>
+                    </label>
+                    <input
+                      type="time"
+                      required
+                      value={endTimeStr}
+                      onChange={(e) => setEndTimeStr(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                {/* REAL-TIME SAFE SLOT ASSISTANT PANEL */}
+                <div className="pt-3 border-t border-slate-200">
+                  {checkingConflict ? (
+                    <div className="p-3.5 rounded-xl border border-slate-200 bg-white text-xs text-slate-500 flex items-center gap-2 shadow-xs">
+                      <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin" />
+                      <span>Checking room availability against 7-day advance notice rule...</span>
                     </div>
-                  ) : (
-                    <div
-                      className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 shadow-xs ${
-                        conflictResult.hasConflict
-                          ? "border-rose-200 bg-rose-50 text-rose-900"
-                          : "border-amber-200 bg-amber-50 text-amber-900"
+                  ) : conflictResult ? (
+                    <div className="space-y-3">
+                      {/* Status Banner */}
+                      {!conflictResult.hasConflict && !conflictResult.hasLeadTimeViolation ? (
+                        <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 text-xs flex items-center gap-2.5 shadow-xs">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>
+                            <strong>Safe Slot Verified:</strong> No venue collisions and satisfies the 7-day advance notice rule ({conflictResult.leadTimeDays} days notice).
+                          </span>
+                        </div>
+                      ) : (
+                        <div
+                          className={`p-3.5 rounded-xl border text-xs flex items-start gap-2.5 shadow-xs ${
+                            conflictResult.hasConflict
+                              ? "border-rose-200 bg-rose-50 text-rose-900"
+                              : "border-amber-200 bg-amber-50 text-amber-900"
+                          }`}
+                        >
+                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                          <div>
+                            <div className="font-semibold">{conflictResult.message}</div>
+                            {conflictResult.hasConflict && conflictResult.conflictingEvent && (
+                              <div className="text-[11px] opacity-80 mt-1">
+                                Clashing with: {conflictResult.conflictingEvent.title} (
+                                {conflictResult.conflictingEvent.community?.name})
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Safe Slot Suggestions */}
+                      {conflictResult.safeSlots && conflictResult.safeSlots.length > 0 && (
+                        <div className="pt-2">
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Recommended Clash-Free Safe Slots (1-Click Apply):</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            {conflictResult.safeSlots.map((slot, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => applySafeSlot(slot)}
+                                className="text-left p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-600 hover:shadow-xs transition-all text-xs cursor-pointer group shadow-2xs"
+                              >
+                                <div className="font-bold text-slate-900 flex items-center justify-between">
+                                  <span>{slot.label}</span>
+                                  <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+                                  {slot.venue_name}
+                                </div>
+                                <div className="text-[11px] text-slate-600 mt-1 leading-snug">
+                                  {slot.reason}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* STAGE 3: POSTER & REGISTRATION & REVIEW */}
+          {/* ======================================================== */}
+          {currentStep === 3 && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <h3 className="text-sm font-bold text-slate-900">Step 3: Poster & Registration Link</h3>
+                <p className="text-xs text-slate-500">
+                  Select a cover image and optional external RSVP link, then review your submission before submitting for administrator approval.
+                </p>
+              </div>
+
+              {/* Preset Cover Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                  <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Choose Event Poster / Cover</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-2.5">
+                  {PRESET_COVERS.map((cov) => (
+                    <button
+                      key={cov.url}
+                      type="button"
+                      onClick={() => setCoverImageUrl(cov.url)}
+                      className={`relative h-20 rounded-xl overflow-hidden border transition-all cursor-pointer ${
+                        coverImageUrl === cov.url
+                          ? "border-indigo-600 ring-2 ring-indigo-600/30 shadow-xs"
+                          : "border-slate-200 hover:border-slate-400 opacity-70 hover:opacity-100"
                       }`}
                     >
-                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-semibold">{conflictResult.message}</div>
-                        {conflictResult.hasConflict && conflictResult.conflictingEvent && (
-                          <div className="text-[11px] opacity-80 mt-1">
-                            Clashing with: {conflictResult.conflictingEvent.title} (
-                            {conflictResult.conflictingEvent.community?.name})
-                          </div>
-                        )}
+                      <Image
+                        src={cov.url}
+                        alt={cov.name}
+                        fill
+                        sizes="200px"
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-slate-900/40 flex items-end p-2 text-[10px] font-semibold text-white">
+                        {cov.name}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Safe Slot Suggestions */}
-                  {conflictResult.safeSlots && conflictResult.safeSlots.length > 0 && (
-                    <div className="pt-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-                        <span>Recommended Clash-Free Safe Slots (1-Click Apply):</span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {conflictResult.safeSlots.map((slot, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => applySafeSlot(slot)}
-                            className="text-left p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-600 hover:shadow-xs transition-all text-xs cursor-pointer group shadow-2xs"
-                          >
-                            <div className="font-bold text-slate-900 flex items-center justify-between">
-                              <span>{slot.label}</span>
-                              <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all" />
-                            </div>
-                            <div className="text-[10px] text-slate-400 mt-0.5 truncate">
-                              {slot.venue_name}
-                            </div>
-                            <div className="text-[11px] text-slate-600 mt-1 leading-snug">
-                              {slot.reason}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                    </button>
+                  ))}
                 </div>
-              ) : null}
-            </div>
-          </div>
+                <input
+                  type="url"
+                  value={coverImageUrl}
+                  onChange={(e) => setCoverImageUrl(e.target.value)}
+                  placeholder="Or paste custom image URL..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
+                />
+              </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
-              Event Description *
-            </label>
-            <textarea
-              required
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Outline what attendees can expect, prereqs, equipment needed, and key agenda items..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
-            />
-          </div>
+              {/* External Registration Link */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                  <LinkIcon className="w-3.5 h-3.5 text-slate-400" />
+                  <span>External RSVP / Registration Link (Optional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={registrationUrl}
+                  onChange={(e) => setRegistrationUrl(e.target.value)}
+                  placeholder="https://forms.gle/... or https://luma.com/..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
+                />
+              </div>
 
-          {/* Preset Cover Selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-              <ImageIcon className="w-3.5 h-3.5 text-slate-400" />
-              <span>Event Poster / Cover Image</span>
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2">
-              {PRESET_COVERS.map((cov) => (
-                <button
-                  key={cov.url}
-                  type="button"
-                  onClick={() => setCoverImageUrl(cov.url)}
-                  className={`relative h-18 rounded-xl overflow-hidden border transition-all cursor-pointer ${
-                    coverImageUrl === cov.url
-                      ? "border-indigo-600 ring-2 ring-indigo-600/30"
-                      : "border-slate-200 hover:border-slate-400 opacity-70 hover:opacity-100"
-                  }`}
-                >
-                  <Image
-                    src={cov.url}
-                    alt={cov.name}
-                    fill
-                    sizes="200px"
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-slate-900/40 flex items-end p-1.5 text-[10px] font-semibold text-white">
-                    {cov.name}
+              {/* Proposal Summary Card */}
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-2.5">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                  Proposal Summary
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">{title}</h4>
+                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{description}</p>
                   </div>
-                </button>
-              ))}
+                  <CategoryBadge category={category} size="sm" />
+                </div>
+                <div className="pt-2 border-t border-slate-200/60 flex items-center gap-4 text-xs text-slate-600 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{dateStr}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{startTimeStr} – {endTimeStr}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{selectedVenue?.name}</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            <input
-              type="url"
-              value={coverImageUrl}
-              onChange={(e) => setCoverImageUrl(e.target.value)}
-              placeholder="Or paste custom image URL..."
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
-            />
-          </div>
+          )}
+        </div>
 
-          {/* External Registration Link */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-              <LinkIcon className="w-3.5 h-3.5 text-slate-400" />
-              <span>External RSVP / Registration Link (Optional)</span>
-            </label>
-            <input
-              type="url"
-              value={registrationUrl}
-              onChange={(e) => setRegistrationUrl(e.target.value)}
-              placeholder="https://forms.gle/... or https://luma.com/..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
-            />
-          </div>
-
-          {/* Modal Footer */}
-          <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-3">
+        {/* Multi-Stage Navigation Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-3 shrink-0">
+          {currentStep === 1 ? (
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors cursor-pointer shadow-xs"
+              className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs"
             >
               Cancel
             </button>
+          ) : (
             <button
-              type="submit"
+              type="button"
+              onClick={() => {
+                setStepError(null);
+                setCurrentStep((prev) => (prev > 1 ? ((prev - 1) as 1 | 2 | 3) : 1));
+              }}
+              className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back</span>
+            </button>
+          )}
+
+          {currentStep === 1 ? (
+            <button
+              type="button"
+              onClick={handleNextFromStep1}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+            >
+              <span>Next: Schedule & Venue</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          ) : currentStep === 2 ? (
+            <button
+              type="button"
+              onClick={handleNextFromStep2}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+            >
+              <span>Next: Poster & RSVP</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
               disabled={submitting}
               className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer"
             >
@@ -485,12 +679,12 @@ export function ProposeEventModal({
               ) : (
                 <>
                   <span>Submit for Admin Review</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <Check className="w-3.5 h-3.5" />
                 </>
               )}
             </button>
-          </div>
-        </form>
+          )}
+        </div>
       </div>
     </div>
   );
