@@ -113,7 +113,7 @@ export default function StudentNoticeBoardPage() {
 
   // Handle Create Event button
   const handleCreateEventClick = () => {
-    if (userSession?.authenticated && userSession.user?.isLead) {
+    if (userSession?.authenticated && (userSession.user?.isLead || userSession.user?.isAdmin)) {
       setIsProposeOpen(true);
     } else {
       router.push("/login");
@@ -166,7 +166,8 @@ export default function StudentNoticeBoardPage() {
       {/* ============================================================== */}
       <aside className="w-full lg:w-72 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:self-start border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex flex-col gap-6 bg-white shrink-0 z-20">
 
-          {/* "+ Create Event" Primary Action Button matching Image 1 */}
+        {/* "+ Create Event" Primary Action Button (Only for Leads and Admins) */}
+        {userSession?.authenticated && (userSession.user?.isLead || userSession.user?.isAdmin) && (
           <button
             type="button"
             onClick={handleCreateEventClick}
@@ -175,6 +176,7 @@ export default function StudentNoticeBoardPage() {
             <Plus className="w-4 h-4 text-indigo-600" />
             <span>+ Create Event</span>
           </button>
+        )}
 
           {/* Mini Calendar Picker matching Image 1 */}
           <div className="pt-1">
