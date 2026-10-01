@@ -39,7 +39,9 @@ The platform is designed around a modern full-stack Next.js 16 (App Router) arch
 ## 2. Database Schema (PostgreSQL / Supabase)
 
 ### 2.1 Table: `campuses`
+
 Represents the campus entity (single-campus scope with multi-campus readiness).
+
 ```sql
 CREATE TABLE campuses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -51,7 +53,9 @@ CREATE TABLE campuses (
 ```
 
 ### 2.2 Table: `venues`
+
 Physical locations available for booking on campus.
+
 ```sql
 CREATE TABLE venues (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -65,7 +69,9 @@ CREATE TABLE venues (
 ```
 
 ### 2.3 Table: `communities`
+
 Recognized campus clubs, societies, and academic departments.
+
 ```sql
 CREATE TABLE communities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,7 +86,9 @@ CREATE TABLE communities (
 ```
 
 ### 2.4 Table: `users`
+
 Administrators and Community Leads (Created only by Admins; no public registration).
+
 ```sql
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -95,7 +103,9 @@ CREATE TABLE users (
 ```
 
 ### 2.5 Table: `events`
+
 Campus events submitted by Leads or created by Admins.
+
 ```sql
 CREATE TABLE events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -127,6 +137,7 @@ CREATE INDEX idx_events_community ON events (community_id);
 ## 3. The Safe-Slot & Conflict Resolution Engine
 
 ### 3.1 Hard Conflict vs Soft Clash Detection
+
 ```
                      Candidate Event: [Ts ------------ Te] @ Venue V
                                              ▲
@@ -145,7 +156,9 @@ CREATE INDEX idx_events_community ON events (community_id);
    - Result: Submissions earlier than 7 days ahead are flagged with a lead-time error.
 
 ### 3.2 Safe-Slot Discovery Algorithm
+
 When a clash is detected, the engine runs a fast deterministic search for alternate slots:
+
 1. **Option A (Same Venue, Later in Day)**:
    - Evaluates slots immediately following the conflicting event ending: `Es_end + 30 min buffer`.
 2. **Option B (Same Time, Alternative Active Venue)**:
@@ -157,8 +170,8 @@ When a clash is detected, the engine runs a fast deterministic search for altern
 
 ## 4. Authentication & Role-Based Access Control (RBAC)
 
-* **Session Token**: Secure, HTTP-only cookie containing verified session data (`userId`, `role`, `communityId`, `fullName`).
-* **Route Protection Matrix**:
+- **Session Token**: Secure, HTTP-only cookie containing verified session data (`userId`, `role`, `communityId`, `fullName`).
+- **Route Protection Matrix**:
 
 | Route Group | Audience | Auth Required | Permissions Enforced |
 | :--- | :--- | :---: | :--- |
@@ -175,9 +188,9 @@ When a clash is detected, the engine runs a fast deterministic search for altern
 
 ## 5. Technology Stack & Key Packages
 
-* **Framework**: Next.js 16.3.5 (App Router with Turbopack).
-* **UI Library**: React 19.2.8.
-* **Styling**: Tailwind CSS v4 (`@tailwindcss/postcss`).
-* **Database & Client**: Supabase (`@supabase/supabase-js`, `@supabase/ssr`, `pg`).
-* **Icons & Components**: `lucide-react`, `date-fns` v4.
-* **Validation**: `zod` v4.
+- **Framework**: Next.js 16.3.5 (App Router with Turbopack).
+- **UI Library**: React 19.2.8.
+- **Styling**: Tailwind CSS v4 (`@tailwindcss/postcss`).
+- **Database & Client**: Supabase (`@supabase/supabase-js`, `@supabase/ssr`, `pg`).
+- **Icons & Components**: `lucide-react`, `date-fns` v4.
+- **Validation**: `zod` v4.

@@ -11,6 +11,7 @@ This platform is a **single-campus SaaS** designed as an **Interactive Student N
 ## 2. Core Philosophy: The "Safe Slot" Principle
 
 Every campus event must be guaranteed a **"Safe Slot"**:
+
 1. **Zero Venue Collision**: The physical venue (e.g. Auditorium, Tech Lab) cannot be booked by any other event during that timeframe.
 2. **Audience Protection**: Community events are scheduled to minimize major timing conflicts, ensuring maximum student turnout.
 3. **The 7-Day Prior Notice Rule**: Community leads must submit event proposals at least **7 full calendar days in advance**. This eliminates last-minute scrambles, enables timely administrative review, and gives students adequate notice to plan their attendance.
@@ -57,6 +58,7 @@ Every campus event must be guaranteed a **"Safe Slot"**:
 ## 4. Detailed Feature Requirements
 
 ### 4.1 Public Student Notice Board (Frontend)
+
 * **View Modes**:
   * **Visual Notice Board (Default)**: Visual event cards with cover imagery, date badges, host community tags, and quick-action buttons.
   * **Month Calendar Grid**: High-level overview of the month showing event density dots and compact titles.
@@ -77,6 +79,7 @@ Every campus event must be guaranteed a **"Safe Slot"**:
 ---
 
 ### 4.2 Community Lead Portal
+
 * **Dashboard Overview**:
   * Summary cards: Total Events Hosted, Upcoming Approved, Submissions In Review, Rejected.
   * List of community's events with status badges (`Pending Review`, `Approved`, `Rejected`).
@@ -92,6 +95,7 @@ Every campus event must be guaranteed a **"Safe Slot"**:
 ---
 
 ### 4.3 Admin Management Console
+
 * **Event Review & Triage Queue**:
   * Dedicated triage feed for all `pending` submissions.
   * Detailed conflict breakdown if any soft overlap exists.
