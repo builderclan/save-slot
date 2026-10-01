@@ -2,25 +2,17 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
-  async rewrites() {
-    return [
+  images: {
+    remotePatterns: [
       {
-        source: "/campus/:campusSlug",
-        destination: "/",
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
       {
-        source: "/campus/:campusSlug/events/:slug",
-        destination: "/events/:slug",
+        protocol: "https",
+        hostname: "**",
       },
-      {
-        source: "/campus/:campusSlug/communities",
-        destination: "/communities",
-      },
-      {
-        source: "/campus/:campusSlug/communities/:slug",
-        destination: "/communities/:slug",
-      },
-    ];
+    ],
   },
 };
 
