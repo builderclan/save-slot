@@ -5,9 +5,22 @@ import { UserProfile } from "@/types/database";
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Invalid request payload" },
+        { status: 400 }
+      );
+    }
 
-    if (!email || !password) {
+    const { email, password } = body;
+
+    if (
+      typeof email !== "string" ||
+      typeof password !== "string" ||
+      !email.trim() ||
+      !password
+    ) {
       return NextResponse.json(
         { error: "Email and password are required" },
         { status: 400 }
@@ -22,7 +35,7 @@ export async function POST(request: Request) {
 
     if (authError || !authData.user) {
       return NextResponse.json(
-        { error: authError?.message || "Invalid credentials" },
+        { error: "Invalid email or password" },
         { status: 401 }
       );
     }
@@ -34,7 +47,19 @@ export async function POST(request: Request) {
     );
 
     const profile = userRes.rows[0];
-    const role = profile?.role || "student";
+    let role = profile?.role || "student";
+
+    // If not flagged as admin/organizer directly, check community_members
+    if (role !== "admin" && role !== "organizer") {
+      const commCheck = await query(
+        "SELECT 1 FROM public.community_members WHERE user_id = $1 AND role = 'lead' AND status = 'active' LIMIT 1;",
+        [authData.user.id]
+      );
+      if (commCheck.rows.length > 0) {
+        role = "organizer";
+      }
+    }
+
     const redirectUrl = role === "admin" ? "/admin" : role === "organizer" ? "/lead" : "/";
 
     return NextResponse.json({
