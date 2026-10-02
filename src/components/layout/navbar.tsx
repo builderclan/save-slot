@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Menu,
   X,
-  User,
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isSameMonth, isSameYear } from "date-fns";
 import { useCalendar } from "@/context/calendar-context";
@@ -337,6 +336,11 @@ export function Navbar() {
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
+          ) : pathname === "/login" ? (
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-xs font-medium">
+              <LogIn className="w-3.5 h-3.5 text-slate-400" />
+              <span>Portal Sign In</span>
+            </div>
           ) : (
             <Link
               href="/login"
@@ -396,7 +400,7 @@ export function Navbar() {
                 <span>Sign Out</span>
               </button>
             </div>
-          ) : (
+          ) : pathname === "/login" ? null : (
             <Link
               href="/login"
               onClick={() => setMobileMenuOpen(false)}
