@@ -36,7 +36,7 @@ export function EventCard({ event, onSelect }: EventCardProps) {
           onSelect(event);
         }
       }}
-      className="group relative flex flex-col rounded-2xl border border-slate-200/80 bg-white hover:border-indigo-400/80 hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-1 transition-all duration-200 cursor-pointer shadow-xs overflow-hidden focus:outline-none focus:ring-2 focus:ring-indigo-500/40 text-left"
+      className="group relative flex flex-col rounded-2xl border border-slate-200/80 bg-white hover:border-indigo-400/80 hover:shadow-md transition-colors duration-150 cursor-pointer shadow-xs overflow-hidden focus:outline-none focus:ring-2 focus:ring-indigo-500/40 text-left"
     >
       {/* Editorial Header Strip: Organizer & Category */}
       <div className="px-4.5 py-3 border-b border-slate-100 flex items-center justify-between gap-2 bg-slate-50/50">
@@ -58,7 +58,7 @@ export function EventCard({ event, onSelect }: EventCardProps) {
               alt={event.title}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              className="object-cover group-hover:scale-103 transition-transform duration-500"
+              className="object-cover"
               onError={() => setImageError(true)}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/25 via-transparent to-transparent pointer-events-none" />
