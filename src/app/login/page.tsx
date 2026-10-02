@@ -118,7 +118,7 @@ export default function LoginPage() {
           <span>← Back to Public Calendar</span>
         </Link>
         <span className="text-[11px] text-slate-500 px-2.5 py-0.5 rounded-full border border-slate-200 bg-white shadow-2xs font-medium">
-          Apex Institute
+          AISAT
         </span>
       </div>
 
@@ -130,13 +130,13 @@ export default function LoginPage() {
         <div className="p-5 sm:p-8 rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50">
           <div className="text-center mb-8">
             <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-bold text-2xl flex items-center justify-center mx-auto mb-3 shadow-xs">
-              A
+              S
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Campus Staff Portal
+              SafeSlot Portal
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Sign in as Campus Administrator or Community Lead
+              Albertian Institute of Science & Technology (AISAT)
             </p>
           </div>
 

@@ -34,7 +34,7 @@ export function downloadIcsFile(event: CampusEvent) {
   const icsContent = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Apex Campus Notice Board//Safe-Slot Calendar//EN",
+    "PRODID:-//AISAT SafeSlot//Calendar//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

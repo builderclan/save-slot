@@ -20,9 +20,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Campus Events & Safe-Slot Calendar • Apex Institute",
+  title: "SafeSlot • Campus Events & Scheduling • AISAT",
   description:
-    "Official centralized student notice board and conflict-free event scheduling platform for Apex Institute of Technology.",
+    "Official centralized student notice board and conflict-free event scheduling platform for Albertian Institute of Science & Technology (AISAT).",
 };
 
 export default function RootLayout({

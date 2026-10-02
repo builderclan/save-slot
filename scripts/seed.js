@@ -13,20 +13,24 @@ async function seedDatabase() {
   await client.connect();
   console.log("Connected to PostgreSQL for Phase 1 Seeding...\n");
 
-  // 1. Campus: Apex Institute of Technology
+  // 1. Campus: Albertian Institute of Science & Technology (AISAT)
   let campusId;
-  const campusRes = await client.query("SELECT id FROM campuses WHERE slug = 'apex-tech';");
+  const campusRes = await client.query("SELECT id FROM campuses WHERE slug IN ('aisat', 'apex-tech') LIMIT 1;");
   if (campusRes.rows.length > 0) {
     campusId = campusRes.rows[0].id;
-    console.log(`✓ Campus exists: Apex Institute of Technology (${campusId})`);
+    await client.query(
+      "UPDATE campuses SET name = 'Albertian Institute of Science & Technology', slug = 'aisat', timezone = 'Asia/Kolkata' WHERE id = $1;",
+      [campusId]
+    );
+    console.log(`✓ Campus exists: Albertian Institute of Science & Technology (${campusId})`);
   } else {
     const ins = await client.query(`
       INSERT INTO campuses (name, slug, timezone)
-      VALUES ('Apex Institute of Technology', 'apex-tech', 'America/New_York')
+      VALUES ('Albertian Institute of Science & Technology', 'aisat', 'Asia/Kolkata')
       RETURNING id;
     `);
     campusId = ins.rows[0].id;
-    console.log(`+ Created campus: Apex Institute of Technology (${campusId})`);
+    console.log(`+ Created campus: Albertian Institute of Science & Technology (${campusId})`);
   }
 
   // 2. Venues

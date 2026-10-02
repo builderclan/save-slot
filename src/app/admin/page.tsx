@@ -271,7 +271,7 @@ export default function AdminConsolePage() {
             Central Triage & Operations Console
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Apex Institute of Technology · Institutional calendar oversight, safety audit, and staff provisioning
+            Albertian Institute of Science & Technology (AISAT) · Institutional calendar oversight, safety audit, and staff provisioning
           </p>
         </div>
 
