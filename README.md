@@ -1,4 +1,4 @@
-# Campus Notice Board & Safe-Slot Calendar SaaS
+# SaveSlot — Campus Notice Board & Event Scheduling SaaS
 
 A centralized, conflict-free event discovery and scheduling platform built specifically for college campuses. Ensures every student event receives a verified **"Safe Slot"** (free of venue double-bookings and split audience clashes) while enforcing a mandatory **7-day prior notice policy**.
 
@@ -45,20 +45,25 @@ Detailed design documents, specifications, and architecture are maintained in [`
 ## 🚀 Getting Started
 
 ### 1. Install Dependencies
+
 ```bash
 pnpm install
 ```
 
 ### 2. Configure Environment
+
 Ensure your `.env` contains valid Supabase database credentials (see `.env.example`).
 
 ### 3. Run Development Server
+
 ```bash
 pnpm dev
 ```
+
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ### 4. Build for Production
+
 ```bash
 pnpm build
 pnpm start

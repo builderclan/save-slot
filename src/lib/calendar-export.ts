@@ -34,7 +34,7 @@ export function downloadIcsFile(event: CampusEvent) {
   const icsContent = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//AISAT SafeSlot//Calendar//EN",
+    "PRODID:-//AISAT SaveSlot//Calendar//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

@@ -224,7 +224,7 @@ export default function LoginPage() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h1 className="text-lg font-bold text-slate-900 tracking-tight">
-                    SafeSlot Portal
+                    SaveSlot Portal
                   </h1>
                 </div>
                 <p className="text-xs text-slate-500 truncate">
@@ -368,7 +368,7 @@ export default function LoginPage() {
                   />
                 ) : (
                   <>
-                    <span>Sign In to SafeSlot</span>
+                    <span>Sign In to SaveSlot</span>
                     <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                   </>
                 )}

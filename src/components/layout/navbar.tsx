@@ -107,7 +107,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-40 w-full h-14 border-b border-slate-200 bg-white/95 backdrop-blur-md">
       {/* Accessible h1 heading for document hierarchy */}
-      <h1 className="sr-only">SafeSlot • Campus Events & Scheduling • Albertian Institute of Science & Technology (AISAT)</h1>
+      <h1 className="sr-only">SaveSlot • Campus Events & Scheduling • Albertian Institute of Science & Technology (AISAT)</h1>
 
       <div className="w-full px-3 sm:px-6 h-full relative flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand + Date Controls if on Calendar Home */}
@@ -120,7 +120,7 @@ export function Navbar() {
             <div className="hidden xs:block sm:block">
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-xs sm:text-sm tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
-                  SafeSlot
+                  SaveSlot
                 </span>
                 <span
                   className="hidden xl:inline-block text-[10px] px-1.5 py-0.5 rounded-full border border-indigo-100 bg-indigo-50 text-indigo-700 font-semibold"

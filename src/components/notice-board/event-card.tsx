@@ -79,7 +79,7 @@ export function EventCard({ event, onSelect }: EventCardProps) {
         <div>
           {/* Integrated Calendar Date Tile + Event Title */}
           <div className="flex items-start gap-3">
-            {/* Calendar Date Badge (Signature SafeSlot Style) */}
+            {/* Calendar Date Badge (Signature SaveSlot Style) */}
             <div className="flex flex-col items-center justify-center w-11 h-12 rounded-xl bg-slate-50 border border-slate-200/90 text-center shadow-2xs shrink-0 group-hover:border-indigo-200 group-hover:bg-indigo-50/40 transition-colors">
               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 leading-tight pt-1">
                 {format(startDate, "MMM")}

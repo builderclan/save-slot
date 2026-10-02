@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SafeSlot • Campus Events & Scheduling • AISAT",
+  title: "SaveSlot • Campus Events & Scheduling • AISAT",
   description:
     "Official centralized student notice board and conflict-free event scheduling platform for Albertian Institute of Science & Technology (AISAT).",
 };
