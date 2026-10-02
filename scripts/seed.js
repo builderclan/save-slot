@@ -265,7 +265,7 @@ async function seedDatabase() {
       endTime: getDate(9, 18, 0),
       status: "published",
       creatorEmail: "lead.design@campus.edu",
-      coverImage: "https://images.unsplash.com/photo-1581291518655-9523c932deda?w=800&auto=format&fit=crop&q=80",
+      coverImage: "https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?w=800&auto=format&fit=crop&q=80",
       registrationUrl: "https://forms.gle/design-critique-2026",
     },
     {
