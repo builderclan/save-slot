@@ -32,6 +32,16 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   }, [event?.id]);
 
   useEffect(() => {
+    if (event) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [event]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -64,23 +74,23 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-6 overflow-hidden sm:overflow-y-auto">
+      {/* Backdrop (visible on sm+ screens) */}
       <div
-        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity hidden sm:block"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Modal Dialog */}
+      {/* Modal Dialog: Full-screen on mobile (< sm), centered framed card on sm+ */}
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="event-title"
-        className="relative w-full max-w-2xl rounded-2xl border border-slate-200/90 bg-white text-slate-900 shadow-2xl shadow-slate-900/15 overflow-hidden z-10 my-6 flex flex-col max-h-[92vh]"
+        className="relative w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-2xl rounded-none sm:rounded-2xl border-0 sm:border border-slate-200/90 bg-white text-slate-900 shadow-none sm:shadow-2xl sm:shadow-slate-900/15 overflow-hidden z-10 flex flex-col"
       >
         {/* Editorial Top Navigation Bar */}
-        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
+        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0 sticky top-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
@@ -95,7 +105,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
             <button
               type="button"
               onClick={handleCopyLink}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="p-2 sm:p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
               title="Copy event link"
               aria-label="Copy event link"
             >
@@ -110,10 +120,10 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="p-2 sm:p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
               aria-label="Close dialog"
             >
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
           </div>
         </div>
@@ -122,8 +132,8 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         <div className="flex-1 overflow-y-auto">
           {/* Framed Cover Media */}
           {event.cover_image_url && !imageError && (
-            <div className="p-5 pb-0">
-              <div className="relative h-48 sm:h-56 w-full rounded-xl overflow-hidden border border-slate-200/80 bg-slate-100 shadow-inner">
+            <div className="p-0 sm:p-5 sm:pb-0">
+              <div className="relative h-52 sm:h-56 w-full rounded-none sm:rounded-xl overflow-hidden border-b sm:border border-slate-200/80 bg-slate-100 shadow-inner">
                 <Image
                   src={event.cover_image_url}
                   alt={event.title}
@@ -133,7 +143,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                   priority
                   onError={() => setImageError(true)}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent pointer-events-none" />
 
                 {/* Safe-Slot Conflict-Free Badge */}
                 <div className="absolute bottom-3 left-3 flex items-center gap-1.5 text-[11px] font-medium text-slate-800 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-xs border border-slate-200/90 shadow-xs">
@@ -249,7 +259,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         </div>
 
         {/* Action Footer */}
-        <div className="px-4 sm:px-7 py-3 border-t border-slate-200/80 bg-slate-50/70 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
+        <div className="px-4 sm:px-7 pt-3 pb-4 sm:py-3 border-t border-slate-200/80 bg-white sm:bg-slate-50/70 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3 shrink-0">
           {/* Calendar export links */}
           <div className="grid grid-cols-2 sm:flex items-center gap-2">
             <a
