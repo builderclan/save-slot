@@ -197,7 +197,7 @@ export default function StudentNoticeBoardPage() {
   }, [events, search, selectedCategories, selectedHorizon]);
 
   return (
-    <div className="w-full flex-1 flex flex-col lg:flex-row bg-white min-h-[calc(100vh-3.5rem)]">
+    <div className="calendar-shell w-full flex-1 flex flex-col lg:flex-row bg-white min-h-0">
       {/* Mobile Secondary Bar (Visible only on < lg) */}
       <div className="lg:hidden border-b border-slate-200 bg-white shrink-0">
         {/* On mobile (< md), show the dedicated View Switcher */}
@@ -312,7 +312,7 @@ export default function StudentNoticeBoardPage() {
       {/* ============================================================== */}
       {/* LEFT SIDEBAR (User Profile, + Create Event, Mini-Cal, Filters) */}
       {/* ============================================================== */}
-      <aside className={`w-full lg:w-72 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:self-start border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex-col gap-6 bg-white shrink-0 z-20 ${mobileFiltersOpen ? "flex" : "hidden lg:flex"}`}>
+      <aside className={`w-full lg:w-72 lg:h-full lg:max-h-full lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex-col gap-6 bg-white shrink-0 z-20 ${mobileFiltersOpen ? "flex" : "hidden lg:flex"}`}>
 
         {/* Mobile Filters Drawer Header (visible only on < lg) */}
         <div className="lg:hidden flex items-center justify-between pb-3 border-b border-slate-100">
@@ -499,9 +499,15 @@ export default function StudentNoticeBoardPage() {
         {/* ============================================================== */}
         {/* MAIN CALENDAR SECTION (Month/Week/Board Views) */}
         {/* ============================================================== */}
-        <section className="flex-1 flex flex-col min-w-0 bg-white">
+        <section
+          style={{ height: "100%", maxHeight: "100%" }}
+          className="flex-1 flex flex-col min-w-0 min-h-0 bg-white overflow-hidden"
+        >
           {/* Calendar Content Area */}
-          <div className="flex-1 flex flex-col overflow-auto bg-white">
+          <div
+            style={{ height: "100%", maxHeight: "100%" }}
+            className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white"
+          >
             {loading ? (
               <div className="p-16 text-center">
                 <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -555,14 +561,19 @@ export default function StudentNoticeBoardPage() {
                 )}
 
                 {viewMode === "cards" && (
-                  <div className="p-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {filteredEvents.map((event) => (
-                      <EventCard
-                        key={event.id}
-                        event={event}
-                        onSelect={(ev) => setSelectedEvent(ev)}
-                      />
-                    ))}
+                  <div
+                    style={{ height: "100%", maxHeight: "100%" }}
+                    className="flex-1 min-h-0 overflow-y-auto p-6"
+                  >
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                      {filteredEvents.map((event) => (
+                        <EventCard
+                          key={event.id}
+                          event={event}
+                          onSelect={(ev) => setSelectedEvent(ev)}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
               </>

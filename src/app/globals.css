@@ -46,12 +46,32 @@ body {
   background: #94a3b8;
 }
 
-/* Responsive month grid: compact on mobile, full-height stretch on desktop */
+/* Responsive desktop calendar application shell */
 @media (min-width: 1024px) {
+  .calendar-shell {
+    height: calc(100vh - 3.5rem) !important;
+    max-height: calc(100vh - 3.5rem) !important;
+    overflow: hidden !important;
+  }
+  .calendar-shell > section {
+    height: calc(100vh - 3.5rem) !important;
+    max-height: calc(100vh - 3.5rem) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+  .calendar-shell > section > div {
+    height: 100% !important;
+    max-height: 100% !important;
+    min-height: 0 !important;
+  }
+  .calendar-shell > section > div > div {
+    min-height: 0 !important;
+  }
   .calendar-month-grid {
     display: grid !important;
-    grid-template-rows: repeat(var(--week-rows, 5), minmax(110px, 1fr)) !important;
+    grid-template-rows: repeat(var(--week-rows, 5), minmax(0, 1fr)) !important;
     flex: 1 1 0% !important;
     height: 100% !important;
+    min-height: 0 !important;
   }
 }

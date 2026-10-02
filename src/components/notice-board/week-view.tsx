@@ -47,7 +47,7 @@ export function WeekView({
   const mobileDayEvents = getEventsForDay(selectedMobileDay);
 
   return (
-    <div className="w-full bg-white flex flex-col flex-1 select-none">
+    <div className="w-full h-full bg-white flex flex-col flex-1 select-none min-h-0 overflow-hidden">
       {/* ============================================================== */}
       {/* MOBILE-ONLY VIEW (< md): Interactive Day Picker + Daily Stream */}
       {/* ============================================================== */}
@@ -165,28 +165,26 @@ export function WeekView({
       </div>
 
       {/* ============================================================== */}
-      {/* DESKTOP & TABLET VIEW (>= md): 7 Timeline Columns */}
+      {/* DESKTOP & TABLET VIEW (>= md): Pinned Headers + Timeline Grid */}
       {/* ============================================================== */}
-      <div className="hidden md:grid md:grid-cols-7 divide-x divide-slate-200/80 bg-white flex-1 min-h-[640px]">
-        {days.map((day) => {
-          const dayEvents = getEventsForDay(day);
-          const currentDay = isToday(day);
-
-          return (
-            <div
-              key={day.toISOString()}
-              onClick={() => onDateChange?.(day)}
-              className={`p-3 flex flex-col transition-colors ${
-                currentDay ? "bg-indigo-50/20" : "bg-white"
-              }`}
-            >
-              {/* Day Title Header */}
-              <div className="text-center pb-3 mb-3 border-b border-slate-100">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+      <div className="hidden md:flex md:flex-col md:flex-1 md:min-h-0 overflow-hidden bg-white">
+        {/* Pinned 7-Day Header */}
+        <div className="grid grid-cols-7 divide-x divide-slate-200/80 bg-white border-b border-slate-200 shrink-0 sticky top-0 z-10 shadow-2xs">
+          {days.map((day) => {
+            const currentDay = isToday(day);
+            return (
+              <div
+                key={day.toISOString()}
+                onClick={() => onDateChange?.(day)}
+                className={`py-2 px-2 text-center transition-colors cursor-pointer ${
+                  currentDay ? "bg-indigo-50/40" : "bg-white hover:bg-slate-50/70"
+                }`}
+              >
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   {format(day, "EEE")}
                 </div>
                 <div
-                  className={`text-sm font-semibold mx-auto mt-1 w-7 h-7 flex items-center justify-center rounded-lg ${
+                  className={`text-xs font-bold mx-auto mt-0.5 w-6 h-6 flex items-center justify-center rounded-lg ${
                     currentDay
                       ? "bg-indigo-600 text-white shadow-xs"
                       : "text-slate-800"
@@ -195,11 +193,25 @@ export function WeekView({
                   {format(day, "d")}
                 </div>
               </div>
+            );
+          })}
+        </div>
 
-              {/* Event Stack for Day */}
-              <div className="space-y-2 flex-1">
+        {/* Scrollable 7-Day Events Grid */}
+        <div className="grid grid-cols-7 divide-x divide-slate-200/80 bg-white flex-1 min-h-0 overflow-y-auto">
+          {days.map((day) => {
+            const dayEvents = getEventsForDay(day);
+            const currentDay = isToday(day);
+
+            return (
+              <div
+                key={day.toISOString()}
+                className={`p-2.5 space-y-2 min-h-full transition-colors ${
+                  currentDay ? "bg-indigo-50/15" : "bg-white"
+                }`}
+              >
                 {dayEvents.length === 0 ? (
-                  <div className="text-center py-8 text-[11px] text-slate-300">
+                  <div className="text-center py-8 text-[11px] text-slate-300 select-none">
                     No events
                   </div>
                 ) : (
@@ -219,7 +231,7 @@ export function WeekView({
                           e.stopPropagation();
                           onSelectEvent(ev);
                         }}
-                        className={`p-2.5 rounded-xl border ${catStyle.border} ${catStyle.bg} hover:shadow-xs transition-all cursor-pointer group`}
+                        className={`p-2.5 rounded-xl border ${catStyle.border} ${catStyle.bg} hover:shadow-xs transition-colors cursor-pointer group`}
                       >
                         <div className="flex items-center justify-between mb-1">
                           <span className={`text-[10px] font-semibold ${catStyle.text} flex items-center gap-1`}>
@@ -244,9 +256,9 @@ export function WeekView({
                   })
                 )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

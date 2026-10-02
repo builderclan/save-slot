@@ -55,9 +55,9 @@ export function MonthView({
   const selectedDayEvents = getEventsForDay(activeDate);
 
   return (
-    <div className="w-full bg-white flex flex-col select-none lg:flex-1 lg:min-h-full">
+    <div className="w-full h-full bg-white flex flex-col select-none min-h-0 overflow-hidden">
       {/* Weekday Names Header matching Image 1 */}
-      <div className="grid grid-cols-7 border-b border-slate-200 divide-x divide-slate-200/80 text-center py-2 bg-white text-xs font-semibold text-slate-500 shrink-0">
+      <div className="grid grid-cols-7 border-b border-slate-200 divide-x divide-slate-200/80 text-center py-2 bg-white text-xs font-semibold text-slate-500 shrink-0 sticky top-0 z-10 shadow-2xs">
         <div><span className="sm:hidden">Sun</span><span className="hidden sm:inline">Sunday</span></div>
         <div><span className="sm:hidden">Mon</span><span className="hidden sm:inline">Monday</span></div>
         <div><span className="sm:hidden">Tue</span><span className="hidden sm:inline">Tuesday</span></div>
@@ -69,7 +69,7 @@ export function MonthView({
 
       {/* Days Grid: Compact on mobile (< lg), full-height flex-1 on desktop (lg+) */}
       <div
-        className="calendar-month-grid grid grid-cols-7 divide-x divide-y divide-slate-200/80 bg-white"
+        className="calendar-month-grid grid grid-cols-7 divide-x divide-y divide-slate-200/80 bg-white flex-1 min-h-0 overflow-hidden"
         style={{
           ["--week-rows" as string]: weekCount,
         }}
@@ -93,7 +93,7 @@ export function MonthView({
                   handleDateChange(day);
                 }
               }}
-              className={`min-h-[46px] sm:min-h-[64px] lg:min-h-0 h-full p-1 sm:p-1.5 lg:p-2 flex flex-col transition-colors cursor-pointer group focus:outline-none focus:bg-indigo-50/30 ${
+              className={`min-h-[46px] sm:min-h-[64px] lg:min-h-0 h-full p-1 sm:p-1.5 lg:p-2 flex flex-col transition-colors cursor-pointer group focus:outline-none focus:bg-indigo-50/30 overflow-hidden ${
                 !isCurrentMonth ? "bg-slate-50/40 text-slate-400" : "hover:bg-slate-50/70"
               }`}
             >

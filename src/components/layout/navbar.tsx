@@ -106,11 +106,11 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full h-14 border-b border-slate-200 bg-white/95 backdrop-blur-md">
       {/* Accessible h1 heading for document hierarchy */}
       <h1 className="sr-only">SafeSlot • Campus Events & Scheduling • Albertian Institute of Science & Technology (AISAT)</h1>
 
-      <div className="w-full px-3 sm:px-6 h-14 relative flex items-center justify-between gap-2 sm:gap-4">
+      <div className="w-full px-3 sm:px-6 h-full relative flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand + Date Controls if on Calendar Home */}
         <div className="flex items-center gap-1.5 sm:gap-4 min-w-0 shrink">
           {/* Brand & Campus Badge */}
