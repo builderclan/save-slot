@@ -242,23 +242,23 @@ export default function PrincipalDeskPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-slate-400">Loading Principal Desk...</p>
+      <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center text-center bg-white">
+        <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-xs text-slate-400 font-medium">Loading Principal Desk...</p>
       </div>
     );
   }
 
   return (
-    <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 lg:px-6 py-4 min-h-[calc(100vh-3.5rem)] flex flex-col">
-      {/* FEEDBACK TOAST */}
+    <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row overflow-hidden bg-white relative">
+      {/* FLOATING TOAST NOTIFICATION */}
       {bannerNotice && (
         <div
           role="status"
-          className={`mb-4 p-3.5 rounded-xl border text-xs flex items-center justify-between shadow-2xs ${
+          className={`fixed top-16 right-6 z-50 p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-top-2 ${
             bannerNotice.type === "success"
-              ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-              : "bg-slate-100 border-slate-300 text-slate-800"
+              ? "bg-emerald-50/95 border-emerald-200 text-emerald-950"
+              : "bg-slate-900/95 border-slate-800 text-white"
           }`}
         >
           <div className="flex items-center gap-2">
@@ -275,10 +275,8 @@ export default function PrincipalDeskPage() {
         </div>
       )}
 
-      {/* 3-PANE WORKSPACE CARD */}
-      <div className="flex-1 flex flex-col lg:flex-row rounded-2xl border border-slate-200/90 bg-white shadow-xs overflow-hidden min-h-[640px] lg:h-[calc(100vh-6.5rem)]">
-        {/* PANE 1: LEFT NAVIGATION SIDEBAR */}
-        <aside className="w-full lg:w-56 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/70 p-3 sm:p-4 flex flex-col justify-between">
+      {/* PANE 1: FULL SCREEN LEFT NAVIGATION SIDEBAR */}
+      <aside className="w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/80 p-3.5 sm:p-4 flex flex-col justify-between overflow-y-auto">
           <div className="space-y-4">
             <div>
               <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-2">
@@ -684,7 +682,6 @@ export default function PrincipalDeskPage() {
             </div>
           )}
         </div>
-      </div>
 
       {/* STUDENT DETAIL PREVIEW MODAL */}
       {previewEvent && (
