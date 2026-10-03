@@ -88,6 +88,7 @@ export default function StudentNoticeBoardPage() {
       fullName: string;
       isLead: boolean;
       isAdmin: boolean;
+      isPrincipal: boolean;
       leadCommunities?: Array<{ id: string; name: string }>;
     };
   } | null>(null);
@@ -150,7 +151,10 @@ export default function StudentNoticeBoardPage() {
 
   // Handle Create Event button
   const handleCreateEventClick = () => {
-    if (userSession?.authenticated && (userSession.user?.isLead || userSession.user?.isAdmin)) {
+    if (
+      userSession?.authenticated &&
+      (userSession.user?.isLead || userSession.user?.isAdmin || userSession.user?.isPrincipal)
+    ) {
       setIsProposeOpen(true);
     } else {
       router.push("/login");
@@ -274,17 +278,19 @@ export default function StudentNoticeBoardPage() {
             )}
           </div>
 
-          {/* Quick Create Event button on mobile/tablet for Leads/Admins */}
-          {userSession?.authenticated && (userSession.user?.isLead || userSession.user?.isAdmin) && (
-            <button
-              type="button"
-              onClick={handleCreateEventClick}
-              className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Create</span>
-            </button>
-          )}
+          {userSession?.authenticated &&
+            (userSession.user?.isLead ||
+              userSession.user?.isAdmin ||
+              userSession.user?.isPrincipal) && (
+              <button
+                type="button"
+                onClick={handleCreateEventClick}
+                className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Create</span>
+              </button>
+            )}
 
           <button
             type="button"
@@ -330,17 +336,19 @@ export default function StudentNoticeBoardPage() {
           </button>
         </div>
 
-        {/* "+ Create Event" Primary Action Button (Only for Leads and Admins) */}
-        {userSession?.authenticated && (userSession.user?.isLead || userSession.user?.isAdmin) && (
-          <button
-            type="button"
-            onClick={handleCreateEventClick}
-            className="w-full py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
-          >
-            <Plus className="w-4 h-4 text-indigo-600" />
-            <span>Create Event</span>
-          </button>
-        )}
+        {userSession?.authenticated &&
+          (userSession.user?.isLead ||
+            userSession.user?.isAdmin ||
+            userSession.user?.isPrincipal) && (
+            <button
+              type="button"
+              onClick={handleCreateEventClick}
+              className="w-full py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
+            >
+              <Plus className="w-4 h-4 text-indigo-600" />
+              <span>Create Event</span>
+            </button>
+          )}
 
           {/* Mini Calendar Picker matching Image 1 */}
           <div className="pt-1">

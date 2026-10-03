@@ -130,8 +130,15 @@ async function seedDatabase() {
     }
   }
 
-  // 4. Users (Admin + 3 Leads)
+  // 4. Users (Principal + Admin + 3 Leads)
   const usersToSeed = [
+    {
+      email: "principal@campus.edu",
+      fullName: "Dr. K. S. Mathew (Principal)",
+      role: "principal",
+      password: "principal123",
+      assignedCommunitySlug: null,
+    },
     {
       email: "admin@campus.edu",
       fullName: "Campus Dean of Affairs",

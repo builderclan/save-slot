@@ -95,8 +95,8 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('admin', 'lead')),
-    community_id UUID REFERENCES communities(id) ON DELETE SET NULL, -- Null for admins
+    role VARCHAR(20) NOT NULL CHECK (role IN ('student', 'organizer', 'admin', 'principal')),
+    community_id UUID REFERENCES communities(id) ON DELETE SET NULL, -- Null for admins and principal
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()
 );

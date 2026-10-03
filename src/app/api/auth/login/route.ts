@@ -60,7 +60,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const redirectUrl = role === "admin" ? "/admin" : role === "organizer" ? "/lead" : "/";
+    const redirectUrl =
+      role === "principal" ? "/principal" : role === "admin" ? "/admin" : role === "organizer" ? "/lead" : "/";
 
     return NextResponse.json({
       success: true,

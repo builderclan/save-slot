@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "organizer" | "student";
+export type UserRole = "admin" | "principal" | "organizer" | "student";
 
 export type EventCategory =
   | "Tech"
