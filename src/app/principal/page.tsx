@@ -15,6 +15,8 @@ import {
   Inbox,
   ShieldCheck,
   ChevronLeft,
+  ChevronRight,
+  Search,
 } from "lucide-react";
 import { CampusEvent, Venue } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
@@ -71,6 +73,11 @@ export default function PrincipalDeskPage() {
 
   // Banner notification
   const [bannerNotice, setBannerNotice] = useState<{ message: string; type: "success" | "info" } | null>(null);
+
+  // Search & Filter states for Calendar & History tabs
+  const [calendarSearch, setCalendarSearch] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<"all" | "published" | "rejected">("all");
 
   const loadData = useCallback(async () => {
     try {
@@ -130,6 +137,32 @@ export default function PrincipalDeskPage() {
   const historyEvents = useMemo(() => {
     return events.filter((e) => e.status === "published" || e.status === "rejected");
   }, [events]);
+
+  const filteredApprovedEvents = useMemo(() => {
+    if (!calendarSearch.trim()) return approvedEvents;
+    const q = calendarSearch.toLowerCase().trim();
+    return approvedEvents.filter(
+      (ev) =>
+        ev.title.toLowerCase().includes(q) ||
+        (ev.community?.name && ev.community.name.toLowerCase().includes(q)) ||
+        (ev.venue?.name && ev.venue.name.toLowerCase().includes(q)) ||
+        ev.category.toLowerCase().includes(q)
+    );
+  }, [approvedEvents, calendarSearch]);
+
+  const filteredHistoryEvents = useMemo(() => {
+    return historyEvents.filter((ev) => {
+      if (historyStatusFilter !== "all" && ev.status !== historyStatusFilter) return false;
+      if (!historySearch.trim()) return true;
+      const q = historySearch.toLowerCase().trim();
+      return (
+        ev.title.toLowerCase().includes(q) ||
+        (ev.community?.name && ev.community.name.toLowerCase().includes(q)) ||
+        (ev.venue?.name && ev.venue.name.toLowerCase().includes(q)) ||
+        (ev.rejection_reason && ev.rejection_reason.toLowerCase().includes(q))
+      );
+    });
+  }, [historyEvents, historyStatusFilter, historySearch]);
 
   // Current active event for detail inspection
   const activeEvent = useMemo(() => {
@@ -658,87 +691,281 @@ export default function PrincipalDeskPage() {
 
           {/* TAB 2: MASTER CAMPUS SCHEDULE */}
           {activeTab === "master-schedule" && (
-            <div className="flex-1 p-5 sm:p-6 space-y-4 overflow-y-auto">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>All currently approved and published events across campus ({approvedEvents.length})</span>
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/40">
+              {/* Header Toolbar */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900">Master Campus Schedule</h3>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                      {filteredApprovedEvents.length} {filteredApprovedEvents.length === 1 ? "event" : "events"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    All currently approved and published events across campus
+                  </p>
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={calendarSearch}
+                    onChange={(e) => setCalendarSearch(e.target.value)}
+                    placeholder="Search events, clubs, venues..."
+                    className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors"
+                  />
+                  {calendarSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCalendarSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-700 min-w-[620px]">
-                    <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-semibold tracking-wider border-b border-slate-200">
-                      <tr>
-                        <th className="p-4">Event Title</th>
-                        <th className="p-4">Host Club</th>
-                        <th className="p-4">Venue</th>
-                        <th className="p-4">Scheduled Date & Time</th>
-                        <th className="p-4">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {approvedEvents.map((ev) => (
-                        <tr key={ev.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="p-4 font-bold text-slate-900">
-                            {ev.title}
-                            <div className="text-[10px] text-slate-400 font-normal">
-                              Category: {ev.category}
+              {/* Content Area: Full-screen List on Mobile, Data Table on Desktop */}
+              <div className="flex-1 overflow-y-auto p-0 md:p-6 bg-white md:bg-transparent">
+                {filteredApprovedEvents.length === 0 ? (
+                  <div className="text-center py-12 p-6 md:rounded-xl md:border md:border-dashed md:border-slate-200 bg-white">
+                    <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-slate-700">No scheduled events found</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {calendarSearch ? "Try adjusting your search query." : "No approved campus events yet."}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* MOBILE FULL-SCREEN LIST (< md) */}
+                    <div className="md:hidden divide-y divide-slate-100 bg-white border-b border-slate-200">
+                      {filteredApprovedEvents.map((ev) => (
+                        <button
+                          key={ev.id}
+                          type="button"
+                          onClick={() => setPreviewEvent(ev)}
+                          className="w-full text-left px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <CategoryBadge category={ev.category} />
+                              <span className="text-[11px] font-medium text-slate-500 truncate">
+                                {ev.community?.name || "Campus Community"}
+                              </span>
                             </div>
-                          </td>
-                          <td className="p-4 font-medium text-slate-800">{ev.community?.name}</td>
-                          <td className="p-4 text-slate-600">
-                            <span className="font-semibold text-slate-800">{ev.venue?.name}</span>
-                            <span className="block text-[10px] text-slate-400">{ev.venue?.building}</span>
-                          </td>
-                          <td className="p-4 text-slate-600">
-                            <span className="font-semibold text-slate-800">
-                              {format(parseISO(ev.start_time), "MMM d, yyyy")}
-                            </span>
-                            <span className="block text-[10px] text-slate-400">
-                              {format(parseISO(ev.start_time), "h:mm a")} –{" "}
-                              {format(parseISO(ev.end_time), "h:mm a")}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
-                              <Check className="w-3 h-3 text-emerald-600" />
+                            <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-2">
+                              {ev.title}
+                            </h4>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400">
+                              <span className="inline-flex items-center gap-1 text-slate-500">
+                                <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span>
+                                  {format(parseISO(ev.start_time), "EEE, MMM d")} • {format(parseISO(ev.start_time), "h:mm a")}
+                                </span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-slate-500">
+                                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span className="truncate">{ev.venue?.name || "Campus Venue"}</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end justify-between shrink-0 self-stretch">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                               Live
                             </span>
-                          </td>
-                        </tr>
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                          </div>
+                        </button>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                    </div>
+
+                    {/* DESKTOP TABLE VIEW (md+) */}
+                    <div className="hidden md:block rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+                      <table className="w-full text-left text-xs text-slate-700">
+                        <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-semibold tracking-wider border-b border-slate-200">
+                          <tr>
+                            <th className="py-3 px-4">Event Title</th>
+                            <th className="py-3 px-4">Host Club</th>
+                            <th className="py-3 px-4">Venue</th>
+                            <th className="py-3 px-4">Date & Time</th>
+                            <th className="py-3 px-4 text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredApprovedEvents.map((ev) => (
+                            <tr
+                              key={ev.id}
+                              onClick={() => setPreviewEvent(ev)}
+                              className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                            >
+                              <td className="py-3.5 px-4 font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                {ev.title}
+                                <div className="text-[11px] text-slate-400 font-normal">
+                                  {ev.category}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 font-medium text-slate-700">
+                                {ev.community?.name || "—"}
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-600">
+                                <span className="font-medium text-slate-800">{ev.venue?.name}</span>
+                                {ev.venue?.building && (
+                                  <span className="block text-[11px] text-slate-400">{ev.venue.building}</span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-600">
+                                <span className="font-medium text-slate-800">
+                                  {format(parseISO(ev.start_time), "MMM d, yyyy")}
+                                </span>
+                                <span className="block text-[11px] text-slate-400">
+                                  {format(parseISO(ev.start_time), "h:mm a")} – {format(parseISO(ev.end_time), "h:mm a")}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  Live
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
 
           {/* TAB 3: DECISION HISTORY */}
           {activeTab === "history" && (
-            <div className="flex-1 p-5 sm:p-6 space-y-4 overflow-y-auto">
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>Historical record of approved and declined proposals</span>
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/40">
+              {/* Header Toolbar */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900">Decision History</h3>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                      {filteredHistoryEvents.length} {filteredHistoryEvents.length === 1 ? "record" : "records"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Audit trail of all approved and declined campus proposals
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  {/* Status Filter Buttons */}
+                  <div className="inline-flex p-0.5 rounded-lg bg-slate-100 border border-slate-200/80 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryStatusFilter("all")}
+                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer ${
+                        historyStatusFilter === "all"
+                          ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryStatusFilter("published")}
+                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer ${
+                        historyStatusFilter === "published"
+                          ? "bg-white text-emerald-800 shadow-2xs font-semibold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      Approved
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryStatusFilter("rejected")}
+                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer ${
+                        historyStatusFilter === "rejected"
+                          ? "bg-white text-rose-800 shadow-2xs font-semibold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      Declined
+                    </button>
+                  </div>
+
+                  {/* Search */}
+                  <div className="relative w-full sm:w-56">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                      placeholder="Search history..."
+                      className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors"
+                    />
+                    {historySearch && (
+                      <button
+                        type="button"
+                        onClick={() => setHistorySearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              <div className="rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-700 min-w-[620px]">
-                    <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-semibold tracking-wider border-b border-slate-200">
-                      <tr>
-                        <th className="p-4">Event</th>
-                        <th className="p-4">Community</th>
-                        <th className="p-4">Venue</th>
-                        <th className="p-4">Decision</th>
-                        <th className="p-4">Remarks / Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {historyEvents.map((ev) => (
-                        <tr key={ev.id} className="hover:bg-slate-50/70 transition-colors">
-                          <td className="p-4 font-bold text-slate-900">{ev.title}</td>
-                          <td className="p-4 font-medium text-slate-800">{ev.community?.name}</td>
-                          <td className="p-4 text-slate-600">{ev.venue?.name}</td>
-                          <td className="p-4">
+              {/* Content Area: Full-screen List on Mobile, Data Table on Desktop */}
+              <div className="flex-1 overflow-y-auto p-0 md:p-6 bg-white md:bg-transparent">
+                {filteredHistoryEvents.length === 0 ? (
+                  <div className="text-center py-12 p-6 md:rounded-xl md:border md:border-dashed md:border-slate-200 bg-white">
+                    <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-slate-700">No decision records found</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {historySearch ? "Try adjusting your search or status filter." : "No recorded decisions yet."}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* MOBILE FULL-SCREEN LIST (< md) */}
+                    <div className="md:hidden divide-y divide-slate-100 bg-white border-b border-slate-200">
+                      {filteredHistoryEvents.map((ev) => (
+                        <button
+                          key={ev.id}
+                          type="button"
+                          onClick={() => setPreviewEvent(ev)}
+                          className="w-full text-left px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[11px] font-medium text-slate-500 truncate">
+                                {ev.community?.name || "Campus Community"}
+                              </span>
+                              <span className="text-[10px] text-slate-300">•</span>
+                              <span className="text-[11px] text-slate-400">
+                                {format(parseISO(ev.start_time), "MMM d")}
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-2">
+                              {ev.title}
+                            </h4>
+                            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
+                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{ev.venue?.name || "Venue"}</span>
+                            </div>
+                            {ev.status === "rejected" && ev.rejection_reason && (
+                              <div className="mt-2 p-2 rounded-lg bg-rose-50/80 border border-rose-100 text-[11px] text-rose-800 leading-relaxed italic">
+                                &ldquo;{ev.rejection_reason}&rdquo;
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col items-end justify-between shrink-0 self-stretch">
                             <span
                               className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                                 ev.status === "published"
@@ -746,17 +973,81 @@ export default function PrincipalDeskPage() {
                                   : "bg-rose-50 border-rose-200 text-rose-800"
                               }`}
                             >
-                              {ev.status === "published" ? "Approved" : "Declined"}
+                              {ev.status === "published" ? (
+                                <>
+                                  <Check className="w-2.5 h-2.5 text-emerald-600" />
+                                  Approved
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-2.5 h-2.5 text-rose-600" />
+                                  Declined
+                                </>
+                              )}
                             </span>
-                          </td>
-                          <td className="p-4 text-xs text-slate-600 italic">
-                            {ev.rejection_reason || "Approved for notice board publication."}
-                          </td>
-                        </tr>
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                          </div>
+                        </button>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                    </div>
+
+                    {/* DESKTOP TABLE VIEW (md+) */}
+                    <div className="hidden md:block rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+                      <table className="w-full text-left text-xs text-slate-700">
+                        <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-semibold tracking-wider border-b border-slate-200">
+                          <tr>
+                            <th className="py-3 px-4">Event</th>
+                            <th className="py-3 px-4">Community</th>
+                            <th className="py-3 px-4">Venue</th>
+                            <th className="py-3 px-4">Decision</th>
+                            <th className="py-3 px-4">Remarks / Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredHistoryEvents.map((ev) => (
+                            <tr
+                              key={ev.id}
+                              onClick={() => setPreviewEvent(ev)}
+                              className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                            >
+                              <td className="py-3.5 px-4 font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                {ev.title}
+                              </td>
+                              <td className="py-3.5 px-4 font-medium text-slate-700">
+                                {ev.community?.name || "—"}
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-600">{ev.venue?.name}</td>
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    ev.status === "published"
+                                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                                      : "bg-rose-50 border-rose-200 text-rose-800"
+                                  }`}
+                                >
+                                  {ev.status === "published" ? (
+                                    <>
+                                      <Check className="w-2.5 h-2.5 text-emerald-600" />
+                                      Approved
+                                    </>
+                                  ) : (
+                                    <>
+                                      <X className="w-2.5 h-2.5 text-rose-600" />
+                                      Declined
+                                    </>
+                                  )}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-xs text-slate-600 italic max-w-xs truncate">
+                                {ev.rejection_reason || "Approved for notice board publication."}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
