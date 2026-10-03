@@ -2,23 +2,25 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { format, parseISO } from "date-fns";
+import Image from "next/image";
+import { format, parseISO, differenceInDays } from "date-fns";
 import {
-  GraduationCap,
-  CheckCircle2,
+  Check,
+  X,
   Clock,
   Calendar,
   MapPin,
-  ShieldAlert,
-  Check,
-  X,
-  FileCheck,
-  Building,
-  CalendarDays,
+  Eye,
+  CheckCircle2,
+  Inbox,
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
+  Search,
 } from "lucide-react";
 import { CampusEvent, Venue } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
+import { EventDetailModal } from "@/components/events/event-detail-modal";
 
 interface PrincipalSession {
   id: string;
@@ -29,12 +31,22 @@ interface PrincipalSession {
   isPrincipal: boolean;
 }
 
+const CATEGORY_DEFAULT_IMAGES: Record<string, string> = {
+  Tech: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
+  Arts: "https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=800&auto=format&fit=crop&q=80",
+  Career: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&auto=format&fit=crop&q=80",
+  Social: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=80",
+  Sports: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800&auto=format&fit=crop&q=80",
+  Academic: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80",
+  Workshop: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=800&auto=format&fit=crop&q=80",
+};
+
 const REJECTION_PRESETS = [
   "Venue is reserved for an official institutional assembly / examination.",
-  "Event proposal violates the campus quiet hours or academic schedule.",
+  "Event proposal violates campus quiet hours or academic schedule.",
   "Please coordinate with Student Affairs for security and facility clearance.",
   "Auditorium audio/visual equipment undergoing scheduled maintenance.",
-  "High likelihood of student turnout overlap with another major campus festival.",
+  "High likelihood of student turnout overlap with another major campus event.",
 ];
 
 export default function PrincipalDeskPage() {
@@ -43,21 +55,34 @@ export default function PrincipalDeskPage() {
   const [session, setSession] = useState<PrincipalSession | null>(null);
   const [events, setEvents] = useState<CampusEvent[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
-  const [activeTab, setActiveTab] = useState<"pending" | "master-schedule" | "history">("pending");
+
+  // Navigation tab: 'inbox' | 'master-schedule' | 'history'
+  const [activeTab, setActiveTab] = useState<"inbox" | "master-schedule" | "history">("inbox");
+
+  // Selected event for split view
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [mobileDetailView, setMobileDetailView] = useState(false);
+
+  // Preview modal state
+  const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
 
   // Rejection modal state
   const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
   const [rejectionNote, setRejectionNote] = useState("");
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
-  // Success message toast
+  // Banner notification
   const [bannerNotice, setBannerNotice] = useState<{ message: string; type: "success" | "info" } | null>(null);
+
+  // Search & Filter states for Calendar & History tabs
+  const [calendarSearch, setCalendarSearch] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
+  const [historyStatusFilter, setHistoryStatusFilter] = useState<"all" | "published" | "rejected">("all");
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
 
-      // 1. Auth check: Must be Principal or Admin
       const meRes = await fetch("/api/auth/me");
       const meData = await meRes.json();
       if (!meData.authenticated || (!meData.user.isPrincipal && !meData.user.isAdmin)) {
@@ -66,7 +91,6 @@ export default function PrincipalDeskPage() {
       }
       setSession(meData.user);
 
-      // 2. Fetch all events across campus
       const [evRes, venuesRes] = await Promise.all([
         fetch("/api/lead/events"),
         fetch("/api/venues"),
@@ -74,7 +98,16 @@ export default function PrincipalDeskPage() {
 
       if (evRes.ok) {
         const evData = await evRes.json();
-        setEvents(evData.events || []);
+        const evList: CampusEvent[] = evData.events || [];
+        setEvents(evList);
+
+        // Pre-select first pending event
+        const firstPending = evList.find((e) => e.status === "pending");
+        if (firstPending) {
+          setSelectedEventId(firstPending.id);
+        } else if (evList.length > 0) {
+          setSelectedEventId(evList[0].id);
+        }
       }
 
       if (venuesRes.ok) {
@@ -105,7 +138,64 @@ export default function PrincipalDeskPage() {
     return events.filter((e) => e.status === "published" || e.status === "rejected");
   }, [events]);
 
-  // Actions
+  const filteredApprovedEvents = useMemo(() => {
+    if (!calendarSearch.trim()) return approvedEvents;
+    const q = calendarSearch.toLowerCase().trim();
+    return approvedEvents.filter(
+      (ev) =>
+        ev.title.toLowerCase().includes(q) ||
+        (ev.community?.name && ev.community.name.toLowerCase().includes(q)) ||
+        (ev.venue?.name && ev.venue.name.toLowerCase().includes(q)) ||
+        ev.category.toLowerCase().includes(q)
+    );
+  }, [approvedEvents, calendarSearch]);
+
+  const filteredHistoryEvents = useMemo(() => {
+    return historyEvents.filter((ev) => {
+      if (historyStatusFilter !== "all" && ev.status !== historyStatusFilter) return false;
+      if (!historySearch.trim()) return true;
+      const q = historySearch.toLowerCase().trim();
+      return (
+        ev.title.toLowerCase().includes(q) ||
+        (ev.community?.name && ev.community.name.toLowerCase().includes(q)) ||
+        (ev.venue?.name && ev.venue.name.toLowerCase().includes(q)) ||
+        (ev.rejection_reason && ev.rejection_reason.toLowerCase().includes(q))
+      );
+    });
+  }, [historyEvents, historyStatusFilter, historySearch]);
+
+  // Current active event for detail inspection
+  const activeEvent = useMemo(() => {
+    if (!selectedEventId) return pendingEvents[0] || events[0] || null;
+    return events.find((e) => e.id === selectedEventId) || pendingEvents[0] || null;
+  }, [events, selectedEventId, pendingEvents]);
+
+  // Keyboard navigation for queue items
+  useEffect(() => {
+    if (activeTab !== "inbox" || pendingEvents.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      const currentIndex = pendingEvents.findIndex((ev) => ev.id === activeEvent?.id);
+      if (currentIndex === -1) return;
+
+      if (e.key === "ArrowDown" || e.key === "j") {
+        e.preventDefault();
+        const nextIndex = Math.min(currentIndex + 1, pendingEvents.length - 1);
+        setSelectedEventId(pendingEvents[nextIndex].id);
+      } else if (e.key === "ArrowUp" || e.key === "k") {
+        e.preventDefault();
+        const prevIndex = Math.max(currentIndex - 1, 0);
+        setSelectedEventId(pendingEvents[prevIndex].id);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeTab, pendingEvents, activeEvent?.id]);
+
+  // Approve action
   const handleApprove = async (eventId: string) => {
     setActionInProgress(eventId);
     try {
@@ -119,17 +209,27 @@ export default function PrincipalDeskPage() {
         setEvents((prev) =>
           prev.map((e) => (e.id === eventId ? { ...e, status: "published" } : e))
         );
+
+        const remaining = pendingEvents.filter((e) => e.id !== eventId);
+        if (remaining.length > 0) {
+          setSelectedEventId(remaining[0].id);
+        } else {
+          setSelectedEventId(null);
+          setMobileDetailView(false);
+        }
+
         setBannerNotice({
-          message: `Official approval granted: "${updated.event?.title || "Event"}" is now live on the Student Notice Board.`,
+          message: `Approved: "${updated.event?.title || "Event"}" is now published on the Student Notice Board.`,
           type: "success",
         });
-        setTimeout(() => setBannerNotice(null), 6000);
+        setTimeout(() => setBannerNotice(null), 5000);
       }
     } finally {
       setActionInProgress(null);
     }
   };
 
+  // Reject action
   const handleOpenReject = (ev: CampusEvent) => {
     setRejectingEvent(ev);
     setRejectionNote(REJECTION_PRESETS[0]);
@@ -159,11 +259,20 @@ export default function PrincipalDeskPage() {
               : e
           )
         );
+
+        const remaining = pendingEvents.filter((e) => e.id !== eventId);
+        if (remaining.length > 0) {
+          setSelectedEventId(remaining[0].id);
+        } else {
+          setSelectedEventId(null);
+          setMobileDetailView(false);
+        }
+
         setBannerNotice({
-          message: `Proposal declined with feedback sent to ${rejectingEvent.community?.name || "Community Lead"}.`,
+          message: `Declined: Feedback note sent to ${rejectingEvent.community?.name || "Organizer"}.`,
           type: "info",
         });
-        setTimeout(() => setBannerNotice(null), 6000);
+        setTimeout(() => setBannerNotice(null), 5000);
         setRejectingEvent(null);
         setRejectionNote("");
       }
@@ -174,495 +283,870 @@ export default function PrincipalDeskPage() {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-24 text-center">
-        <div className="w-10 h-10 border-3 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <h2 className="text-sm font-semibold text-slate-800">Authenticating Executive Desk...</h2>
-        <p className="text-xs text-slate-400 mt-1">Connecting to institutional records</p>
+      <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center text-center bg-white">
+        <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-xs text-slate-400 font-medium">Loading Principal Desk...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-gradient-to-b from-slate-50 via-purple-50/20 to-slate-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        {/* EXECUTIVE HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 mb-8 border-b border-slate-200">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100/80 border border-purple-200 text-purple-900 text-xs font-semibold mb-2.5 shadow-2xs">
-              <GraduationCap className="w-3.5 h-3.5 text-purple-700" />
-              <span>Office of the Principal • Executive Approval Desk</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Campus Event Approvals & Governance
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Authorized signatory:{" "}
-              <strong className="text-slate-800 font-semibold">{session?.fullName}</strong>{" "}
-              <span className="text-slate-400 font-mono text-xs">({session?.email})</span>
-            </p>
+    <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row overflow-hidden bg-white relative">
+      {/* FLOATING TOAST NOTIFICATION */}
+      {bannerNotice && (
+        <div
+          role="status"
+          className={`fixed top-16 right-6 z-50 p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-top-2 ${
+            bannerNotice.type === "success"
+              ? "bg-emerald-50/95 border-emerald-200 text-emerald-950"
+              : "bg-slate-900/95 border-slate-800 text-white"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-semibold">{bannerNotice.message}</span>
           </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors shadow-2xs flex items-center gap-1.5"
-            >
-              <Calendar className="w-3.5 h-3.5 text-slate-500" />
-              <span>Public Calendar</span>
-            </Link>
-            {session?.isAdmin && (
-              <Link
-                href="/admin"
-                className="px-3.5 py-2 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100/70 text-xs font-semibold text-amber-900 transition-colors shadow-2xs flex items-center gap-1.5"
-              >
-                <span>Admin Operations</span>
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* FEEDBACK BANNER */}
-        {bannerNotice && (
-          <div
-            role="status"
-            className={`mb-6 p-4 rounded-2xl border text-xs flex items-center gap-3 shadow-xs transition-all ${
-              bannerNotice.type === "success"
-                ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                : "bg-slate-100 border-slate-300 text-slate-800"
-            }`}
+          <button
+            type="button"
+            onClick={() => setBannerNotice(null)}
+            className="text-slate-400 hover:text-slate-600 cursor-pointer"
           >
-            <CheckCircle2
-              className={`w-4 h-4 shrink-0 ${
-                bannerNotice.type === "success" ? "text-emerald-600" : "text-slate-600"
-              }`}
-            />
-            <p className="font-medium flex-1">{bannerNotice.message}</p>
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* PANE 1: FULL SCREEN LEFT NAVIGATION SIDEBAR / MOBILE SEGMENTED CONTROL */}
+      <aside className={`w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200/90 bg-white lg:bg-slate-50/80 p-2 sm:p-3 lg:p-4 flex-col lg:justify-between ${mobileDetailView ? "hidden lg:flex" : "flex"}`}>
+        <div className="space-y-2 lg:space-y-4">
+          <div className="hidden lg:block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-2">
+            Desk Views
+          </div>
+          <nav className="grid grid-cols-3 lg:flex lg:flex-col gap-1 p-1 lg:p-0 bg-slate-100/80 lg:bg-transparent rounded-xl lg:rounded-none w-full">
             <button
               type="button"
-              onClick={() => setBannerNotice(null)}
-              className="text-slate-400 hover:text-slate-600 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        {/* EXECUTIVE KPI CARDS */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <div className="p-4 sm:p-5 rounded-2xl border border-purple-200/90 bg-white shadow-xs">
-            <div className="flex items-center justify-between text-xs text-purple-700 font-semibold mb-1">
-              <span>Pending Sign-off</span>
-              <FileCheck className="w-4 h-4 text-purple-600" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-purple-950">
-              {pendingEvents.length}
-            </div>
-            <div className="text-[11px] text-purple-600/80 mt-1">Requires principal authorization</div>
-          </div>
-
-          <div className="p-4 sm:p-5 rounded-2xl border border-emerald-200/90 bg-white shadow-xs">
-            <div className="flex items-center justify-between text-xs text-emerald-700 font-semibold mb-1">
-              <span>Approved & Live</span>
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-emerald-950">
-              {approvedEvents.length}
-            </div>
-            <div className="text-[11px] text-emerald-600/80 mt-1">Visible on student board</div>
-          </div>
-
-          <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-600 font-semibold mb-1">
-              <span>Bookable Venues</span>
-              <Building className="w-4 h-4 text-slate-500" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900">{venues.length}</div>
-            <div className="text-[11px] text-slate-400 mt-1">Auditoriums & halls active</div>
-          </div>
-
-          <div className="p-4 sm:p-5 rounded-2xl border border-slate-200 bg-white shadow-xs">
-            <div className="flex items-center justify-between text-xs text-slate-600 font-semibold mb-1">
-              <span>Total Submissions</span>
-              <CalendarDays className="w-4 h-4 text-slate-500" />
-            </div>
-            <div className="text-2xl sm:text-3xl font-bold text-slate-900">{events.length}</div>
-            <div className="text-[11px] text-slate-400 mt-1">Full academic semester</div>
-          </div>
-        </div>
-
-        {/* TAB CONTROLS */}
-        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-200/70 w-fit mb-6 shadow-inner text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setActiveTab("pending")}
-            className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === "pending"
-                ? "bg-white text-purple-950 shadow-xs font-bold"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <span>Proposals Awaiting Approval</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] ${
-                activeTab === "pending"
-                  ? "bg-purple-100 text-purple-800"
-                  : "bg-slate-300 text-slate-700"
+              onClick={() => {
+                setActiveTab("inbox");
+                setMobileDetailView(false);
+              }}
+              className={`px-2 py-1.5 sm:px-3 sm:py-2 lg:py-2.5 rounded-lg lg:rounded-xl text-xs font-medium transition-all flex items-center justify-center lg:justify-between gap-1.5 sm:gap-2 cursor-pointer ${
+                activeTab === "inbox"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/80 lg:border-slate-200/90"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50 lg:hover:bg-slate-100/70 border border-transparent"
               }`}
             >
-              {pendingEvents.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("master-schedule")}
-            className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === "master-schedule"
-                ? "bg-white text-purple-950 shadow-xs font-bold"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <span>Campus Master Schedule</span>
-            <span
-              className={`px-2 py-0.5 rounded-full text-[10px] ${
-                activeTab === "master-schedule"
-                  ? "bg-purple-100 text-purple-800"
-                  : "bg-slate-300 text-slate-700"
-              }`}
-            >
-              {approvedEvents.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("history")}
-            className={`px-4 py-2 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
-              activeTab === "history"
-                ? "bg-white text-purple-950 shadow-xs font-bold"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            <span>Decision Log</span>
-          </button>
-        </div>
-
-        {/* TAB 1: PENDING PROPOSALS (TRIAGE) */}
-        {activeTab === "pending" && (
-          <div className="space-y-4">
-            {pendingEvents.length === 0 ? (
-              <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-xs">
-                <div className="w-12 h-12 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center mx-auto mb-3">
-                  <Check className="w-6 h-6" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900">All Proposals Cleared</h3>
-                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                  There are no pending campus club proposals awaiting executive sign-off at this time.
-                </p>
+              <div className="flex items-center gap-1.5">
+                <Inbox className={`w-3.5 h-3.5 shrink-0 ${activeTab === "inbox" ? "text-purple-600" : "text-slate-400"}`} />
+                <span className="truncate lg:hidden">Inbox</span>
+                <span className="hidden lg:inline">Review Inbox</span>
               </div>
-            ) : (
-              <div className="space-y-4">
-                {pendingEvents.map((ev) => {
-                  const isProcessing = actionInProgress === ev.id;
-                  const start = parseISO(ev.start_time);
-                  const end = parseISO(ev.end_time);
+              <span
+                className={`px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                  activeTab === "inbox"
+                    ? "bg-purple-100 text-purple-800"
+                    : "bg-slate-200/80 text-slate-600"
+                }`}
+              >
+                {pendingEvents.length}
+              </span>
+            </button>
 
-                  return (
-                    <div
-                      key={ev.id}
-                      className="rounded-3xl border border-purple-200/90 bg-white p-6 shadow-sm hover:shadow-md transition-all relative overflow-hidden"
-                    >
-                      {/* Top banner stripe */}
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 via-indigo-500 to-amber-500" />
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("master-schedule");
+                setMobileDetailView(false);
+              }}
+              className={`px-2 py-1.5 sm:px-3 sm:py-2 lg:py-2.5 rounded-lg lg:rounded-xl text-xs font-medium transition-all flex items-center justify-center lg:justify-between gap-1.5 sm:gap-2 cursor-pointer ${
+                activeTab === "master-schedule"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/80 lg:border-slate-200/90"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50 lg:hover:bg-slate-100/70 border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <Calendar className={`w-3.5 h-3.5 shrink-0 ${activeTab === "master-schedule" ? "text-purple-600" : "text-slate-400"}`} />
+                <span className="truncate lg:hidden">Calendar</span>
+                <span className="hidden lg:inline">Master Calendar</span>
+              </div>
+              <span
+                className={`px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                  activeTab === "master-schedule"
+                    ? "bg-purple-100 text-purple-800"
+                    : "bg-slate-200/80 text-slate-600"
+                }`}
+              >
+                {approvedEvents.length}
+              </span>
+            </button>
 
-                      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
-                        {/* Event Details */}
-                        <div className="space-y-3 flex-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-800 text-[11px] font-bold">
-                              {ev.community?.name || "Campus Club"}
-                            </span>
-                            <CategoryBadge category={ev.category} size="sm" />
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-semibold">
-                              <Clock className="w-3 h-3 text-amber-600" />
-                              Awaiting Sign-off
-                            </span>
-                          </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("history");
+                setMobileDetailView(false);
+              }}
+              className={`px-2 py-1.5 sm:px-3 sm:py-2 lg:py-2.5 rounded-lg lg:rounded-xl text-xs font-medium transition-all flex items-center justify-center lg:justify-between gap-1.5 sm:gap-2 cursor-pointer ${
+                activeTab === "history"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/80 lg:border-slate-200/90"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white/50 lg:hover:bg-slate-100/70 border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <Clock className={`w-3.5 h-3.5 shrink-0 ${activeTab === "history" ? "text-purple-600" : "text-slate-400"}`} />
+                <span className="truncate lg:hidden">History</span>
+                <span className="hidden lg:inline">Decision History</span>
+              </div>
+              <span
+                className={`px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                  activeTab === "history"
+                    ? "bg-purple-100 text-purple-800"
+                    : "bg-slate-200/80 text-slate-600"
+                }`}
+              >
+                {historyEvents.length}
+              </span>
+            </button>
+          </nav>
+        </div>
 
-                          <h2 className="text-lg sm:text-xl font-bold text-slate-900">
-                            {ev.title}
-                          </h2>
+        {/* Sidebar Footer info */}
+        <div className="hidden lg:block pt-4 border-t border-slate-200/80">
+          <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-100/80 text-[11px] text-purple-950">
+            <div className="font-bold flex items-center gap-1.5 mb-1 text-purple-900">
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+              <span>Executive Desk</span>
+            </div>
+            <p className="text-[10px] text-purple-800 leading-relaxed">
+              Deterministic Safe-Slot verification ensures zero double-booking or category clashes.
+            </p>
+          </div>
+        </div>
+      </aside>
 
-                          {ev.description && (
-                            <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
-                              {ev.description}
-                            </p>
-                          )}
+      {/* WORKSPACE CONTENT AREA */}
+      <div className="flex-1 flex min-w-0 h-full overflow-hidden bg-white">
+        {/* TAB 1: LINEAR-STYLE SPLIT QUEUE INBOX */}
+        {activeTab === "inbox" && (
+          pendingEvents.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 bg-slate-50/50">
+              <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-500 mb-3 shadow-2xs">
+                <Check className="w-4 h-4 stroke-[2.5]" />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-900">All caught up</h2>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs text-center leading-relaxed">
+                No club proposals waiting for review. You will be notified when new events are submitted.
+              </p>
+              <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-2 w-full max-w-xs sm:max-w-none px-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("master-schedule")}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors cursor-pointer shadow-2xs whitespace-nowrap active:scale-[0.98]"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>Master Calendar</span>
+                  <span className="text-[11px] text-slate-400">({approvedEvents.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("history")}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors cursor-pointer shadow-2xs whitespace-nowrap active:scale-[0.98]"
+                >
+                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>Decision History</span>
+                  <span className="text-[11px] text-slate-400">({historyEvents.length})</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col md:flex-row min-w-0 h-full overflow-hidden">
+              {/* PANE 2: Submissions Queue */}
+              <div
+                className={`w-full md:w-80 lg:w-96 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/30 flex-col h-full overflow-hidden ${
+                  mobileDetailView ? "hidden md:flex" : "flex"
+                }`}
+              >
+                <div className="p-3.5 border-b border-slate-200 bg-white flex items-center justify-between text-xs font-semibold text-slate-700 shrink-0">
+                  <span>Awaiting Review ({pendingEvents.length})</span>
+                  <span className="text-[11px] text-slate-400 font-normal">By submission date</span>
+                </div>
 
-                          {/* Logistics grid */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
-                            <div className="flex items-center gap-2 text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                              <Calendar className="w-4 h-4 text-purple-600 shrink-0" />
-                              <div>
-                                <span className="font-semibold block text-slate-900">
-                                  {format(start, "EEEE, MMMM d, yyyy")}
-                                </span>
-                                <span className="text-[11px] text-slate-500">
-                                  {format(start, "h:mm a")} – {format(end, "h:mm a")}
-                                </span>
-                              </div>
-                            </div>
+                <div className="divide-y divide-slate-100 overflow-y-auto flex-1">
+                  {pendingEvents.map((ev) => {
+                    const isSelected = ev.id === activeEvent?.id;
+                    const startDate = parseISO(ev.start_time);
 
-                            <div className="flex items-center gap-2 text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                              <MapPin className="w-4 h-4 text-purple-600 shrink-0" />
-                              <div>
-                                <span className="font-semibold block text-slate-900">
-                                  {ev.venue?.name || "Campus Venue"}
-                                </span>
-                                <span className="text-[11px] text-slate-500">
-                                  {ev.venue?.building} (Capacity: {ev.venue?.capacity || "N/A"})
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Safe Slot Indicator */}
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-900 text-xs font-semibold">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span>Safe-Slot Verified: No venue or audience collision detected</span>
-                          </div>
+                    return (
+                      <div
+                        key={ev.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          setSelectedEventId(ev.id);
+                          setMobileDetailView(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            setSelectedEventId(ev.id);
+                            setMobileDetailView(true);
+                          }
+                        }}
+                        className={`p-4 text-left transition-colors cursor-pointer relative ${
+                          isSelected
+                            ? "bg-purple-50/70 border-l-3 border-purple-700"
+                            : "hover:bg-slate-100/60 text-slate-700 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-xs font-bold text-slate-800 truncate">
+                            {ev.community?.name}
+                          </span>
+                          <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                            ✓ Safe Slot
+                          </span>
                         </div>
 
-                        {/* Executive Action Controls */}
-                        <div className="flex lg:flex-col items-center gap-2.5 shrink-0 justify-end pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                          <button
-                            type="button"
-                            disabled={isProcessing}
-                            onClick={() => handleApprove(ev.id)}
-                            className="w-full sm:w-auto lg:w-44 px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            <Check className="w-4 h-4" />
-                            <span>{isProcessing ? "Authorizing..." : "Approve & Publish"}</span>
-                          </button>
+                        <div className="font-semibold text-slate-900 text-sm line-clamp-1 mb-1">
+                          {ev.title}
+                        </div>
 
-                          <button
-                            type="button"
-                            disabled={isProcessing}
-                            onClick={() => handleOpenReject(ev)}
-                            className="w-full sm:w-auto lg:w-44 px-4 py-2.5 rounded-xl border border-rose-200 bg-rose-50/80 hover:bg-rose-100 text-rose-900 font-semibold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            <X className="w-4 h-4 text-rose-600" />
-                            <span>Decline with Note</span>
-                          </button>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <span>{format(startDate, "MMM d, yyyy")}</span>
+                          <span>•</span>
+                          <span className="truncate">{ev.venue?.name}</span>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+
+                <div className="hidden md:flex p-2.5 border-t border-slate-200 bg-slate-50 text-[10px] text-slate-400 text-center items-center justify-center gap-2 shrink-0">
+                  <span className="inline-flex items-center gap-1">
+                    <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px]">↑</kbd>
+                    <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px]">↓</kbd>
+                    <span>Use keys to navigate queue</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* PANE 3: Clean Airy Inspector */}
+              {activeEvent ? (
+                <div
+                  className={`flex-1 flex-col bg-white h-full overflow-y-auto min-w-0 ${
+                    mobileDetailView ? "flex" : "hidden md:flex"
+                  }`}
+                >
+                  <div className="p-4 sm:p-5 lg:p-6 max-w-3xl space-y-3.5 sm:space-y-4">
+                    {/* Mobile Sub-Navigation Bar (Hidden on desktop) */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 md:hidden">
+                      <button
+                        type="button"
+                        onClick={() => setMobileDetailView(false)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Queue ({pendingEvents.length})</span>
+                      </button>
+
+                      <span className="text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                        {differenceInDays(parseISO(activeEvent.start_time), new Date())}d lead notice
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* TAB 2: MASTER CAMPUS SCHEDULE */}
-        {activeTab === "master-schedule" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-slate-500">
-                Official calendar of all authorized, clash-free events currently published across the campus.
-              </p>
-            </div>
+                    {/* Proposal Document Header */}
+                    <div>
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
+                            {activeEvent.community?.name}
+                          </span>
+                          <span className="text-slate-300">•</span>
+                          <CategoryBadge category={activeEvent.category} size="sm" />
+                        </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[600px]">
-                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
-                    <tr>
-                      <th className="p-4 font-semibold">Event Title</th>
-                      <th className="p-4 font-semibold">Organizing Club</th>
-                      <th className="p-4 font-semibold">Venue & Location</th>
-                      <th className="p-4 font-semibold">Scheduled Date & Time</th>
-                      <th className="p-4 font-semibold">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {approvedEvents.map((ev) => (
-                      <tr key={ev.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="p-4 font-bold text-slate-900">
-                          {ev.title}
-                          <div className="text-[10px] text-slate-400 font-normal">
-                            Category: {ev.category}
+                        {/* On desktop, show lead notice badge aligned with organizer */}
+                        <span className="hidden md:inline-flex text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
+                          {differenceInDays(parseISO(activeEvent.start_time), new Date())}d lead notice
+                        </span>
+                      </div>
+
+                      <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                        {activeEvent.title}
+                      </h2>
+                      {activeEvent.description && (
+                        <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+                          {activeEvent.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Schedule, Venue & Clearance */}
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Target Schedule */}
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 mt-0.5 border border-purple-100/80">
+                            <Calendar className="w-4 h-4" />
                           </div>
-                        </td>
-                        <td className="p-4 font-medium text-slate-800">
-                          {ev.community?.name}
-                        </td>
-                        <td className="p-4 text-slate-600">
-                          <span className="font-semibold text-slate-800">{ev.venue?.name}</span>
-                          <span className="block text-[10px] text-slate-400">
-                            {ev.venue?.building} (Cap: {ev.venue?.capacity})
-                          </span>
-                        </td>
-                        <td className="p-4 text-slate-600">
-                          <span className="font-semibold text-slate-800">
-                            {format(parseISO(ev.start_time), "MMM d, yyyy")}
-                          </span>
-                          <span className="block text-[10px] text-slate-400">
-                            {format(parseISO(ev.start_time), "h:mm a")} –{" "}
-                            {format(parseISO(ev.end_time), "h:mm a")}
-                          </span>
-                        </td>
-                        <td className="p-4">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-900 text-[10px] font-bold">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            Approved
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+                          <div>
+                            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Target Schedule
+                            </div>
+                            <div className="font-bold text-slate-900 text-sm mt-0.5">
+                              {format(parseISO(activeEvent.start_time), "EEE, MMM d, yyyy")}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {format(parseISO(activeEvent.start_time), "h:mm a")} – {format(parseISO(activeEvent.end_time), "h:mm a")}
+                            </div>
+                          </div>
+                        </div>
 
-        {/* TAB 3: DECISION HISTORY */}
-        {activeTab === "history" && (
-          <div className="space-y-4">
-            <p className="text-xs text-slate-500">
-              Audit trail of all event approvals and rejections issued by the Principal&apos;s desk.
-            </p>
+                        {/* Venue & Capacity */}
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 mt-0.5 border border-purple-100/80">
+                            <MapPin className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Venue & Capacity
+                            </div>
+                            <div className="font-bold text-slate-900 text-sm mt-0.5">
+                              {activeEvent.venue?.name || "Campus Venue"}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {activeEvent.venue?.building} • Capacity: {activeEvent.venue?.capacity || "N/A"}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
 
-            <div className="rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700 min-w-[600px]">
-                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
-                    <tr>
-                      <th className="p-4 font-semibold">Event</th>
-                      <th className="p-4 font-semibold">Community</th>
-                      <th className="p-4 font-semibold">Venue</th>
-                      <th className="p-4 font-semibold">Decision</th>
-                      <th className="p-4 font-semibold">Feedback / Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {historyEvents.map((ev) => (
-                      <tr key={ev.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="p-4 font-bold text-slate-900">{ev.title}</td>
-                        <td className="p-4 font-medium text-slate-800">{ev.community?.name}</td>
-                        <td className="p-4 text-slate-600">{ev.venue?.name}</td>
-                        <td className="p-4">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              ev.status === "published"
-                                ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                                : "bg-rose-50 border-rose-200 text-rose-900"
-                            }`}
-                          >
-                            {ev.status === "published" ? "Approved" : "Declined"}
-                          </span>
-                        </td>
-                        <td className="p-4 text-xs text-slate-600 italic">
-                          {ev.rejection_reason || "Approved for publication."}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
+                      {/* Safe Slot Clearance */}
+                      <div className="pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-emerald-900">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="font-medium text-xs">Deterministic Safe Slot Verified • Zero conflicts detected</span>
+                      </div>
+                    </div>
 
-        {/* REJECTION FEEDBACK MODAL */}
-        {rejectingEvent && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-            <div
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs"
-              onClick={() => setRejectingEvent(null)}
-            />
-            <div className="relative w-full max-w-lg rounded-3xl border border-slate-200 bg-white text-slate-900 p-6 z-10 shadow-2xl">
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div>
-                  <div className="text-[11px] font-semibold text-rose-700 uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <ShieldAlert className="w-3.5 h-3.5" />
-                    <span>Declining Proposal</span>
+                    {/* Compact Poster Preview */}
+                    <div>
+                      <div className="text-slate-400 uppercase text-[10px] font-bold tracking-wider mb-1.5">
+                        Event Poster
+                      </div>
+                      <div
+                        onClick={() => setPreviewEvent(activeEvent)}
+                        className="relative aspect-[21/9] max-h-36 sm:max-h-40 w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs cursor-pointer group"
+                      >
+                        <Image
+                          src={
+                            activeEvent.cover_image_url ||
+                            CATEGORY_DEFAULT_IMAGES[activeEvent.category] ||
+                            CATEGORY_DEFAULT_IMAGES.Tech
+                          }
+                          alt={activeEvent.title}
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 800px"
+                          className="object-cover group-hover:scale-102 transition-transform duration-200"
+                        />
+                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                      </div>
+                    </div>
+
+                    {/* DECISION ACTION BAR: Seamlessly attached directly to the event review content */}
+                    <div className="pt-4 border-t border-slate-200/90 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewEvent(activeEvent)}
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Inspect Live Notice</span>
+                      </button>
+
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          disabled={actionInProgress === activeEvent.id}
+                          onClick={() => handleOpenReject(activeEvent)}
+                          className="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-xs font-semibold text-rose-700 transition-colors cursor-pointer text-center"
+                        >
+                          Decline with Note
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={actionInProgress === activeEvent.id}
+                          onClick={() => handleApprove(activeEvent.id)}
+                          className="flex-1 sm:flex-initial px-5 py-2 sm:py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-xs font-semibold text-white shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-center shrink-0"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{actionInProgress === activeEvent.id ? "Publishing..." : "Approve & Publish"}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    {rejectingEvent.title}
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    Host: {rejectingEvent.community?.name}
+                </div>
+              ) : null}
+            </div>
+          )
+        )}
+
+          {/* TAB 2: MASTER CAMPUS SCHEDULE */}
+          {activeTab === "master-schedule" && (
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/40">
+              {/* Header Toolbar */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900">Master Campus Schedule</h3>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                      {filteredApprovedEvents.length} {filteredApprovedEvents.length === 1 ? "event" : "events"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    All currently approved and published events across campus
                   </p>
                 </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={calendarSearch}
+                    onChange={(e) => setCalendarSearch(e.target.value)}
+                    placeholder="Search events, clubs, venues..."
+                    className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors"
+                  />
+                  {calendarSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setCalendarSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Content Area: Full-screen List on Mobile, Data Table on Desktop */}
+              <div className="flex-1 overflow-y-auto p-0 md:p-6 bg-white md:bg-transparent">
+                {filteredApprovedEvents.length === 0 ? (
+                  <div className="text-center py-12 p-6 md:rounded-xl md:border md:border-dashed md:border-slate-200 bg-white">
+                    <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-slate-700">No scheduled events found</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {calendarSearch ? "Try adjusting your search query." : "No approved campus events yet."}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* MOBILE FULL-SCREEN LIST (< md) */}
+                    <div className="md:hidden divide-y divide-slate-100 bg-white border-b border-slate-200">
+                      {filteredApprovedEvents.map((ev) => (
+                        <button
+                          key={ev.id}
+                          type="button"
+                          onClick={() => setPreviewEvent(ev)}
+                          className="w-full text-left px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <CategoryBadge category={ev.category} />
+                              <span className="text-[11px] font-medium text-slate-500 truncate">
+                                {ev.community?.name || "Campus Community"}
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-2">
+                              {ev.title}
+                            </h4>
+                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400">
+                              <span className="inline-flex items-center gap-1 text-slate-500">
+                                <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span>
+                                  {format(parseISO(ev.start_time), "EEE, MMM d")} • {format(parseISO(ev.start_time), "h:mm a")}
+                                </span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-slate-500">
+                                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span className="truncate">{ev.venue?.name || "Campus Venue"}</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-end justify-between shrink-0 self-stretch">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              Live
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* DESKTOP TABLE VIEW (md+) */}
+                    <div className="hidden md:block rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+                      <table className="w-full text-left text-xs text-slate-700">
+                        <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-semibold tracking-wider border-b border-slate-200">
+                          <tr>
+                            <th className="py-3 px-4">Event Title</th>
+                            <th className="py-3 px-4">Host Club</th>
+                            <th className="py-3 px-4">Venue</th>
+                            <th className="py-3 px-4">Date & Time</th>
+                            <th className="py-3 px-4 text-right">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredApprovedEvents.map((ev) => (
+                            <tr
+                              key={ev.id}
+                              onClick={() => setPreviewEvent(ev)}
+                              className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                            >
+                              <td className="py-3.5 px-4 font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                {ev.title}
+                                <div className="text-[11px] text-slate-400 font-normal">
+                                  {ev.category}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 font-medium text-slate-700">
+                                {ev.community?.name || "—"}
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-600">
+                                <span className="font-medium text-slate-800">{ev.venue?.name}</span>
+                                {ev.venue?.building && (
+                                  <span className="block text-[11px] text-slate-400">{ev.venue.building}</span>
+                                )}
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-600">
+                                <span className="font-medium text-slate-800">
+                                  {format(parseISO(ev.start_time), "MMM d, yyyy")}
+                                </span>
+                                <span className="block text-[11px] text-slate-400">
+                                  {format(parseISO(ev.start_time), "h:mm a")} – {format(parseISO(ev.end_time), "h:mm a")}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10px] font-bold">
+                                  <Check className="w-3 h-3 text-emerald-600" />
+                                  Live
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: DECISION HISTORY */}
+          {activeTab === "history" && (
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/40">
+              {/* Header Toolbar */}
+              <div className="p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-slate-900">Decision History</h3>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                      {filteredHistoryEvents.length} {filteredHistoryEvents.length === 1 ? "record" : "records"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Audit trail of all approved and declined campus proposals
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  {/* Status Filter Buttons */}
+                  <div className="inline-flex p-0.5 rounded-lg bg-slate-100 border border-slate-200/80 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setHistoryStatusFilter("all")}
+                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer ${
+                        historyStatusFilter === "all"
+                          ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryStatusFilter("published")}
+                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer ${
+                        historyStatusFilter === "published"
+                          ? "bg-white text-emerald-800 shadow-2xs font-semibold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      Approved
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHistoryStatusFilter("rejected")}
+                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer ${
+                        historyStatusFilter === "rejected"
+                          ? "bg-white text-rose-800 shadow-2xs font-semibold"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      Declined
+                    </button>
+                  </div>
+
+                  {/* Search */}
+                  <div className="relative w-full sm:w-56">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={historySearch}
+                      onChange={(e) => setHistorySearch(e.target.value)}
+                      placeholder="Search history..."
+                      className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors"
+                    />
+                    {historySearch && (
+                      <button
+                        type="button"
+                        onClick={() => setHistorySearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Content Area: Full-screen List on Mobile, Data Table on Desktop */}
+              <div className="flex-1 overflow-y-auto p-0 md:p-6 bg-white md:bg-transparent">
+                {filteredHistoryEvents.length === 0 ? (
+                  <div className="text-center py-12 p-6 md:rounded-xl md:border md:border-dashed md:border-slate-200 bg-white">
+                    <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-xs font-semibold text-slate-700">No decision records found</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      {historySearch ? "Try adjusting your search or status filter." : "No recorded decisions yet."}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* MOBILE FULL-SCREEN LIST (< md) */}
+                    <div className="md:hidden divide-y divide-slate-100 bg-white border-b border-slate-200">
+                      {filteredHistoryEvents.map((ev) => (
+                        <button
+                          key={ev.id}
+                          type="button"
+                          onClick={() => setPreviewEvent(ev)}
+                          className="w-full text-left px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[11px] font-medium text-slate-500 truncate">
+                                {ev.community?.name || "Campus Community"}
+                              </span>
+                              <span className="text-[10px] text-slate-300">•</span>
+                              <span className="text-[11px] text-slate-400">
+                                {format(parseISO(ev.start_time), "MMM d")}
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-2">
+                              {ev.title}
+                            </h4>
+                            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
+                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                              <span className="truncate">{ev.venue?.name || "Venue"}</span>
+                            </div>
+                            {ev.status === "rejected" && ev.rejection_reason && (
+                              <div className="mt-2 p-2 rounded-lg bg-rose-50/80 border border-rose-100 text-[11px] text-rose-800 leading-relaxed italic">
+                                &ldquo;{ev.rejection_reason}&rdquo;
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col items-end justify-between shrink-0 self-stretch">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                ev.status === "published"
+                                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                                  : "bg-rose-50 border-rose-200 text-rose-800"
+                              }`}
+                            >
+                              {ev.status === "published" ? (
+                                <>
+                                  <Check className="w-2.5 h-2.5 text-emerald-600" />
+                                  Approved
+                                </>
+                              ) : (
+                                <>
+                                  <X className="w-2.5 h-2.5 text-rose-600" />
+                                  Declined
+                                </>
+                              )}
+                            </span>
+                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* DESKTOP TABLE VIEW (md+) */}
+                    <div className="hidden md:block rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs">
+                      <table className="w-full text-left text-xs text-slate-700">
+                        <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-semibold tracking-wider border-b border-slate-200">
+                          <tr>
+                            <th className="py-3 px-4">Event</th>
+                            <th className="py-3 px-4">Community</th>
+                            <th className="py-3 px-4">Venue</th>
+                            <th className="py-3 px-4">Decision</th>
+                            <th className="py-3 px-4">Remarks / Reason</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredHistoryEvents.map((ev) => (
+                            <tr
+                              key={ev.id}
+                              onClick={() => setPreviewEvent(ev)}
+                              className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                            >
+                              <td className="py-3.5 px-4 font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                {ev.title}
+                              </td>
+                              <td className="py-3.5 px-4 font-medium text-slate-700">
+                                {ev.community?.name || "—"}
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-600">{ev.venue?.name}</td>
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                                    ev.status === "published"
+                                      ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                                      : "bg-rose-50 border-rose-200 text-rose-800"
+                                  }`}
+                                >
+                                  {ev.status === "published" ? (
+                                    <>
+                                      <Check className="w-2.5 h-2.5 text-emerald-600" />
+                                      Approved
+                                    </>
+                                  ) : (
+                                    <>
+                                      <X className="w-2.5 h-2.5 text-rose-600" />
+                                      Declined
+                                    </>
+                                  )}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-xs text-slate-600 italic max-w-xs truncate">
+                                {ev.rejection_reason || "Approved for notice board publication."}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+      {/* STUDENT DETAIL PREVIEW MODAL */}
+      {previewEvent && (
+        <EventDetailModal
+          event={previewEvent}
+          onClose={() => setPreviewEvent(null)}
+        />
+      )}
+
+      {/* REJECTION REASON MODAL */}
+      {rejectingEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-2xs"
+            onClick={() => setRejectingEvent(null)}
+          />
+          <div className="relative w-full max-w-lg rounded-2xl border border-slate-200 bg-white text-slate-900 p-6 z-10 shadow-xl">
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-rose-600">
+                  Decline Proposal
+                </span>
+                <h3 className="text-base font-bold text-slate-900 mt-0.5">
+                  {rejectingEvent.title}
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Submitted by {rejectingEvent.community?.name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRejectingEvent(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmReject} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Standard Feedback Reason
+                </label>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {REJECTION_PRESETS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setRejectionNote(preset)}
+                      className={`w-full text-left p-2 rounded-lg border text-xs transition-colors cursor-pointer ${
+                        rejectionNote === preset
+                          ? "bg-slate-100 border-slate-900 text-slate-950 font-semibold"
+                          : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Note to Community Lead *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={rejectionNote}
+                  onChange={(e) => setRejectionNote(e.target.value)}
+                  placeholder="Explain why or suggest an alternate slot..."
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-slate-900"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setRejectingEvent(null)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
                 >
-                  <X className="w-5 h-5" />
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionInProgress === rejectingEvent.id || !rejectionNote.trim()}
+                  className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold text-xs shadow-2xs transition-colors cursor-pointer"
+                >
+                  {actionInProgress === rejectingEvent.id ? "Declining..." : "Confirm Decline"}
                 </button>
               </div>
-
-              <form onSubmit={handleConfirmReject} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Select Standard Feedback Reason
-                  </label>
-                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                    {REJECTION_PRESETS.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setRejectionNote(preset)}
-                        className={`w-full text-left p-2.5 rounded-xl border text-xs transition-colors cursor-pointer ${
-                          rejectionNote === preset
-                            ? "bg-rose-50/80 border-rose-300 text-rose-950 font-semibold"
-                            : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
-                        }`}
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Custom Feedback / Instructions to Lead *
-                  </label>
-                  <textarea
-                    required
-                    rows={3}
-                    value={rejectionNote}
-                    onChange={(e) => setRejectionNote(e.target.value)}
-                    placeholder="Provide specific reasons or suggest alternative dates/venues..."
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-rose-500"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setRejectingEvent(null)}
-                    className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={actionInProgress === rejectingEvent.id || !rejectionNote.trim()}
-                    className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer"
-                  >
-                    {actionInProgress === rejectingEvent.id ? "Declining..." : "Confirm Rejection"}
-                  </button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

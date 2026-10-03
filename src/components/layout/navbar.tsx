@@ -331,7 +331,7 @@ export function Navbar() {
           ) : user ? (
             <div className="hidden sm:flex items-center gap-2">
               <div className="text-right hidden xl:block">
-                <div className="text-xs font-semibold text-slate-900 truncate max-w-[130px]">
+                <div className="text-xs font-semibold text-slate-900 truncate max-w-[220px]">
                   {user.fullName}
                 </div>
                 <div className="text-[10px] text-slate-500 capitalize">
