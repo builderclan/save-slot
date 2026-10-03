@@ -395,15 +395,33 @@ export default function PrincipalDeskPage() {
         {/* TAB 1: LINEAR-STYLE SPLIT QUEUE INBOX */}
         {activeTab === "inbox" && (
           pendingEvents.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center p-8 bg-slate-50/40">
-              <div className="max-w-md mx-auto text-center rounded-2xl border border-slate-200/90 bg-white p-8 shadow-xs">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3 border border-emerald-100">
-                  <Check className="w-5 h-5 text-emerald-600" />
-                </div>
-                <h2 className="text-base font-bold text-slate-900">Review Inbox is Clear</h2>
-                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                  All submitted campus club proposals have been reviewed. There are currently zero pending events requiring executive sign-off.
-                </p>
+            <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 bg-slate-50/50">
+              <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-500 mb-3 shadow-2xs">
+                <Check className="w-4 h-4 stroke-[2.5]" />
+              </div>
+              <h2 className="text-sm font-semibold text-slate-900">All caught up</h2>
+              <p className="text-xs text-slate-500 mt-1 max-w-xs text-center leading-relaxed">
+                No club proposals waiting for review. You will be notified when new events are submitted.
+              </p>
+              <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-2 w-full max-w-xs sm:max-w-none px-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("master-schedule")}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors cursor-pointer shadow-2xs whitespace-nowrap active:scale-[0.98]"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>Master Calendar</span>
+                  <span className="text-[11px] text-slate-400">({approvedEvents.length})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("history")}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 sm:py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors cursor-pointer shadow-2xs whitespace-nowrap active:scale-[0.98]"
+                >
+                  <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span>Decision History</span>
+                  <span className="text-[11px] text-slate-400">({historyEvents.length})</span>
+                </button>
               </div>
             </div>
           ) : (
