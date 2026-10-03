@@ -15,7 +15,7 @@ function slugify(text: string): string {
 export async function GET() {
   try {
     const session = await getCurrentUser();
-    if (!session || (!session.isLead && !session.isAdmin)) {
+    if (!session || (!session.isLead && !session.isAdmin && !session.isPrincipal)) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
@@ -36,7 +36,7 @@ export async function GET() {
     `;
 
     const params: unknown[] = [];
-    if (!session.isAdmin && communityIds.length > 0) {
+    if (!session.isAdmin && !session.isPrincipal && communityIds.length > 0) {
       sql += ` WHERE e.community_id = ANY($1)`;
       params.push(communityIds);
     }

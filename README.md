@@ -20,13 +20,15 @@ Detailed design documents, specifications, and architecture are maintained in [`
 | :--- | :--- | :--- |
 | **Students** | Public (No login) | Browse visual notice board, month/week calendar views, filter by club/category, and export to Google/Apple Calendar. |
 | **Community Leads** | Authenticated (`/lead`) | Propose events for their assigned club with real-time clash warnings and automatic "Safe Slot" suggestions. |
-| **Campus Admin** | Authenticated (`/admin`) | Triage and approve event submissions, manage venues, and invite/manage leads. |
+| **College Principal** | Authenticated (`/principal`) | Executive sign-off authority: review Safe-Slot cleared club proposals, grant institutional approval, or decline with feedback. |
+| **Campus Admin** | Authenticated (`/admin`) | Operations management: manage physical venues, user accounts, and campus clubs. |
 
 ### Pre-seeded Demo Accounts
 
 | Role | Email | Password | Assigned Community |
 | :--- | :--- | :--- | :--- |
-| **Campus Admin** | `admin@campus.edu` | `admin123` | Campus-Wide |
+| **College Principal** | `principal@campus.edu` | `principal123` | Institutional Authority |
+| **Campus Admin** | `admin@campus.edu` | `admin123` | Campus-Wide Operations |
 | **Coding Club Lead** | `lead.coding@campus.edu` | `lead123` | Coding Club |
 | **Design Society Lead** | `lead.design@campus.edu` | `lead123` | Design Society |
 | **E-Cell Lead** | `lead.ecell@campus.edu` | `lead123` | Entrepreneurship Cell |

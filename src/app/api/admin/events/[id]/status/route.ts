@@ -8,8 +8,8 @@ export async function POST(
 ) {
   try {
     const session = await getCurrentUser();
-    if (!session || !session.isAdmin) {
-      return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
+    if (!session || (!session.isAdmin && !session.isPrincipal)) {
+      return NextResponse.json({ error: "Unauthorized access: Principal or Admin approval authority required" }, { status: 403 });
     }
 
     const { id } = await params;

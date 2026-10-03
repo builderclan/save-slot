@@ -51,7 +51,7 @@ export default function AdminConsolePage() {
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("lead123");
-  const [newUserRole, setNewUserRole] = useState<"admin" | "organizer">("organizer");
+  const [newUserRole, setNewUserRole] = useState<"admin" | "principal" | "organizer">("organizer");
   const [newUserCommId, setNewUserCommId] = useState("");
   const [userModalError, setUserModalError] = useState<string | null>(null);
 
@@ -607,16 +607,25 @@ export default function AdminConsolePage() {
                       <td className="p-4">
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${
-                            u.role === "admin"
+                            u.role === "principal"
+                              ? "bg-purple-50 border-purple-200 text-purple-900"
+                              : u.role === "admin"
                               ? "bg-amber-50 border-amber-200 text-amber-900"
                               : "bg-indigo-50 border-indigo-200 text-indigo-800"
                           }`}
                         >
-                          {u.role === "admin" ? "Campus Admin" : "Community Lead"}
+                          {u.role === "principal"
+                            ? "College Principal"
+                            : u.role === "admin"
+                            ? "Campus Admin"
+                            : "Community Lead"}
                         </span>
                       </td>
                       <td className="p-4 font-medium text-slate-800">
-                        {u.community_name || (u.role === "admin" ? "All (Campus-Wide)" : "Unassigned")}
+                        {u.community_name ||
+                          (u.role === "admin" || u.role === "principal"
+                            ? "All (Campus-Wide)"
+                            : "Unassigned")}
                       </td>
                       <td className="p-4 text-slate-400">
                         {u.created_at ? format(parseISO(u.created_at), "MMM d, yyyy") : "Pre-seeded"}
@@ -798,11 +807,14 @@ export default function AdminConsolePage() {
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Role *</label>
                 <select
                   value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value as "admin" | "organizer")}
+                  onChange={(e) =>
+                    setNewUserRole(e.target.value as "admin" | "principal" | "organizer")
+                  }
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
                 >
                   <option value="organizer">Community Lead</option>
-                  <option value="admin">Campus Administrator</option>
+                  <option value="principal">College Principal (Executive Approver)</option>
+                  <option value="admin">Campus Administrator (Operations)</option>
                 </select>
               </div>
 

@@ -19,6 +19,7 @@ import {
   Briefcase,
   ChevronRight,
   Check,
+  GraduationCap,
 } from "lucide-react";
 
 interface DemoAccount {
@@ -36,6 +37,19 @@ interface DemoAccount {
 }
 
 const DEMO_PERSONAS: DemoAccount[] = [
+  {
+    id: "principal",
+    role: "College Principal",
+    department: "Executive Office of the Principal",
+    email: "principal@campus.edu",
+    password: "principal123",
+    shortTag: "Principal",
+    icon: GraduationCap,
+    iconBg: "bg-purple-100 text-purple-700 border-purple-200",
+    iconColor: "text-purple-700",
+    tagStyle: "bg-purple-50 text-purple-800 border-purple-200",
+    activeClass: "border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20",
+  },
   {
     id: "admin",
     role: "Campus Admin",
@@ -127,6 +141,7 @@ export default function LoginPage() {
     fullName: string;
     role: string;
     isAdmin: boolean;
+    isPrincipal: boolean;
     isLead: boolean;
   } | null>(null);
 
@@ -254,7 +269,13 @@ export default function LoginPage() {
                     Switch
                   </button>
                   <Link
-                    href={currentSession.isAdmin ? "/admin" : "/lead"}
+                    href={
+                      currentSession.isPrincipal
+                        ? "/principal"
+                        : currentSession.isAdmin
+                        ? "/admin"
+                        : "/lead"
+                    }
                     className="px-2.5 py-1 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-medium transition-colors"
                   >
                     Workspace →
