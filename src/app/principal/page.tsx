@@ -464,32 +464,39 @@ export default function PrincipalDeskPage() {
                   }`}
                 >
                   <div className="p-4 sm:p-5 lg:p-6 max-w-3xl space-y-3.5 sm:space-y-4">
-                    {/* Header: Clean Metadata */}
-                    <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <button
-                          type="button"
-                          onClick={() => setMobileDetailView(false)}
-                          className="md:hidden inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold shrink-0 cursor-pointer"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                          <span>Queue ({pendingEvents.length})</span>
-                        </button>
+                    {/* Mobile Sub-Navigation Bar (Hidden on desktop) */}
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 md:hidden">
+                      <button
+                        type="button"
+                        onClick={() => setMobileDetailView(false)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Queue ({pendingEvents.length})</span>
+                      </button>
 
-                        <span className="text-xs font-semibold text-slate-800 truncate">
-                          {activeEvent.community?.name}
-                        </span>
-                        <span className="text-slate-300">•</span>
-                        <CategoryBadge category={activeEvent.category} size="sm" />
-                      </div>
-
-                      <span className="text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                      <span className="text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                         {differenceInDays(parseISO(activeEvent.start_time), new Date())}d lead notice
                       </span>
                     </div>
 
-                    {/* Title & Description */}
+                    {/* Proposal Document Header */}
                     <div>
+                      <div className="flex items-center justify-between gap-3 mb-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
+                            {activeEvent.community?.name}
+                          </span>
+                          <span className="text-slate-300">•</span>
+                          <CategoryBadge category={activeEvent.category} size="sm" />
+                        </div>
+
+                        {/* On desktop, show lead notice badge aligned with organizer */}
+                        <span className="hidden md:inline-flex text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
+                          {differenceInDays(parseISO(activeEvent.start_time), new Date())}d lead notice
+                        </span>
+                      </div>
+
                       <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
                         {activeEvent.title}
                       </h2>
