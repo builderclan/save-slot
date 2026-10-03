@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Inbox,
   ShieldCheck,
+  ChevronLeft,
 } from "lucide-react";
 import { CampusEvent, Venue } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
@@ -58,6 +59,7 @@ export default function PrincipalDeskPage() {
 
   // Selected event for split view
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [mobileDetailView, setMobileDetailView] = useState(false);
 
   // Preview modal state
   const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
@@ -178,6 +180,9 @@ export default function PrincipalDeskPage() {
         const remaining = pendingEvents.filter((e) => e.id !== eventId);
         if (remaining.length > 0) {
           setSelectedEventId(remaining[0].id);
+        } else {
+          setSelectedEventId(null);
+          setMobileDetailView(false);
         }
 
         setBannerNotice({
@@ -225,6 +230,9 @@ export default function PrincipalDeskPage() {
         const remaining = pendingEvents.filter((e) => e.id !== eventId);
         if (remaining.length > 0) {
           setSelectedEventId(remaining[0].id);
+        } else {
+          setSelectedEventId(null);
+          setMobileDetailView(false);
         }
 
         setBannerNotice({
@@ -276,275 +284,299 @@ export default function PrincipalDeskPage() {
       )}
 
       {/* PANE 1: FULL SCREEN LEFT NAVIGATION SIDEBAR */}
-      <aside className="w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/80 p-3.5 sm:p-4 flex flex-col justify-between overflow-y-auto">
-          <div className="space-y-4">
-            <div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-2">
-                Desk Views
-              </div>
-              <nav className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("inbox")}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
-                    activeTab === "inbox"
-                      ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/90"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Inbox className={`w-4 h-4 ${activeTab === "inbox" ? "text-purple-600" : "text-slate-400"}`} />
-                    <span>Review Inbox</span>
-                  </div>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      activeTab === "inbox"
-                        ? "bg-purple-100 text-purple-800"
-                        : "bg-slate-200 text-slate-700"
-                    }`}
-                  >
-                    {pendingEvents.length}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("master-schedule")}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
-                    activeTab === "master-schedule"
-                      ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/90"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Calendar className={`w-4 h-4 ${activeTab === "master-schedule" ? "text-purple-600" : "text-slate-400"}`} />
-                    <span>Master Calendar</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-semibold px-1.5 py-0.5">
-                    {approvedEvents.length}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("history")}
-                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-all flex items-center justify-between cursor-pointer ${
-                    activeTab === "history"
-                      ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/90"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Clock className={`w-4 h-4 ${activeTab === "history" ? "text-purple-600" : "text-slate-400"}`} />
-                    <span>Decision History</span>
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-semibold px-1.5 py-0.5">
-                    {historyEvents.length}
-                  </span>
-                </button>
-              </nav>
-            </div>
+      <aside className={`w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/80 p-2.5 sm:p-3 lg:p-4 flex-col lg:justify-between overflow-x-auto lg:overflow-y-auto ${mobileDetailView ? "hidden lg:flex" : "flex"}`}>
+        <div className="space-y-2 lg:space-y-4">
+          <div className="hidden lg:block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-2">
+            Desk Views
           </div>
-
-          {/* Sidebar Footer info */}
-          <div className="hidden lg:block pt-4 border-t border-slate-200/80">
-            <div className="p-3 rounded-xl bg-purple-50/60 border border-purple-100/80 text-[11px] text-purple-950">
-              <div className="font-bold flex items-center gap-1.5 mb-1 text-purple-900">
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
-                <span>Executive Desk</span>
+          <nav className="flex flex-row lg:flex-col gap-1 sm:gap-1.5 min-w-max lg:min-w-0">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab("inbox");
+                setMobileDetailView(false);
+              }}
+              className={`px-3 py-2 lg:py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-between gap-2.5 cursor-pointer shrink-0 ${
+                activeTab === "inbox"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/90"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Inbox className={`w-4 h-4 ${activeTab === "inbox" ? "text-purple-600" : "text-slate-400"}`} />
+                <span>Review Inbox</span>
               </div>
-              <p className="text-[10px] text-purple-800 leading-relaxed">
-                Deterministic Safe-Slot verification ensures zero double-booking or category clashes.
-              </p>
-            </div>
-          </div>
-        </aside>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  activeTab === "inbox"
+                    ? "bg-purple-100 text-purple-800"
+                    : "bg-slate-200 text-slate-700"
+                }`}
+              >
+                {pendingEvents.length}
+              </span>
+            </button>
 
-        {/* WORKSPACE CONTENT AREA */}
-        <div className="flex-1 flex min-w-0">
-          {/* TAB 1: LINEAR-STYLE SPLIT QUEUE INBOX */}
-          {activeTab === "inbox" && (
-            pendingEvents.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center p-8 bg-slate-50/40">
-                <div className="max-w-md mx-auto text-center rounded-2xl border border-slate-200/90 bg-white p-8 shadow-xs">
-                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3 border border-emerald-100">
-                    <Check className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <h2 className="text-base font-bold text-slate-900">Review Inbox is Clear</h2>
-                  <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                    All submitted campus club proposals have been reviewed. There are currently zero pending events requiring executive sign-off.
-                  </p>
+            <button
+              type="button"
+              onClick={() => setActiveTab("master-schedule")}
+              className={`px-3 py-2 lg:py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-between gap-2.5 cursor-pointer shrink-0 ${
+                activeTab === "master-schedule"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/90"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className={`w-4 h-4 ${activeTab === "master-schedule" ? "text-purple-600" : "text-slate-400"}`} />
+                <span>Master Calendar</span>
+              </div>
+              <span className="text-[10px] text-slate-400 font-semibold px-1.5 py-0.5">
+                {approvedEvents.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("history")}
+              className={`px-3 py-2 lg:py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-between gap-2.5 cursor-pointer shrink-0 ${
+                activeTab === "history"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/90"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Clock className={`w-4 h-4 ${activeTab === "history" ? "text-purple-600" : "text-slate-400"}`} />
+                <span>Decision History</span>
+              </div>
+              <span className="text-[10px] text-slate-400 font-semibold px-1.5 py-0.5">
+                {historyEvents.length}
+              </span>
+            </button>
+          </nav>
+        </div>
+
+        {/* Sidebar Footer info */}
+        <div className="hidden lg:block pt-4 border-t border-slate-200/80">
+          <div className="p-3.5 rounded-xl bg-purple-50/60 border border-purple-100/80 text-[11px] text-purple-950">
+            <div className="font-bold flex items-center gap-1.5 mb-1 text-purple-900">
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+              <span>Executive Desk</span>
+            </div>
+            <p className="text-[10px] text-purple-800 leading-relaxed">
+              Deterministic Safe-Slot verification ensures zero double-booking or category clashes.
+            </p>
+          </div>
+        </div>
+      </aside>
+
+      {/* WORKSPACE CONTENT AREA */}
+      <div className="flex-1 flex min-w-0 h-full overflow-hidden bg-white">
+        {/* TAB 1: LINEAR-STYLE SPLIT QUEUE INBOX */}
+        {activeTab === "inbox" && (
+          pendingEvents.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center p-8 bg-slate-50/40">
+              <div className="max-w-md mx-auto text-center rounded-2xl border border-slate-200/90 bg-white p-8 shadow-xs">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3 border border-emerald-100">
+                  <Check className="w-5 h-5 text-emerald-600" />
+                </div>
+                <h2 className="text-base font-bold text-slate-900">Review Inbox is Clear</h2>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  All submitted campus club proposals have been reviewed. There are currently zero pending events requiring executive sign-off.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col md:flex-row min-w-0 h-full overflow-hidden">
+              {/* PANE 2: Submissions Queue */}
+              <div
+                className={`w-full md:w-80 lg:w-96 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/30 flex-col h-full overflow-hidden ${
+                  mobileDetailView ? "hidden md:flex" : "flex"
+                }`}
+              >
+                <div className="p-3.5 border-b border-slate-200 bg-white flex items-center justify-between text-xs font-semibold text-slate-700 shrink-0">
+                  <span>Awaiting Review ({pendingEvents.length})</span>
+                  <span className="text-[11px] text-slate-400 font-normal">By submission date</span>
+                </div>
+
+                <div className="divide-y divide-slate-100 overflow-y-auto flex-1">
+                  {pendingEvents.map((ev) => {
+                    const isSelected = ev.id === activeEvent?.id;
+                    const startDate = parseISO(ev.start_time);
+
+                    return (
+                      <div
+                        key={ev.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => {
+                          setSelectedEventId(ev.id);
+                          setMobileDetailView(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            setSelectedEventId(ev.id);
+                            setMobileDetailView(true);
+                          }
+                        }}
+                        className={`p-4 text-left transition-colors cursor-pointer relative ${
+                          isSelected
+                            ? "bg-purple-50/70 border-l-3 border-purple-700"
+                            : "hover:bg-slate-100/60 text-slate-700 bg-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-xs font-bold text-slate-800 truncate">
+                            {ev.community?.name}
+                          </span>
+                          <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                            ✓ Safe Slot
+                          </span>
+                        </div>
+
+                        <div className="font-semibold text-slate-900 text-sm line-clamp-1 mb-1">
+                          {ev.title}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <span>{format(startDate, "MMM d, yyyy")}</span>
+                          <span>•</span>
+                          <span className="truncate">{ev.venue?.name}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="hidden md:flex p-2.5 border-t border-slate-200 bg-slate-50 text-[10px] text-slate-400 text-center items-center justify-center gap-2 shrink-0">
+                  <span className="inline-flex items-center gap-1">
+                    <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px]">↑</kbd>
+                    <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px]">↓</kbd>
+                    <span>Use keys to navigate queue</span>
+                  </span>
                 </div>
               </div>
-            ) : (
-              <div className="flex-1 flex flex-col md:flex-row min-w-0">
-                {/* PANE 2: Submissions Queue */}
-                <div className="w-full md:w-80 lg:w-96 border-b md:border-b-0 md:border-r border-slate-200 flex flex-col shrink-0 bg-slate-50/40">
-                  <div className="p-3.5 border-b border-slate-200/80 bg-white flex items-center justify-between text-xs font-semibold text-slate-700">
-                    <span>Awaiting Review ({pendingEvents.length})</span>
-                    <span className="text-[11px] text-slate-400 font-normal">By submission date</span>
-                  </div>
 
-                  <div className="divide-y divide-slate-100 overflow-y-auto flex-1">
-                    {pendingEvents.map((ev) => {
-                      const isSelected = ev.id === activeEvent?.id;
-                      const startDate = parseISO(ev.start_time);
-
-                      return (
-                        <div
-                          key={ev.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setSelectedEventId(ev.id)}
-                          onKeyDown={(e) => e.key === "Enter" && setSelectedEventId(ev.id)}
-                          className={`p-4 text-left transition-colors cursor-pointer relative ${
-                            isSelected
-                              ? "bg-purple-50/70 border-l-3 border-purple-700"
-                              : "hover:bg-slate-100/60 text-slate-700"
-                          }`}
+              {/* PANE 3: Clean Airy Inspector */}
+              {activeEvent ? (
+                <div
+                  className={`flex-1 flex-col bg-white h-full overflow-y-auto min-w-0 ${
+                    mobileDetailView ? "flex" : "hidden md:flex"
+                  }`}
+                >
+                  <div className="p-4 sm:p-5 lg:p-6 max-w-3xl space-y-3.5 sm:space-y-4">
+                    {/* Header: Clean Metadata */}
+                    <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setMobileDetailView(false)}
+                          className="md:hidden inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold shrink-0 cursor-pointer"
                         >
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-xs font-bold text-slate-800 truncate">
-                              {ev.community?.name}
-                            </span>
-                            <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                              ✓ Safe Slot
-                            </span>
-                          </div>
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                          <span>Queue ({pendingEvents.length})</span>
+                        </button>
 
-                          <div className="font-semibold text-slate-900 text-sm line-clamp-1 mb-1">
-                            {ev.title}
-                          </div>
-
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <span>{format(startDate, "MMM d, yyyy")}</span>
-                            <span>•</span>
-                            <span className="truncate">{ev.venue?.name}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="p-2.5 border-t border-slate-200 bg-slate-50 text-[10px] text-slate-400 text-center flex items-center justify-center gap-2">
-                    <span className="inline-flex items-center gap-1">
-                      <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px]">↑</kbd>
-                      <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px]">↓</kbd>
-                      <span>Use keys to navigate queue</span>
-                    </span>
-                  </div>
-                </div>
-
-                {/* PANE 3: Clean Inspector & Action Desk */}
-                {activeEvent ? (
-                  <div className="flex-1 flex flex-col justify-between bg-white overflow-y-auto">
-                    <div className="p-6 lg:p-8 space-y-6">
-                      {/* Header: Club, Category & Policy Compliance */}
-                      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-bold tracking-tight">
-                            {activeEvent.community?.name}
-                          </span>
-                          <CategoryBadge category={activeEvent.category} size="sm" />
-                          <span className="text-xs text-slate-400">•</span>
-                          <span className="text-xs text-slate-500">
-                            Community Lead Submission
-                          </span>
-                        </div>
-
-                        <div className="text-xs font-medium text-slate-600 bg-slate-50 px-3 py-1 rounded-full border border-slate-200">
-                          Lead Time:{" "}
-                          <strong className="text-slate-900">
-                            {differenceInDays(parseISO(activeEvent.start_time), new Date())} Days Notice
-                          </strong>{" "}
-                          (Policy: ≥7 Days)
-                        </div>
+                        <span className="text-xs font-semibold text-slate-800 truncate">
+                          {activeEvent.community?.name}
+                        </span>
+                        <span className="text-slate-300">•</span>
+                        <CategoryBadge category={activeEvent.category} size="sm" />
                       </div>
 
-                      {/* Title & Description */}
-                      <div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
-                          {activeEvent.title}
-                        </h2>
-                        {activeEvent.description ? (
-                          <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
-                            {activeEvent.description}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-slate-400 italic mt-2">
-                            No supplemental event summary provided.
-                          </p>
-                        )}
-                      </div>
+                      <span className="text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
+                        {differenceInDays(parseISO(activeEvent.start_time), new Date())}d lead notice
+                      </span>
+                    </div>
 
-                      {/* Schedule & Venue Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <div>
-                          <div className="text-slate-400 uppercase text-[10px] font-bold tracking-wider mb-1 flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                            <span>Target Schedule</span>
+                    {/* Title & Description */}
+                    <div>
+                      <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                        {activeEvent.title}
+                      </h2>
+                      {activeEvent.description && (
+                        <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+                          {activeEvent.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Schedule, Venue & Clearance */}
+                    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Target Schedule */}
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 mt-0.5 border border-purple-100/80">
+                            <Calendar className="w-4 h-4" />
                           </div>
-                          <div className="font-semibold text-slate-900 text-sm">
-                            {format(parseISO(activeEvent.start_time), "EEEE, MMMM d, yyyy")}
-                          </div>
-                          <div className="text-slate-500 mt-0.5">
-                            {format(parseISO(activeEvent.start_time), "h:mm a")} –{" "}
-                            {format(parseISO(activeEvent.end_time), "h:mm a")}
+                          <div>
+                            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Target Schedule
+                            </div>
+                            <div className="font-bold text-slate-900 text-sm mt-0.5">
+                              {format(parseISO(activeEvent.start_time), "EEE, MMM d, yyyy")}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {format(parseISO(activeEvent.start_time), "h:mm a")} – {format(parseISO(activeEvent.end_time), "h:mm a")}
+                            </div>
                           </div>
                         </div>
 
-                        <div>
-                          <div className="text-slate-400 uppercase text-[10px] font-bold tracking-wider mb-1 flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5 text-purple-600" />
-                            <span>Venue & Capacity</span>
+                        {/* Venue & Capacity */}
+                        <div className="flex items-start gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 mt-0.5 border border-purple-100/80">
+                            <MapPin className="w-4 h-4" />
                           </div>
-                          <div className="font-semibold text-slate-900 text-sm">
-                            {activeEvent.venue?.name || "Campus Venue"}
-                          </div>
-                          <div className="text-slate-500 mt-0.5">
-                            {activeEvent.venue?.building} • Capacity: {activeEvent.venue?.capacity || "N/A"}
+                          <div>
+                            <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                              Venue & Capacity
+                            </div>
+                            <div className="font-bold text-slate-900 text-sm mt-0.5">
+                              {activeEvent.venue?.name || "Campus Venue"}
+                            </div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                              {activeEvent.venue?.building} • Capacity: {activeEvent.venue?.capacity || "N/A"}
+                            </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Safe-Slot Conflict Verification */}
-                      <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-950">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                        <div>
-                          <span className="font-bold">Deterministic Safe Slot Verified</span>
-                          <div className="text-[11px] text-emerald-800 mt-0.5">
-                            Zero double-booking conflicts detected in {activeEvent.venue?.name}. No split-audience clashes in {activeEvent.category} category.
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Notice Banner Thumbnail */}
-                      <div>
-                        <div className="text-slate-400 uppercase text-[10px] font-bold tracking-wider mb-2">
-                          Event Notice Banner
-                        </div>
-                        <div className="relative aspect-[21/9] w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs">
-                          <Image
-                            src={
-                              activeEvent.cover_image_url ||
-                              CATEGORY_DEFAULT_IMAGES[activeEvent.category] ||
-                              CATEGORY_DEFAULT_IMAGES.Tech
-                            }
-                            alt={activeEvent.title}
-                            fill
-                            sizes="(max-width: 1024px) 100vw, 800px"
-                            className="object-cover"
-                          />
-                        </div>
+                      {/* Safe Slot Clearance */}
+                      <div className="pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-emerald-900">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="font-medium text-xs">Deterministic Safe Slot Verified • Zero conflicts detected</span>
                       </div>
                     </div>
 
-                    {/* ACTION BAR: Harmonized with Purple tokens */}
-                    <div className="p-4 lg:p-6 border-t border-slate-100 bg-slate-50/60 flex items-center justify-between gap-3">
+                    {/* Compact Poster Preview */}
+                    <div>
+                      <div className="text-slate-400 uppercase text-[10px] font-bold tracking-wider mb-1.5">
+                        Event Poster
+                      </div>
+                      <div
+                        onClick={() => setPreviewEvent(activeEvent)}
+                        className="relative aspect-[21/9] max-h-36 sm:max-h-40 w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs cursor-pointer group"
+                      >
+                        <Image
+                          src={
+                            activeEvent.cover_image_url ||
+                            CATEGORY_DEFAULT_IMAGES[activeEvent.category] ||
+                            CATEGORY_DEFAULT_IMAGES.Tech
+                          }
+                          alt={activeEvent.title}
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 800px"
+                          className="object-cover group-hover:scale-102 transition-transform duration-200"
+                        />
+                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors" />
+                      </div>
+                    </div>
+
+                    {/* DECISION ACTION BAR: Seamlessly attached directly to the event review content */}
+                    <div className="pt-4 border-t border-slate-200/90 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                       <button
                         type="button"
                         onClick={() => setPreviewEvent(activeEvent)}
-                        className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5 text-slate-400" />
                         <span>Inspect Live Notice</span>
@@ -555,7 +587,7 @@ export default function PrincipalDeskPage() {
                           type="button"
                           disabled={actionInProgress === activeEvent.id}
                           onClick={() => handleOpenReject(activeEvent)}
-                          className="px-4 py-2 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100/90 text-xs font-semibold text-rose-800 transition-colors cursor-pointer"
+                          className="flex-1 sm:flex-initial px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-xs font-semibold text-rose-700 transition-colors cursor-pointer text-center"
                         >
                           Decline with Note
                         </button>
@@ -564,7 +596,7 @@ export default function PrincipalDeskPage() {
                           type="button"
                           disabled={actionInProgress === activeEvent.id}
                           onClick={() => handleApprove(activeEvent.id)}
-                          className="px-4.5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-xs font-semibold text-white shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                          className="flex-1 sm:flex-initial px-5 py-2 sm:py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-xs font-semibold text-white shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-center shrink-0"
                         >
                           <Check className="w-3.5 h-3.5" />
                           <span>{actionInProgress === activeEvent.id ? "Publishing..." : "Approve & Publish"}</span>
@@ -572,10 +604,11 @@ export default function PrincipalDeskPage() {
                       </div>
                     </div>
                   </div>
-                ) : null}
-              </div>
-            )
-          )}
+                </div>
+              ) : null}
+            </div>
+          )
+        )}
 
           {/* TAB 2: MASTER CAMPUS SCHEDULE */}
           {activeTab === "master-schedule" && (
