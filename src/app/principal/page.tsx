@@ -76,6 +76,7 @@ export default function PrincipalDeskPage() {
 
   // Search & Filter states for Calendar & History tabs
   const [calendarSearch, setCalendarSearch] = useState("");
+  const [calendarCategoryFilter, setCalendarCategoryFilter] = useState("all");
   const [historySearch, setHistorySearch] = useState("");
   const [historyStatusFilter, setHistoryStatusFilter] = useState<"all" | "published" | "rejected">("all");
 
@@ -131,7 +132,17 @@ export default function PrincipalDeskPage() {
   }, [events]);
 
   const approvedEvents = useMemo(() => {
-    return events.filter((e) => e.status === "published");
+    return [...events]
+      .filter((e) => e.status === "published")
+      .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+  }, [events]);
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>();
+    events.filter((e) => e.status === "published").forEach((e) => {
+      if (e.category) cats.add(e.category);
+    });
+    return ["all", ...Array.from(cats)];
   }, [events]);
 
   const historyEvents = useMemo(() => {
@@ -139,16 +150,20 @@ export default function PrincipalDeskPage() {
   }, [events]);
 
   const filteredApprovedEvents = useMemo(() => {
-    if (!calendarSearch.trim()) return approvedEvents;
-    const q = calendarSearch.toLowerCase().trim();
-    return approvedEvents.filter(
-      (ev) =>
+    return approvedEvents.filter((ev) => {
+      if (calendarCategoryFilter !== "all" && ev.category.toLowerCase() !== calendarCategoryFilter.toLowerCase()) {
+        return false;
+      }
+      if (!calendarSearch.trim()) return true;
+      const q = calendarSearch.toLowerCase().trim();
+      return (
         ev.title.toLowerCase().includes(q) ||
         (ev.community?.name && ev.community.name.toLowerCase().includes(q)) ||
         (ev.venue?.name && ev.venue.name.toLowerCase().includes(q)) ||
         ev.category.toLowerCase().includes(q)
-    );
-  }, [approvedEvents, calendarSearch]);
+      );
+    });
+  }, [approvedEvents, calendarSearch, calendarCategoryFilter]);
 
   const filteredHistoryEvents = useMemo(() => {
     return historyEvents.filter((ev) => {
@@ -692,38 +707,63 @@ export default function PrincipalDeskPage() {
           {/* TAB 2: MASTER CAMPUS SCHEDULE */}
           {activeTab === "master-schedule" && (
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/40">
-              {/* Header Toolbar */}
-              <div className="p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900">Master Campus Schedule</h3>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
-                      {filteredApprovedEvents.length} {filteredApprovedEvents.length === 1 ? "event" : "events"}
-                    </span>
+              {/* Sticky Compact Header Toolbar */}
+              <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-200 bg-white/95 backdrop-blur-sm shrink-0 flex flex-col gap-2.5 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div className="flex items-center justify-between sm:justify-start gap-2">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-slate-900 tracking-tight">Campus Schedule</h3>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium tabular-nums">
+                        {filteredApprovedEvents.length} {filteredApprovedEvents.length === 1 ? "event" : "events"}
+                      </span>
+                    </div>
+                    <span className="hidden sm:inline-block text-slate-300">•</span>
+                    <p className="hidden sm:block text-xs text-slate-500">
+                      Approved & published campus events
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    All currently approved and published events across campus
-                  </p>
+
+                  <div className="relative w-full sm:w-64">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={calendarSearch}
+                      onChange={(e) => setCalendarSearch(e.target.value)}
+                      placeholder="Search events, clubs, venues..."
+                      className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors"
+                    />
+                    {calendarSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setCalendarSearch("")}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={calendarSearch}
-                    onChange={(e) => setCalendarSearch(e.target.value)}
-                    placeholder="Search events, clubs, venues..."
-                    className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors"
-                  />
-                  {calendarSearch && (
-                    <button
-                      type="button"
-                      onClick={() => setCalendarSearch("")}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
+                {/* Horizontal Category Filter Strip */}
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 py-0.5">
+                  {availableCategories.map((cat) => {
+                    const isSelected = calendarCategoryFilter.toLowerCase() === cat.toLowerCase();
+                    const label = cat === "all" ? "All Categories" : cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setCalendarCategoryFilter(cat)}
+                        className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                          isSelected
+                            ? "bg-slate-900 text-white shadow-2xs font-semibold"
+                            : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -734,53 +774,70 @@ export default function PrincipalDeskPage() {
                     <Calendar className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                     <p className="text-xs font-semibold text-slate-700">No scheduled events found</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">
-                      {calendarSearch ? "Try adjusting your search query." : "No approved campus events yet."}
+                      {calendarSearch || calendarCategoryFilter !== "all"
+                        ? "Try adjusting your search query or category filter."
+                        : "No approved campus events yet."}
                     </p>
                   </div>
                 ) : (
                   <>
-                    {/* MOBILE FULL-SCREEN LIST (< md) */}
+                    {/* MOBILE FULL-SCREEN DATE-RAIL LIST (< md) */}
                     <div className="md:hidden divide-y divide-slate-100 bg-white border-b border-slate-200">
-                      {filteredApprovedEvents.map((ev) => (
-                        <button
-                          key={ev.id}
-                          type="button"
-                          onClick={() => setPreviewEvent(ev)}
-                          className="w-full text-left px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <CategoryBadge category={ev.category} />
-                              <span className="text-[11px] font-medium text-slate-500 truncate">
-                                {ev.community?.name || "Campus Community"}
+                      {filteredApprovedEvents.map((ev) => {
+                        const eventDate = parseISO(ev.start_time);
+                        return (
+                          <button
+                            key={ev.id}
+                            type="button"
+                            onClick={() => setPreviewEvent(ev)}
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 active:bg-slate-100/80 transition-colors flex items-center gap-3.5 group cursor-pointer"
+                          >
+                            {/* Left Date Block */}
+                            <div className="w-11 shrink-0 flex flex-col items-center justify-center rounded-lg bg-slate-100/80 border border-slate-200/70 py-1.5 group-hover:bg-indigo-50/70 group-hover:border-indigo-200/80 transition-colors">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-indigo-600 transition-colors leading-none">
+                                {format(eventDate, "MMM")}
+                              </span>
+                              <span className="text-base font-bold text-slate-800 group-hover:text-indigo-700 transition-colors tabular-nums leading-tight my-0.5">
+                                {format(eventDate, "d")}
+                              </span>
+                              <span className="text-[10px] font-medium text-slate-400 leading-none">
+                                {format(eventDate, "EEE")}
                               </span>
                             </div>
-                            <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-2">
-                              {ev.title}
-                            </h4>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400">
-                              <span className="inline-flex items-center gap-1 text-slate-500">
-                                <Clock className="w-3 h-3 text-slate-400 shrink-0" />
-                                <span>
-                                  {format(parseISO(ev.start_time), "EEE, MMM d")} • {format(parseISO(ev.start_time), "h:mm a")}
-                                </span>
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-slate-500">
-                                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                                <span className="truncate">{ev.venue?.name || "Campus Venue"}</span>
-                              </span>
-                            </div>
-                          </div>
 
-                          <div className="flex flex-col items-end justify-between shrink-0 self-stretch">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-semibold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              Live
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                          </div>
-                        </button>
-                      ))}
+                            {/* Center Event Details */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="text-[11px] font-medium text-slate-500 truncate max-w-[130px]">
+                                  {ev.community?.name || "Campus Community"}
+                                </span>
+                                <span className="text-[10px] text-slate-300">•</span>
+                                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                                  {ev.category}
+                                </span>
+                              </div>
+                              <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-2">
+                                {ev.title}
+                              </h4>
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400">
+                                <span className="inline-flex items-center gap-1 text-slate-500">
+                                  <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span>{format(eventDate, "h:mm a")}</span>
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-slate-500">
+                                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span className="truncate max-w-[130px]">{ev.venue?.name || "Campus Venue"}</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Right Action Indicator */}
+                            <div className="shrink-0 self-center pl-1 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all">
+                              <ChevronRight className="w-4 h-4" />
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {/* DESKTOP TABLE VIEW (md+) */}
@@ -845,16 +902,16 @@ export default function PrincipalDeskPage() {
           {/* TAB 3: DECISION HISTORY */}
           {activeTab === "history" && (
             <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/40">
-              {/* Header Toolbar */}
-              <div className="p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* Sticky Compact Header Toolbar */}
+              <div className="px-4 py-3 sm:px-5 sm:py-3.5 border-b border-slate-200 bg-white/95 backdrop-blur-sm shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900">Decision History</h3>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+                    <h3 className="text-sm font-bold text-slate-900 tracking-tight">Decision History</h3>
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium tabular-nums">
                       {filteredHistoryEvents.length} {filteredHistoryEvents.length === 1 ? "record" : "records"}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="hidden sm:block text-xs text-slate-500 mt-0.5">
                     Audit trail of all approved and declined campus proposals
                   </p>
                 </div>
