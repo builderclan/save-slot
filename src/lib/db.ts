@@ -1,9 +1,9 @@
 import { Pool, QueryResult, QueryResultRow } from "pg";
 
-let pool: Pool | null = null;
+const globalForDb = globalThis as unknown as { pgPool?: Pool };
 
 export function getDbPool(): Pool {
-  if (!pool) {
+  if (!globalForDb.pgPool) {
     const password = process.env.DB_PASSWORD || process.env.DB_password;
     const host = process.env.DB_HOST;
     const port = parseInt(process.env.DB_PORT || "6543", 10);
@@ -16,19 +16,25 @@ export function getDbPool(): Pool {
       );
     }
 
-    pool = new Pool({
+    const isProduction = process.env.NODE_ENV === "production";
+    const rejectUnauthorized =
+      process.env.DB_SSL_REJECT_UNAUTHORIZED !== undefined
+        ? process.env.DB_SSL_REJECT_UNAUTHORIZED === "true"
+        : isProduction;
+
+    globalForDb.pgPool = new Pool({
       host,
       port,
       user,
       password,
       database,
-      ssl: { rejectUnauthorized: false },
+      ssl: { rejectUnauthorized },
       max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 5000,
     });
   }
-  return pool;
+  return globalForDb.pgPool;
 }
 
 export async function query<T extends QueryResultRow = QueryResultRow>(
