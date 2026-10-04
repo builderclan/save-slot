@@ -84,15 +84,11 @@ export default function AdminConsolePage() {
       const venuesData = await venuesRes.json();
       setVenues(venuesData.venues || []);
 
-      // 5. Extract communities from users/events for dropdown
-      const uniqueComms = Array.from(
-        new Map(
-          (evData.events || [])
-            .filter((e: CampusEvent) => e.community)
-            .map((e: CampusEvent) => [e.community?.id, e.community])
-        ).values()
-      ) as Array<{ id: string; name: string }>;
-      setCommunities(uniqueComms);
+      // 5. Fetch all recognized communities directly from API
+      const commsRes = await fetch("/api/communities");
+      const commsData = await commsRes.json();
+      setCommunities(commsData.communities || []);
+
     } catch (err) {
       console.error("Admin data load error:", err);
     } finally {
