@@ -28,11 +28,19 @@ Every campus event must be guaranteed a **"Safe Slot"**:
 │  - Full CRUD on Users (Add/edit Leads and Admins; no public signups)   │
 │  - Full CRUD on Venues (Auditoriums, Labs, Amphitheater, etc.)         │
 │  - Full CRUD on Campus Communities & Clubs                             │
-│  - Triage Console: Manual override capability for scheduling clashes   │
+│  - Operations Console: Facility readiness and account management       │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ manages
 ┌───────────────────────────────────▼────────────────────────────────────┐
-│                        2. COMMUNITY LEADS                              │
+│                        2. COLLEGE PRINCIPAL                            │
+│  - Institutional executive approval authority (/principal)             │
+│  - Triage Console: Review Safe-Slot cleared proposals from Leads       │
+│  - Grant institutional authorization or decline with feedback presets  │
+│  - Master campus schedule overview across all clubs and departments   │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │ oversees
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                        3. COMMUNITY LEADS                              │
 │  - Authenticated leaders of recognized campus clubs and societies      │
 │  - Added directly by Campus Admin (no public registration form)        │
 │  - Scoped access: Can only submit/edit events for assigned community   │
@@ -40,10 +48,10 @@ Every campus event must be guaranteed a **"Safe Slot"**:
 │  - Real-time Safe Slot Assistant: warns of venue/time clashes and      │
 │    proposes 3 viable alternative slots                                 │
 │  - Track status of submissions (Pending, Approved, Rejected)           │
-└────────────────────────────────────────────────────────────────────────┘
+└───────────────────────────────────┬────────────────────────────────────┘
                                     │ publishes to
 ┌───────────────────────────────────▼────────────────────────────────────┐
-│                    3. STUDENTS (PUBLIC NOTICE BOARD)                   │
+│                    4. STUDENTS (PUBLIC NOTICE BOARD)                   │
 │  - 100% Public Access: Zero login or registration barrier               │
 │  - Multi-View Calendar & Notice Board: Month Grid, Week Timeline,      │
 │    and Visual Event Poster Card Feed                                   │

@@ -24,6 +24,10 @@ interface MonthViewProps {
   onDateChange?: (date: Date) => void;
 }
 
+function toDate(val: string | Date): Date {
+  return typeof val === "string" ? parseISO(val) : new Date(val);
+}
+
 export function MonthView({
   events,
   onSelectEvent,
@@ -51,7 +55,7 @@ export function MonthView({
     const map = new Map<string, CampusEvent[]>();
     for (const ev of events) {
       if (!ev.start_time) continue;
-      const key = format(parseISO(ev.start_time), "yyyy-MM-dd");
+      const key = format(toDate(ev.start_time), "yyyy-MM-dd");
       const list = map.get(key);
       if (list) {
         list.push(ev);
@@ -61,6 +65,7 @@ export function MonthView({
     }
     return map;
   }, [events]);
+
 
   const getEventsForDay = useCallback(
     (day: Date) => {
@@ -144,7 +149,7 @@ export function MonthView({
                 {/* Desktop (lg+): Full readable chips with time & title */}
                 <div className="hidden lg:block space-y-1">
                   {dayEvents.slice(0, 3).map((ev) => {
-                    const startTime = format(parseISO(ev.start_time), "h:mm a");
+                    const startTime = format(toDate(ev.start_time), "h:mm a");
                     const catStyle = CATEGORY_STYLES[ev.category] || {
                       bg: "bg-indigo-50/80",
                       text: "text-indigo-700",
@@ -265,8 +270,8 @@ export function MonthView({
         ) : (
           <div className="space-y-2.5">
             {selectedDayEvents.map((ev) => {
-              const startTime = format(parseISO(ev.start_time), "h:mm a");
-              const endTime = format(parseISO(ev.end_time), "h:mm a");
+              const startTime = format(toDate(ev.start_time), "h:mm a");
+              const endTime = format(toDate(ev.end_time), "h:mm a");
 
               return (
                 <div
@@ -339,7 +344,7 @@ export function MonthView({
                     <CategoryBadge category={ev.category} size="sm" />
                     <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
                       <Clock className="w-3 h-3 text-slate-400" />
-                      {format(parseISO(ev.start_time), "h:mm a")}
+                      {format(toDate(ev.start_time), "h:mm a")}
                     </span>
                   </div>
                   <h4 className="font-semibold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">

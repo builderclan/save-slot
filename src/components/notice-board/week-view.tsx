@@ -21,6 +21,10 @@ interface WeekViewProps {
   onDateChange?: (date: Date) => void;
 }
 
+function toDate(val: string | Date): Date {
+  return typeof val === "string" ? parseISO(val) : new Date(val);
+}
+
 export function WeekView({
   events,
   onSelectEvent,
@@ -38,11 +42,12 @@ export function WeekView({
     const map = new Map<string, CampusEvent[]>();
     for (const ev of events) {
       if (!ev.start_time) continue;
-      const key = format(parseISO(ev.start_time), "yyyy-MM-dd");
+      const key = format(toDate(ev.start_time), "yyyy-MM-dd");
       const list = map.get(key);
       if (list) {
         list.push(ev);
       } else {
+
         map.set(key, [ev]);
       }
     }
@@ -143,8 +148,8 @@ export function WeekView({
             </div>
           ) : (
             mobileDayEvents.map((ev) => {
-              const startStr = format(parseISO(ev.start_time), "h:mm a");
-              const endStr = format(parseISO(ev.end_time), "h:mm a");
+              const startStr = format(toDate(ev.start_time), "h:mm a");
+              const endStr = format(toDate(ev.end_time), "h:mm a");
               const catStyle = CATEGORY_STYLES[ev.category] || {
                 bg: "bg-indigo-50/80",
                 text: "text-indigo-700",
@@ -235,7 +240,7 @@ export function WeekView({
                   </div>
                 ) : (
                   dayEvents.map((ev) => {
-                    const startStr = format(parseISO(ev.start_time), "h:mm a");
+                    const startStr = format(toDate(ev.start_time), "h:mm a");
                     const catStyle = CATEGORY_STYLES[ev.category] || {
                       bg: "bg-indigo-50/80",
                       text: "text-indigo-700",

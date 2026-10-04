@@ -5,8 +5,10 @@ import {
   UpdateEventStatusSchema,
   ConflictCheckSchema,
   CreateVenueSchema,
+  UpdateVenueSchema,
   CreateUserSchema,
 } from "../index";
+
 
 describe("Zod Validation Schemas", () => {
   describe("LoginSchema", () => {
@@ -151,6 +153,34 @@ describe("Zod Validation Schemas", () => {
       }
     });
   });
+
+  describe("UpdateVenueSchema", () => {
+    it("validates valid UUID and boolean status", () => {
+      const result = UpdateVenueSchema.safeParse({
+        id: "a1b2c3d4-e5f6-4890-a123-ef1234567890",
+        is_active: false,
+      });
+      expect(result.success).toBe(true);
+    });
+
+
+    it("rejects non-boolean is_active or invalid UUID", () => {
+      expect(
+        UpdateVenueSchema.safeParse({
+          id: "not-a-uuid",
+          is_active: false,
+        }).success
+      ).toBe(false);
+
+      expect(
+        UpdateVenueSchema.safeParse({
+          id: "11111111-2222-3333-4444-555555555555",
+          is_active: "yes",
+        }).success
+      ).toBe(false);
+    });
+  });
+
 
   describe("CreateUserSchema", () => {
     it("accepts valid administrator provisioning payload", () => {

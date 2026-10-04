@@ -7,9 +7,13 @@ vi.mock("@/lib/auth", () => ({
   getCurrentUser: vi.fn(),
 }));
 
-vi.mock("@/lib/db", () => ({
-  query: vi.fn(),
-}));
+vi.mock("@/lib/db", () => {
+  const mockQueryFn = vi.fn();
+  return {
+    query: mockQueryFn,
+    withTransaction: vi.fn(async (cb) => cb({ query: mockQueryFn })),
+  };
+});
 
 vi.mock("@/lib/conflicts/engine", () => ({
   checkEventConflicts: vi.fn(),
@@ -22,6 +26,7 @@ import { checkEventConflicts } from "@/lib/conflicts/engine";
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockQuery = vi.mocked(query);
 const mockCheckEventConflicts = vi.mocked(checkEventConflicts);
+
 
 function mockDbResult<T extends QueryResultRow>(rows: T[]): QueryResult<T> {
   return {
@@ -198,9 +203,11 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     };
 
     // 1st query: select event details
-    // 2nd query: update event status
+    // 2nd query: transactional race check (empty rows = no concurrent collision)
+    // 3rd query: update event status
     mockQuery
       .mockResolvedValueOnce(mockDbResult([targetEvent]))
+      .mockResolvedValueOnce(mockDbResult([]))
       .mockResolvedValueOnce(mockDbResult([updatedEvent]));
 
     mockCheckEventConflicts.mockResolvedValueOnce({
@@ -223,6 +230,45 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.event.status).toBe("published");
+    expect(mockQuery).toHaveBeenCalledTimes(3);
+  });
+
+  it("returns 409 Conflict when a concurrent transaction locks a colliding event right before update", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(adminSession);
+
+    const targetEvent = {
+      id: eventId,
+      venue_id: venueId,
+      start_time: "2026-10-25T14:00:00.000Z",
+      end_time: "2026-10-25T17:00:00.000Z",
+      title: "Design Summit 2026",
+    };
+
+    // 1st query: select event details
+    // 2nd query: transactional race check finds a colliding event approved concurrently!
+    mockQuery
+      .mockResolvedValueOnce(mockDbResult([targetEvent]))
+      .mockResolvedValueOnce(mockDbResult([{ id: "concurrent-event", title: "Concurrent Workshop" }]));
+
+    mockCheckEventConflicts.mockResolvedValueOnce({
+      hasConflict: false,
+      hasLeadTimeViolation: false,
+      leadTimeDays: 14,
+      conflictingEvent: null,
+      message: "Slot is verified clash-free.",
+      safeSlots: [],
+    });
+
+    const req = new Request(`http://localhost/api/admin/events/${eventId}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "published" }),
+    });
+
+    const res = await POST(req, { params: Promise.resolve({ id: eventId }) });
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error).toContain("Concurrent approval clash detected");
     expect(mockQuery).toHaveBeenCalledTimes(2);
   });
 

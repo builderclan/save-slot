@@ -175,14 +175,22 @@ When a clash is detected, the engine runs a fast deterministic search for altern
 
 | Route Group | Audience | Auth Required | Permissions Enforced |
 | :--- | :--- | :---: | :--- |
-| `/` (Notice Board) | Students / Public | ❌ No | Public read of `approved` events |
-| `/calendar` | Students / Public | ❌ No | Public calendar grid & list |
-| `/events/[id]` | Students / Public | ❌ No | Public event detail view |
-| `/lead/*` | Community Leads | ✅ Yes | Can view/edit own community events; submit new events |
-| `/admin/*` | Campus Admins | ✅ Yes | Full access: approve/reject, CRUD users, venues, events |
+| `/` (Notice Board) | Students / Public | ❌ No | Server Component (SSR) initial hydration + interactive client filter island |
+| `/lead/*` | Community Leads | ✅ Yes | Server-side layout guard + lead-scoped event proposals & status tracking |
+| `/principal/*` | College Principal | ✅ Yes | Server-side layout guard + institutional approval & master schedule view |
+| `/admin/*` | Campus Admins | ✅ Yes | Server-side layout guard + venues, users, and emergency event triage |
+| `/api/communities` | All / Public | ❌ No | Public listing of all active campus communities |
+| `/api/conflicts/check` | All / Leads | ❌ No | Real-time clash detection & 3-way safe-slot recommendations |
 | `/api/auth/*` | All | ❌ No | Login, logout, current session inspection |
-| `/api/admin/*` | Campus Admins | ✅ Yes | Admin-only API operations |
-| `/api/lead/*` | Community Leads | ✅ Yes | Lead-scoped event mutations |
+| `/api/admin/*` | Campus Admins | ✅ Yes | Admin-only API operations with strict Zod validation |
+| `/api/lead/*` | Community Leads | ✅ Yes | Lead-scoped event mutations & proposals |
+
+### 4.1 Transactional Concurrency Control & Double-Booking Guard
+To prevent Time-of-Check to Time-of-Use (TOCTOU) race conditions when concurrent administrators or principals approve events:
+1. Approval handlers execute inside an explicit PostgreSQL transaction (`withTransaction`).
+2. The target event and colliding published events in the same venue are locked using `SELECT ... FOR UPDATE`.
+3. If a race condition publishes a collision during triage, the transaction aborts with HTTP 409 Conflict.
+
 
 ---
 
