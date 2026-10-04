@@ -193,6 +193,16 @@ describe("Zod Validation Schemas", () => {
       expect(result.success).toBe(true);
     });
 
+    it("accepts valid vice_principal provisioning payload", () => {
+      const result = CreateUserSchema.safeParse({
+        fullName: "Dr. Sarah Varghese (Vice Principal)",
+        email: "viceprincipal@campus.edu",
+        password: "viceprincipal123",
+        role: "vice_principal",
+      });
+      expect(result.success).toBe(true);
+    });
+
     it("rejects passwords shorter than 6 characters", () => {
       const result = CreateUserSchema.safeParse({
         fullName: "Student Lead",
