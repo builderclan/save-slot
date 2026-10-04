@@ -12,6 +12,7 @@ import {
   MapPin,
   Eye,
   CheckCircle2,
+  XCircle,
   Inbox,
   ShieldCheck,
   ChevronLeft,
@@ -146,7 +147,23 @@ export default function PrincipalDeskPage() {
   }, [events]);
 
   const historyEvents = useMemo(() => {
-    return events.filter((e) => e.status === "published" || e.status === "rejected");
+    return [...events]
+      .filter((e) => e.status === "published" || e.status === "rejected")
+      .sort((a, b) => {
+        const timeA = new Date(a.updated_at || a.created_at || a.start_time).getTime();
+        const timeB = new Date(b.updated_at || b.created_at || b.start_time).getTime();
+        return timeB - timeA;
+      });
+  }, [events]);
+
+  const historyCounts = useMemo(() => {
+    const published = events.filter((e) => e.status === "published").length;
+    const rejected = events.filter((e) => e.status === "rejected").length;
+    return {
+      all: published + rejected,
+      published,
+      rejected,
+    };
   }, [events]);
 
   const filteredApprovedEvents = useMemo(() => {
@@ -174,7 +191,8 @@ export default function PrincipalDeskPage() {
         ev.title.toLowerCase().includes(q) ||
         (ev.community?.name && ev.community.name.toLowerCase().includes(q)) ||
         (ev.venue?.name && ev.venue.name.toLowerCase().includes(q)) ||
-        (ev.rejection_reason && ev.rejection_reason.toLowerCase().includes(q))
+        (ev.rejection_reason && ev.rejection_reason.toLowerCase().includes(q)) ||
+        ev.category.toLowerCase().includes(q)
       );
     });
   }, [historyEvents, historyStatusFilter, historySearch]);
@@ -917,40 +935,55 @@ export default function PrincipalDeskPage() {
                 </div>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                  {/* Status Filter Buttons */}
-                  <div className="inline-flex p-0.5 rounded-lg bg-slate-100 border border-slate-200/80 text-xs">
+                  {/* Status Filter Buttons with Live Counts */}
+                  <div className="inline-flex p-0.5 rounded-lg bg-slate-100 border border-slate-200/80 text-xs shrink-0">
                     <button
                       type="button"
                       onClick={() => setHistoryStatusFilter("all")}
-                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                         historyStatusFilter === "all"
                           ? "bg-white text-slate-900 shadow-2xs font-semibold"
                           : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
-                      All
+                      <span>All</span>
+                      <span className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full ${
+                        historyStatusFilter === "all" ? "bg-slate-100 text-slate-800" : "bg-slate-200/60 text-slate-500"
+                      }`}>
+                        {historyCounts.all}
+                      </span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setHistoryStatusFilter("published")}
-                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                         historyStatusFilter === "published"
                           ? "bg-white text-emerald-800 shadow-2xs font-semibold"
                           : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
-                      Approved
+                      <span>Approved</span>
+                      <span className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full ${
+                        historyStatusFilter === "published" ? "bg-emerald-50 text-emerald-700" : "bg-slate-200/60 text-slate-500"
+                      }`}>
+                        {historyCounts.published}
+                      </span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setHistoryStatusFilter("rejected")}
-                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                         historyStatusFilter === "rejected"
                           ? "bg-white text-rose-800 shadow-2xs font-semibold"
                           : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
-                      Declined
+                      <span>Declined</span>
+                      <span className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full ${
+                        historyStatusFilter === "rejected" ? "bg-rose-50 text-rose-700" : "bg-slate-200/60 text-slate-500"
+                      }`}>
+                        {historyCounts.rejected}
+                      </span>
                     </button>
                   </div>
 
@@ -989,63 +1022,78 @@ export default function PrincipalDeskPage() {
                   </div>
                 ) : (
                   <>
-                    {/* MOBILE FULL-SCREEN LIST (< md) */}
+                    {/* MOBILE FULL-SCREEN AUDIT LIST (< md) */}
                     <div className="md:hidden divide-y divide-slate-100 bg-white border-b border-slate-200">
-                      {filteredHistoryEvents.map((ev) => (
-                        <button
-                          key={ev.id}
-                          type="button"
-                          onClick={() => setPreviewEvent(ev)}
-                          className="w-full text-left px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors flex items-start justify-between gap-3 group cursor-pointer"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[11px] font-medium text-slate-500 truncate">
-                                {ev.community?.name || "Campus Community"}
-                              </span>
-                              <span className="text-[10px] text-slate-300">•</span>
-                              <span className="text-[11px] text-slate-400">
-                                {format(parseISO(ev.start_time), "MMM d")}
-                              </span>
-                            </div>
-                            <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-2">
-                              {ev.title}
-                            </h4>
-                            <div className="mt-1 flex items-center gap-1.5 text-[11px] text-slate-400">
-                              <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                              <span className="truncate">{ev.venue?.name || "Venue"}</span>
-                            </div>
-                            {ev.status === "rejected" && ev.rejection_reason && (
-                              <div className="mt-2 p-2 rounded-lg bg-rose-50/80 border border-rose-100 text-[11px] text-rose-800 leading-relaxed italic">
-                                &ldquo;{ev.rejection_reason}&rdquo;
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex flex-col items-end justify-between shrink-0 self-stretch">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                                ev.status === "published"
-                                  ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                                  : "bg-rose-50 border-rose-200 text-rose-800"
+                      {filteredHistoryEvents.map((ev) => {
+                        const isApproved = ev.status === "published";
+                        const decisionDate = ev.updated_at || ev.created_at || ev.start_time;
+                        return (
+                          <button
+                            key={ev.id}
+                            type="button"
+                            onClick={() => setPreviewEvent(ev)}
+                            className="w-full text-left px-4 py-3 hover:bg-slate-50 active:bg-slate-100/80 transition-colors flex items-start gap-3.5 group cursor-pointer"
+                          >
+                            {/* Left Verdict Tile */}
+                            <div
+                              className={`w-11 shrink-0 flex flex-col items-center justify-center rounded-lg py-2 border transition-colors mt-0.5 ${
+                                isApproved
+                                  ? "bg-emerald-50/80 border-emerald-200/70 text-emerald-700 group-hover:bg-emerald-100/70 group-hover:border-emerald-300"
+                                  : "bg-rose-50/80 border-rose-200/70 text-rose-700 group-hover:bg-rose-100/70 group-hover:border-rose-300"
                               }`}
                             >
-                              {ev.status === "published" ? (
-                                <>
-                                  <Check className="w-2.5 h-2.5 text-emerald-600" />
-                                  Approved
-                                </>
+                              {isApproved ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 mb-0.5" />
                               ) : (
-                                <>
-                                  <X className="w-2.5 h-2.5 text-rose-600" />
-                                  Declined
-                                </>
+                                <XCircle className="w-4 h-4 text-rose-600 mb-0.5" />
                               )}
-                            </span>
-                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                          </div>
-                        </button>
-                      ))}
+                              <span className="text-[9px] font-bold uppercase tracking-wider leading-none">
+                                {isApproved ? "Appr." : "Decl."}
+                              </span>
+                            </div>
+
+                            {/* Center Event Details */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="text-[11px] font-medium text-slate-500 truncate max-w-[130px]">
+                                  {ev.community?.name || "Campus Community"}
+                                </span>
+                                <span className="text-[10px] text-slate-300">•</span>
+                                <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                                  {ev.category}
+                                </span>
+                              </div>
+                              <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-2">
+                                {ev.title}
+                              </h4>
+                              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-400">
+                                <span className="inline-flex items-center gap-1 text-slate-500">
+                                  <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span>{format(parseISO(ev.start_time), "MMM d, h:mm a")}</span>
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-slate-500">
+                                  <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                                  <span className="truncate max-w-[120px]">{ev.venue?.name || "Venue"}</span>
+                                </span>
+                              </div>
+                              {ev.status === "rejected" && ev.rejection_reason && (
+                                <div className="mt-2 p-2 rounded-lg bg-rose-50/80 border border-rose-100 text-[11px] text-rose-800 leading-relaxed">
+                                  <span className="font-semibold text-rose-900">Reason: </span>
+                                  <span className="italic">&ldquo;{ev.rejection_reason}&rdquo;</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Right Column: Decision Timestamp & Chevron */}
+                            <div className="shrink-0 flex flex-col items-end justify-between self-stretch pl-1">
+                              <span className="text-[10px] font-medium text-slate-400">
+                                {format(parseISO(decisionDate), "MMM d")}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all mt-auto" />
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {/* DESKTOP TABLE VIEW (md+) */}
@@ -1053,11 +1101,11 @@ export default function PrincipalDeskPage() {
                       <table className="w-full text-left text-xs text-slate-700">
                         <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-semibold tracking-wider border-b border-slate-200">
                           <tr>
-                            <th className="py-3 px-4">Event</th>
-                            <th className="py-3 px-4">Community</th>
-                            <th className="py-3 px-4">Venue</th>
-                            <th className="py-3 px-4">Decision</th>
-                            <th className="py-3 px-4">Remarks / Reason</th>
+                            <th className="py-3 px-4">Event & Category</th>
+                            <th className="py-3 px-4">Host Club</th>
+                            <th className="py-3 px-4">Scheduled For</th>
+                            <th className="py-3 px-4">Verdict</th>
+                            <th className="py-3 px-4">Decision Date & Remarks</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -1069,11 +1117,21 @@ export default function PrincipalDeskPage() {
                             >
                               <td className="py-3.5 px-4 font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
                                 {ev.title}
+                                <div className="text-[11px] text-slate-400 font-normal">
+                                  {ev.category}
+                                </div>
                               </td>
                               <td className="py-3.5 px-4 font-medium text-slate-700">
                                 {ev.community?.name || "—"}
                               </td>
-                              <td className="py-3.5 px-4 text-slate-600">{ev.venue?.name}</td>
+                              <td className="py-3.5 px-4 text-slate-600">
+                                <span className="font-medium text-slate-800">
+                                  {format(parseISO(ev.start_time), "MMM d, yyyy")}
+                                </span>
+                                <span className="block text-[11px] text-slate-400">
+                                  {ev.venue?.name || "Campus Venue"}
+                                </span>
+                              </td>
                               <td className="py-3.5 px-4">
                                 <span
                                   className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
@@ -1084,19 +1142,24 @@ export default function PrincipalDeskPage() {
                                 >
                                   {ev.status === "published" ? (
                                     <>
-                                      <Check className="w-2.5 h-2.5 text-emerald-600" />
+                                      <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />
                                       Approved
                                     </>
                                   ) : (
                                     <>
-                                      <X className="w-2.5 h-2.5 text-rose-600" />
+                                      <XCircle className="w-2.5 h-2.5 text-rose-600" />
                                       Declined
                                     </>
                                   )}
                                 </span>
                               </td>
-                              <td className="py-3.5 px-4 text-xs text-slate-600 italic max-w-xs truncate">
-                                {ev.rejection_reason || "Approved for notice board publication."}
+                              <td className="py-3.5 px-4 text-xs text-slate-600 max-w-xs">
+                                <div className="text-[11px] font-medium text-slate-400 mb-0.5">
+                                  {format(parseISO(ev.updated_at || ev.created_at || ev.start_time), "MMM d, yyyy")}
+                                </div>
+                                <div className="italic text-slate-700 truncate">
+                                  {ev.rejection_reason || "Approved for notice board publication."}
+                                </div>
                               </td>
                             </tr>
                           ))}
