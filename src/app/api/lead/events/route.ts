@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { CampusEvent } from "@/types/database";
+import { ProposeEventSchema } from "@/lib/validations";
 
 function slugify(text: string): string {
   return text
@@ -29,14 +30,20 @@ export async function GET() {
         e.is_virtual, e.virtual_link, e.external_registration_url, e.cover_image_url,
         e.status, e.rejection_reason, e.cancellation_reason, e.created_at, e.updated_at,
         json_build_object('id', c.id, 'name', c.name, 'slug', c.slug) as community,
-        json_build_object('id', v.id, 'name', v.name, 'building', v.building, 'capacity', v.capacity) as venue
+        CASE 
+          WHEN v.id IS NULL THEN NULL 
+          ELSE json_build_object('id', v.id, 'name', v.name, 'building', v.building, 'capacity', v.capacity) 
+        END as venue
       FROM public.events e
       JOIN public.communities c ON c.id = e.community_id
       LEFT JOIN public.venues v ON v.id = e.venue_id
     `;
 
     const params: unknown[] = [];
-    if (!session.isAdmin && !session.isPrincipal && communityIds.length > 0) {
+    if (!session.isAdmin && !session.isPrincipal) {
+      if (communityIds.length === 0) {
+        return NextResponse.json({ events: [] });
+      }
       sql += ` WHERE e.community_id = ANY($1)`;
       params.push(communityIds);
     }
@@ -58,7 +65,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const rawBody = await request.json().catch(() => null);
+    const parsed = ProposeEventSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      const errorMsg = parsed.error.issues[0]?.message || "Invalid event proposal data";
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
+    }
+
     const {
       title,
       category,
@@ -69,18 +83,18 @@ export async function POST(request: Request) {
       coverImageUrl,
       externalRegistrationUrl,
       communityId: providedCommunityId,
-    } = body;
+    } = parsed.data;
 
-    if (!title || !category || !venueId || !startTime || !endTime || !description) {
-      return NextResponse.json(
-        { error: "Title, category, venue, start time, end time, and description are required." },
-        { status: 400 }
-      );
-    }
-
-    // Determine community id
+    // Determine community id and enforce authorization if not admin
     let targetCommunityId = providedCommunityId;
-    if (!targetCommunityId && session.leadCommunities.length > 0) {
+    if (targetCommunityId) {
+      if (!session.isAdmin && !session.leadCommunities.some((c) => c.id === targetCommunityId)) {
+        return NextResponse.json(
+          { error: "Forbidden: You are not authorized to propose events for this community." },
+          { status: 403 }
+        );
+      }
+    } else if (session.leadCommunities.length > 0) {
       targetCommunityId = session.leadCommunities[0].id;
     }
 
