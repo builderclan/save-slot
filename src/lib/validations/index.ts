@@ -70,3 +70,14 @@ export const ConflictCheckSchema = z.object({
   category: z.string().optional(),
   excludeEventId: z.string().uuid().optional(),
 });
+
+export const CreateUserSchema = z.object({
+  fullName: z.string().trim().min(2, "Full name must be at least 2 characters"),
+  email: z.string().trim().email("Please enter a valid campus email address"),
+  password: z.string().min(6, "Password must be at least 6 characters long"),
+  role: z.enum(["admin", "principal", "organizer"], {
+    message: "Role must be 'admin', 'principal', or 'organizer'",
+  }),
+  communityId: z.string().uuid("Invalid community ID").optional().nullable().or(z.literal("")),
+});
+

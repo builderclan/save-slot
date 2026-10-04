@@ -11,13 +11,19 @@ async function seedDatabase() {
     throw new Error("Missing required database environment variables (DB_HOST, DB_USER, DB_PASSWORD).");
   }
 
+  const isProduction = process.env.NODE_ENV === "production";
+  const rejectUnauthorized =
+    process.env.DB_SSL_REJECT_UNAUTHORIZED !== undefined
+      ? process.env.DB_SSL_REJECT_UNAUTHORIZED === "true"
+      : isProduction;
+
   const client = new Client({
     host,
     port,
     database,
     user,
     password,
-    ssl: { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized },
   });
 
   await client.connect();

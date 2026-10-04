@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, X, AlertTriangle } from "lucide-react";
 import { CampusEvent, ConflictCheckResult } from "@/types/database";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
 import {
@@ -52,7 +52,7 @@ export default function PrincipalDeskPage() {
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   // Banner notification
-  const [bannerNotice, setBannerNotice] = useState<{ message: string; type: "success" | "info" } | null>(null);
+  const [bannerNotice, setBannerNotice] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
 
   // Search & Filter states for Calendar & History tabs
   const [calendarSearch, setCalendarSearch] = useState("");
@@ -262,7 +262,20 @@ export default function PrincipalDeskPage() {
           type: "success",
         });
         setTimeout(() => setBannerNotice(null), 5000);
+      } else {
+        const errData = await res.json();
+        setBannerNotice({
+          message: errData.error || "Failed to approve event: Venue collision or validation error occurred.",
+          type: "error",
+        });
+        setTimeout(() => setBannerNotice(null), 7000);
       }
+    } catch {
+      setBannerNotice({
+        message: "An unexpected error occurred while communicating with the server.",
+        type: "error",
+      });
+      setTimeout(() => setBannerNotice(null), 7000);
     } finally {
       setActionInProgress(null);
     }
@@ -338,11 +351,19 @@ export default function PrincipalDeskPage() {
           className={`fixed top-16 right-6 z-50 p-3.5 rounded-xl border text-xs flex items-center justify-between gap-3 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-top-2 ${
             bannerNotice.type === "success"
               ? "bg-emerald-50/95 border-emerald-200 text-emerald-950"
+              : bannerNotice.type === "error"
+              ? "bg-rose-50/95 border-rose-200 text-rose-950"
               : "bg-slate-900/95 border-slate-800 text-white"
           }`}
         >
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            {bannerNotice.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : bannerNotice.type === "error" ? (
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0" />
+            )}
             <span className="font-semibold">{bannerNotice.message}</span>
           </div>
           <button

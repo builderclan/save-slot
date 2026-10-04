@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { UpdateEventStatusSchema } from "@/lib/validations";
+import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 export async function POST(
   request: Request,
@@ -23,6 +24,44 @@ export async function POST(
     }
 
     const { status, rejectionReason } = parsed.data;
+
+    // Fetch target event details
+    const targetEventRes = await query<{
+      id: string;
+      venue_id: string | null;
+      start_time: string;
+      end_time: string;
+      title: string;
+    }>(
+      "SELECT id, venue_id, start_time, end_time, title FROM public.events WHERE id = $1;",
+      [id]
+    );
+
+    if (targetEventRes.rows.length === 0) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
+
+    const targetEvent = targetEventRes.rows[0];
+
+    // Concurrency collision lock: If publishing, verify venue is free of clashes
+    if (status === "published" && targetEvent.venue_id) {
+      const conflictCheck = await checkEventConflicts({
+        venueId: targetEvent.venue_id,
+        startTime: targetEvent.start_time,
+        endTime: targetEvent.end_time,
+        excludeEventId: id,
+      });
+
+      if (conflictCheck.hasConflict) {
+        return NextResponse.json(
+          {
+            error: `Cannot publish event: Venue collision detected. ${conflictCheck.message}`,
+            conflict: conflictCheck,
+          },
+          { status: 409 }
+        );
+      }
+    }
 
     const sql = `
       UPDATE public.events

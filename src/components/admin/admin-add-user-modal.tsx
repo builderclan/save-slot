@@ -82,10 +82,12 @@ export function AdminAddUserModal({
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">Temporary Password *</label>
             <input
-              type="text"
+              type="password"
               required
+              minLength={6}
               value={password}
               onChange={(e) => onPasswordChange(e.target.value)}
+              placeholder="Min 6 characters (e.g. TempPass#2026)"
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
             />
           </div>

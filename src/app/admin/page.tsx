@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Clock, Calendar, Users, Building, Plus } from "lucide-react";
+import { Shield, Clock, Calendar, Users, Building, Plus, CheckCircle2, AlertTriangle } from "lucide-react";
 import { CampusEvent, Venue } from "@/types/database";
 import {
   AdminMetricsRow,
@@ -31,6 +31,10 @@ export default function AdminConsolePage() {
 
   // Action status
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [adminNotice, setAdminNotice] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   // Modals state
   const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
@@ -40,7 +44,7 @@ export default function AdminConsolePage() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("lead123");
+  const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState<"admin" | "principal" | "organizer">("organizer");
   const [newUserCommId, setNewUserCommId] = useState("");
   const [userModalError, setUserModalError] = useState<string | null>(null);
@@ -112,7 +116,25 @@ export default function AdminConsolePage() {
         setAllEvents((prev) =>
           prev.map((e) => (e.id === eventId ? { ...e, status: "published" } : e))
         );
+        setAdminNotice({
+          message: "Event approved and published to the Student Notice Board.",
+          type: "success",
+        });
+        setTimeout(() => setAdminNotice(null), 5000);
+      } else {
+        const errorData = await res.json();
+        setAdminNotice({
+          message: errorData.error || "Failed to approve event: Venue collision or validation error occurred.",
+          type: "error",
+        });
+        setTimeout(() => setAdminNotice(null), 7000);
       }
+    } catch {
+      setAdminNotice({
+        message: "An unexpected network error occurred while approving the event.",
+        type: "error",
+      });
+      setTimeout(() => setAdminNotice(null), 7000);
     } finally {
       setActionInProgress(null);
     }
@@ -143,7 +165,25 @@ export default function AdminConsolePage() {
         );
         setRejectingEvent(null);
         setRejectionNote("");
+        setAdminNotice({
+          message: "Event rejected and returned with feedback.",
+          type: "success",
+        });
+        setTimeout(() => setAdminNotice(null), 5000);
+      } else {
+        const errorData = await res.json();
+        setAdminNotice({
+          message: errorData.error || "Failed to reject event.",
+          type: "error",
+        });
+        setTimeout(() => setAdminNotice(null), 7000);
       }
+    } catch {
+      setAdminNotice({
+        message: "An unexpected network error occurred while rejecting the event.",
+        type: "error",
+      });
+      setTimeout(() => setAdminNotice(null), 7000);
     } finally {
       setActionInProgress(null);
     }
@@ -187,6 +227,7 @@ export default function AdminConsolePage() {
       setIsAddUserOpen(false);
       setNewUserName("");
       setNewUserEmail("");
+      setNewUserPassword("");
       loadAllData();
     } catch (err: unknown) {
       setUserModalError(err instanceof Error ? err.message : "Error creating user");
@@ -250,6 +291,34 @@ export default function AdminConsolePage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      {/* Notice Banner */}
+      {adminNotice && (
+        <div
+          role="alert"
+          className={`mb-6 p-4 rounded-2xl border text-xs sm:text-sm font-medium flex items-center justify-between gap-3 shadow-xs ${
+            adminNotice.type === "success"
+              ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+              : "bg-rose-50 border-rose-200 text-rose-900"
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {adminNotice.type === "success" ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            )}
+            <span>{adminNotice.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAdminNotice(null)}
+            className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-8 mb-8 border-b border-slate-200">
         <div>

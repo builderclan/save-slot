@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { UserProfile } from "@/types/database";
+import { CreateUserSchema } from "@/lib/validations";
 
 export async function GET() {
   try {
@@ -36,14 +37,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { fullName, email, password, role, communityId } = body;
-
-    if (!fullName || !email || !password || !role) {
+    const parsed = CreateUserSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Full name, email, password, and role are required." },
+        { error: parsed.error.issues[0]?.message || "Invalid user details", details: parsed.error.issues },
         { status: 400 }
       );
     }
+
+    const { fullName, email, password, role, communityId } = parsed.data;
 
     const normalizedEmail = email.trim().toLowerCase();
     const campusId = session.profile.campus_id;
