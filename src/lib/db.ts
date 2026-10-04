@@ -16,11 +16,7 @@ export function getDbPool(): Pool {
       );
     }
 
-    const isProduction = process.env.NODE_ENV === "production";
-    const rejectUnauthorized =
-      process.env.DB_SSL_REJECT_UNAUTHORIZED !== undefined
-        ? process.env.DB_SSL_REJECT_UNAUTHORIZED === "true"
-        : isProduction;
+    const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
 
     globalForDb.pgPool = new Pool({
       host,
