@@ -39,6 +39,7 @@ describe("Admin Venues API (/api/admin/venues)", () => {
     },
     isAdmin: true,
     isPrincipal: false,
+    isVicePrincipal: false,
     isLead: false,
     leadCommunities: [],
   };
@@ -55,6 +56,7 @@ describe("Admin Venues API (/api/admin/venues)", () => {
     },
     isAdmin: false,
     isPrincipal: false,
+    isVicePrincipal: false,
     isLead: false,
     leadCommunities: [],
   };

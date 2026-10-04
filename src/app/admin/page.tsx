@@ -45,7 +45,7 @@ export default function AdminConsolePage() {
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
-  const [newUserRole, setNewUserRole] = useState<"admin" | "principal" | "organizer">("organizer");
+  const [newUserRole, setNewUserRole] = useState<"admin" | "principal" | "vice_principal" | "organizer">("organizer");
   const [newUserCommId, setNewUserCommId] = useState("");
   const [userModalError, setUserModalError] = useState<string | null>(null);
 

@@ -57,6 +57,19 @@ const DEMO_PERSONAS: DemoAccount[] = SHOW_DEMO_PERSONAS
         activeClass: "border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20",
       },
       {
+        id: "vice_principal",
+        role: "Vice Principal",
+        department: "Office of the Vice Principal",
+        email: "viceprincipal@campus.edu",
+        password: "viceprincipal123",
+        shortTag: "Vice Principal",
+        icon: GraduationCap,
+        iconBg: "bg-indigo-100 text-indigo-700 border-indigo-200",
+        iconColor: "text-indigo-700",
+        tagStyle: "bg-indigo-50 text-indigo-800 border-indigo-200",
+        activeClass: "border-indigo-500 bg-indigo-50/50 ring-2 ring-indigo-500/20",
+      },
+      {
         id: "admin",
         role: "Campus Admin",
         department: "Office of Student Affairs",
@@ -149,6 +162,7 @@ export default function LoginPage() {
     role: string;
     isAdmin: boolean;
     isPrincipal: boolean;
+    isVicePrincipal?: boolean;
     isLead: boolean;
   } | null>(null);
 

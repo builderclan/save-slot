@@ -32,11 +32,13 @@ Every campus event must be guaranteed a **"Safe Slot"**:
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ manages
 ┌───────────────────────────────────▼────────────────────────────────────┐
-│                        2. COLLEGE PRINCIPAL                            │
+│               2. COLLEGE PRINCIPAL & VICE PRINCIPAL                    │
 │  - Institutional executive approval authority (/principal)             │
+│  - Dual executive oversight: Principal & Vice Principal hold identical  │
+│    college sign-off and safe-slot triage powers                         │
 │  - Triage Console: Review Safe-Slot cleared proposals from Leads       │
 │  - Grant institutional authorization or decline with feedback presets  │
-│  - Master campus schedule overview across all clubs and departments   │
+│  - Master campus schedule overview across all clubs and departments    │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │ oversees
 ┌───────────────────────────────────▼────────────────────────────────────┐

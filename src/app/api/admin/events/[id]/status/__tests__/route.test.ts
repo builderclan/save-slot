@@ -54,6 +54,7 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     },
     isAdmin: true,
     isPrincipal: false,
+    isVicePrincipal: false,
     isLead: false,
     leadCommunities: [],
   };
@@ -70,6 +71,24 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     },
     isAdmin: false,
     isPrincipal: true,
+    isVicePrincipal: false,
+    isLead: false,
+    leadCommunities: [],
+  };
+
+  const vicePrincipalSession: AuthSession = {
+    userId: "vice-principal-uuid",
+    email: "viceprincipal@campus.edu",
+    profile: {
+      id: "vice-principal-uuid",
+      email: "viceprincipal@campus.edu",
+      full_name: "Dr. Sarah Varghese (Vice Principal)",
+      role: "vice_principal",
+      campus_id: "c-1",
+    },
+    isAdmin: false,
+    isPrincipal: true,
+    isVicePrincipal: true,
     isLead: false,
     leadCommunities: [],
   };
@@ -86,6 +105,7 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     },
     isAdmin: false,
     isPrincipal: false,
+    isVicePrincipal: false,
     isLead: false,
     leadCommunities: [],
   };
@@ -312,5 +332,55 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     // Conflict check is skipped for rejections
     expect(mockCheckEventConflicts).not.toHaveBeenCalled();
     expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it("authorizes Vice Principal to approve events with identical executive authority", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(vicePrincipalSession);
+
+    const targetEvent = {
+      id: eventId,
+      venue_id: venueId,
+      start_time: "2026-10-25T14:00:00.000Z",
+      end_time: "2026-10-25T17:00:00.000Z",
+      title: "Executive Symposium 2026",
+    };
+
+    const updatedEvent = {
+      ...targetEvent,
+      status: "published",
+      updated_at: new Date().toISOString(),
+    };
+
+    mockQuery
+      .mockResolvedValueOnce(mockDbResult([targetEvent]))
+      .mockResolvedValueOnce(mockDbResult([]))
+      .mockResolvedValueOnce(mockDbResult([updatedEvent]));
+
+    mockCheckEventConflicts.mockResolvedValueOnce({
+      hasConflict: false,
+      hasLeadTimeViolation: false,
+      leadTimeDays: 14,
+      conflictingEvent: null,
+      message: "Slot is verified clash-free.",
+      safeSlots: [],
+    });
+
+    const req = new Request(`http://localhost/api/admin/events/${eventId}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "published" }),
+    });
+
+    const res = await POST(req, { params: Promise.resolve({ id: eventId }) });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.event.status).toBe("published");
+    expect(mockQuery).toHaveBeenCalledTimes(3);
+
+    // Verify that the UPDATE query attributes decision to the Vice Principal
+    const updateCall = mockQuery.mock.calls[2];
+    expect(updateCall[0]).toContain("reviewed_by = $3");
+    expect(updateCall[1]).toEqual(["published", null, vicePrincipalSession.userId, eventId]);
   });
 });

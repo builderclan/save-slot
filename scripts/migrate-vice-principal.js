@@ -1,6 +1,6 @@
 const { Client } = require("pg");
 
-async function migrateAndSeedPrincipal() {
+async function migrateAndSeedVicePrincipal() {
   const password = process.env.DB_PASSWORD || process.env.DB_password;
   const host = process.env.DB_HOST;
   const port = parseInt(process.env.DB_PORT || "6543", 10);
@@ -23,30 +23,30 @@ async function migrateAndSeedPrincipal() {
   });
 
   await client.connect();
-  console.log("Connected to PostgreSQL for Principal Role Migration...");
+  console.log("Connected to PostgreSQL for Vice Principal Role Migration...");
 
   try {
     // 1. Update check constraint on public.users
-    console.log("Updating users_role_check constraint...");
+    console.log("Updating users_role_check constraint to include 'vice_principal'...");
     await client.query("ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;");
     await client.query(`
       ALTER TABLE public.users 
       ADD CONSTRAINT users_role_check 
-      CHECK (role IN ('student', 'organizer', 'admin', 'principal'));
+      CHECK (role IN ('student', 'organizer', 'admin', 'principal', 'vice_principal'));
     `);
-    console.log("✓ users_role_check updated to include 'principal'");
+    console.log("✓ users_role_check updated to include 'vice_principal'");
 
     // 2. Fetch primary campus ID
     const campusRes = await client.query("SELECT id FROM public.campuses LIMIT 1;");
     const campusId = campusRes.rows[0]?.id;
 
-    // 3. Create or update Principal user in auth.users & public.users
-    const principalEmail = "principal@campus.edu";
-    const principalPassword = "principal123";
-    const principalName = "Dr. K. S. Mathew";
+    // 3. Create or update Vice Principal user in auth.users & public.users
+    const vpEmail = "viceprincipal@campus.edu";
+    const vpPassword = "viceprincipal123";
+    const vpName = "Dr. Sarah Varghese";
 
-    let principalId;
-    const existingAuth = await client.query("SELECT id FROM auth.users WHERE email = $1;", [principalEmail]);
+    let vpId;
+    const existingAuth = await client.query("SELECT id FROM auth.users WHERE email = $1;", [vpEmail]);
 
     if (existingAuth.rows.length === 0) {
       const insAuth = await client.query(
@@ -61,14 +61,14 @@ async function migrateAndSeedPrincipal() {
           gen_random_uuid(), '00000000-0000-0000-0000-000000000000',
           'authenticated', 'authenticated', $1, crypt($2, gen_salt('bf')),
           NOW(), '{"provider":"email","providers":["email"]}',
-          jsonb_build_object('full_name', $3::text, 'role', 'principal'),
+          jsonb_build_object('full_name', $3::text, 'role', 'vice_principal'),
           false, false, false, NOW(), NOW(),
           '', '', '', '', '', '', ''
         )
         RETURNING id;`,
-        [principalEmail, principalPassword, principalName]
+        [vpEmail, vpPassword, vpName]
       );
-      principalId = insAuth.rows[0].id;
+      vpId = insAuth.rows[0].id;
 
       await client.query(
         `INSERT INTO auth.identities (
@@ -79,28 +79,28 @@ async function migrateAndSeedPrincipal() {
           'email', $2::text, NOW(), NOW(), NOW()
         )
         ON CONFLICT (provider, provider_id) DO NOTHING;`,
-        [principalId, principalId, principalEmail]
+        [vpId, vpId, vpEmail]
       );
-      console.log(`+ Created auth user: ${principalEmail}`);
+      console.log(`+ Created auth user: ${vpEmail}`);
     } else {
-      principalId = existingAuth.rows[0].id;
+      vpId = existingAuth.rows[0].id;
       await client.query(
-        "UPDATE auth.users SET encrypted_password = crypt($1, gen_salt('bf')), email_confirmed_at = NOW(), raw_user_meta_data = jsonb_build_object('full_name', $2::text, 'role', 'principal') WHERE id = $3;",
-        [principalPassword, principalName, principalId]
+        "UPDATE auth.users SET encrypted_password = crypt($1, gen_salt('bf')), email_confirmed_at = NOW(), raw_user_meta_data = jsonb_build_object('full_name', $2::text, 'role', 'vice_principal') WHERE id = $3;",
+        [vpPassword, vpName, vpId]
       );
-      console.log(`✓ Updated password & metadata for auth user: ${principalEmail}`);
+      console.log(`✓ Updated password & metadata for auth user: ${vpEmail}`);
     }
 
     // 4. Upsert public.users
     await client.query(
       `INSERT INTO public.users (id, email, full_name, role, campus_id)
-       VALUES ($1, $2, $3, 'principal', $4)
-       ON CONFLICT (id) DO UPDATE SET full_name = $3, role = 'principal', campus_id = $4;`,
-      [principalId, principalEmail, principalName, campusId]
+       VALUES ($1, $2, $3, 'vice_principal', $4)
+       ON CONFLICT (id) DO UPDATE SET full_name = $3, role = 'vice_principal', campus_id = $4;`,
+      [vpId, vpEmail, vpName, campusId]
     );
-    console.log(`✓ Public user record created/updated for ${principalEmail} with role 'principal'`);
+    console.log(`✓ Public user record created/updated for ${vpEmail} with role 'vice_principal'`);
 
-    console.log("\nMigration & Principal seeding complete!");
+    console.log("\nMigration & Vice Principal seeding complete!");
   } catch (err) {
     console.error("Migration failed:", err);
     process.exit(1);
@@ -109,4 +109,4 @@ async function migrateAndSeedPrincipal() {
   }
 }
 
-migrateAndSeedPrincipal();
+migrateAndSeedVicePrincipal();

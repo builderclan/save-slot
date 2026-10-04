@@ -10,8 +10,8 @@ interface AdminAddUserModalProps {
   onEmailChange: (v: string) => void;
   password: string;
   onPasswordChange: (v: string) => void;
-  role: "admin" | "principal" | "organizer";
-  onRoleChange: (r: "admin" | "principal" | "organizer") => void;
+  role: "admin" | "principal" | "vice_principal" | "organizer";
+  onRoleChange: (r: "admin" | "principal" | "vice_principal" | "organizer") => void;
   communityId: string;
   onCommunityIdChange: (id: string) => void;
   communities: Array<{ id: string; name: string }>;
@@ -97,12 +97,13 @@ export function AdminAddUserModal({
             <select
               value={role}
               onChange={(e) =>
-                onRoleChange(e.target.value as "admin" | "principal" | "organizer")
+                onRoleChange(e.target.value as "admin" | "principal" | "vice_principal" | "organizer")
               }
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
             >
               <option value="organizer">Community Lead</option>
               <option value="principal">College Principal (Executive Approver)</option>
+              <option value="vice_principal">Vice Principal (Executive Approver)</option>
               <option value="admin">Campus Administrator (Operations)</option>
             </select>
           </div>

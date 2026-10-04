@@ -16,6 +16,7 @@ export async function GET() {
       role: session.profile.role,
       isAdmin: session.isAdmin,
       isPrincipal: session.isPrincipal,
+      isVicePrincipal: session.isVicePrincipal,
       isLead: session.isLead,
       leadCommunities: session.leadCommunities,
     },

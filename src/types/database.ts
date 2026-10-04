@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "principal" | "organizer" | "student";
+export type UserRole = "admin" | "principal" | "vice_principal" | "organizer" | "student";
 
 export type EventCategory =
   | "Tech"
@@ -90,12 +90,19 @@ export interface CampusEvent {
   rejection_reason?: string;
   cancellation_reason?: string;
   created_by?: string;
+  reviewed_by?: string | null;
   created_at?: string;
   updated_at?: string;
   // Hydrated joins
   community?: Community;
   venue?: Venue;
   creator?: UserProfile;
+  reviewer?: {
+    id: string;
+    full_name: string;
+    email: string;
+    role: UserRole;
+  } | null;
 }
 
 export interface SafeSlotSuggestion {

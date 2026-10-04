@@ -39,10 +39,20 @@ export default async function StudentNoticeBoardPage() {
               'address', v.address,
               'notes', v.notes
             )
-          END as venue
+          END as venue,
+          CASE 
+            WHEN reviewer.id IS NULL THEN NULL 
+            ELSE json_build_object(
+              'id', reviewer.id,
+              'full_name', reviewer.full_name,
+              'email', reviewer.email,
+              'role', reviewer.role
+            )
+          END as reviewer
         FROM public.events e
         JOIN public.communities c ON c.id = e.community_id
         LEFT JOIN public.venues v ON v.id = e.venue_id
+        LEFT JOIN public.users reviewer ON reviewer.id = e.reviewed_by
         WHERE e.status = 'published'
         ORDER BY e.start_time ASC
         LIMIT 200;
@@ -66,6 +76,8 @@ export default async function StudentNoticeBoardPage() {
           isLead: session.isLead,
           isAdmin: session.isAdmin,
           isPrincipal: session.isPrincipal,
+          isVicePrincipal: session.isVicePrincipal,
+          role: session.profile.role,
           leadCommunities: session.leadCommunities.map((c) => ({
             id: c.id,
             name: c.name,

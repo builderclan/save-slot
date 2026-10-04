@@ -50,7 +50,13 @@ export async function POST(request: Request) {
     }
 
     const redirectUrl =
-      role === "principal" ? "/principal" : role === "admin" ? "/admin" : role === "organizer" ? "/lead" : "/";
+      role === "principal" || role === "vice_principal"
+        ? "/principal"
+        : role === "admin"
+        ? "/admin"
+        : role === "organizer"
+        ? "/lead"
+        : "/";
 
     return NextResponse.json({
       success: true,

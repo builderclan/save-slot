@@ -13,10 +13,12 @@ import {
   CheckCircle2,
   Share2,
   Check,
+  ShieldCheck,
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "./category-badge";
 import { getGoogleCalendarUrl, downloadIcsFile } from "@/lib/calendar-export";
+import { formatDisplayName } from "@/lib/utils";
 
 interface EventDetailModalProps {
   event: CampusEvent | null;
@@ -231,6 +233,42 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                 </div>
               </div>
             </div>
+
+            {/* Executive Decision Sign-Off */}
+            {event.reviewer && (
+              <div className="p-3.5 rounded-xl border border-slate-200/90 bg-slate-50/80 flex items-center justify-between gap-3 text-xs shadow-2xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border ${
+                      event.reviewer.role === "vice_principal"
+                        ? "bg-indigo-100 border-indigo-200 text-indigo-700"
+                        : event.reviewer.role === "principal"
+                        ? "bg-purple-100 border-purple-200 text-purple-700"
+                        : "bg-amber-100 border-amber-200 text-amber-800"
+                    }`}
+                  >
+                    {formatDisplayName(event.reviewer.full_name).charAt(0) || "U"}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-900 truncate">
+                      {event.status === "published" ? "Approved by " : "Declined by "}
+                      {formatDisplayName(event.reviewer.full_name)}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      {event.reviewer.role === "vice_principal"
+                        ? "Office of the Vice Principal"
+                        : event.reviewer.role === "principal"
+                        ? "Executive Office of the Principal"
+                        : "Campus Administration"}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold border bg-white border-slate-200/90 text-slate-700 flex items-center gap-1 shrink-0">
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                  <span>Institutional Sign-Off</span>
+                </span>
+              </div>
+            )}
 
             {/* Overview / Description */}
             <div>

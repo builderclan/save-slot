@@ -85,10 +85,10 @@ export async function POST(
 
       const res = await client.query(
         `UPDATE public.events
-         SET status = $1, rejection_reason = $2, updated_at = NOW()
-         WHERE id = $3
+         SET status = $1, rejection_reason = $2, reviewed_by = $3, updated_at = NOW()
+         WHERE id = $4
          RETURNING *;`,
-        [status, rejectionReason || null, id]
+        [status, rejectionReason || null, session.userId, id]
       );
 
       return res.rows[0];
