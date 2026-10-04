@@ -186,11 +186,12 @@ When a clash is detected, the engine runs a fast deterministic search for altern
 | `/api/lead/*` | Community Leads | ✅ Yes | Lead-scoped event mutations & proposals |
 
 ### 4.1 Transactional Concurrency Control & Double-Booking Guard
+
 To prevent Time-of-Check to Time-of-Use (TOCTOU) race conditions when concurrent administrators or principals approve events:
+
 1. Approval handlers execute inside an explicit PostgreSQL transaction (`withTransaction`).
 2. The target event and colliding published events in the same venue are locked using `SELECT ... FOR UPDATE`.
 3. If a race condition publishes a collision during triage, the transaction aborts with HTTP 409 Conflict.
-
 
 ---
 

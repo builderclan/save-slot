@@ -33,16 +33,16 @@ Phase 7: End-to-End Testing & Polish
      * 1 Campus: *"Albertian Institute of Science & Technology (AISAT)"*.
      * 4 Venues: *Turing Auditorium*, *Seminar Hall A*, *Innovation Lab 201*, *Central Quad Pavilion*.
      * 3 Communities: *Coding Club*, *Design Society*, *E-Cell*.
-     * 5 Users (1 Principal, 1 Admin, 3 Community Leads).
+     * 6 Users (1 Principal, 1 Vice Principal, 1 Admin, 3 Community Leads).
      * 10+ Pre-populated Events (Mix of Approved, Pending, and scheduled conflicts to test the engine).
-
 
 ### Phase 2: Authentication & Role Middleware
 
-* **Objective**: Provide reliable sign-in for Admins and Leads without open public registration.
+* **Objective**: Provide reliable sign-in for Executives, Admins, and Leads without open public registration.
 * **Deliverables**:
   1. Lightweight, secure password verification and session cookie management (`lib/auth`).
   2. Unified login route `/login` with role-aware redirection:
+     * College Principal & Vice Principal $\rightarrow$ `/principal`
      * Admins $\rightarrow$ `/admin`
      * Community Leads $\rightarrow$ `/lead`
   3. Next.js middleware / layout guards preventing unauthorized route access.
@@ -110,4 +110,3 @@ Phase 7: End-to-End Testing & Polish
 | **Lead** | Sarah Lin (Design Society) | `lead.design@campus.edu` | `lead123` | *Design Society* |
 | **Lead** | Marcus Vance (E-Cell) | `lead.ecell@campus.edu` | `lead123` | *E-Cell* |
 | **Student** | Public Visitor | *No login needed* | *N/A* | *Public access* |
-
