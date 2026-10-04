@@ -5,6 +5,7 @@ import {
   UpdateEventStatusSchema,
   ConflictCheckSchema,
   CreateVenueSchema,
+  CreateUserSchema,
 } from "../index";
 
 describe("Zod Validation Schemas", () => {
@@ -148,6 +149,41 @@ describe("Zod Validation Schemas", () => {
       if (result.success) {
         expect(result.data.capacity).toBe(150);
       }
+    });
+  });
+
+  describe("CreateUserSchema", () => {
+    it("accepts valid administrator provisioning payload", () => {
+      const result = CreateUserSchema.safeParse({
+        fullName: "Dr. Paul Mathew",
+        email: "paul.mathew@campus.edu",
+        password: "TempPass#2026",
+        role: "admin",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects passwords shorter than 6 characters", () => {
+      const result = CreateUserSchema.safeParse({
+        fullName: "Student Lead",
+        email: "lead@campus.edu",
+        password: "12345",
+        role: "organizer",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toContain("at least 6 characters");
+      }
+    });
+
+    it("rejects unauthorized/unknown roles", () => {
+      const result = CreateUserSchema.safeParse({
+        fullName: "Guest Speaker",
+        email: "speaker@campus.edu",
+        password: "Password123",
+        role: "superuser",
+      });
+      expect(result.success).toBe(false);
     });
   });
 });
