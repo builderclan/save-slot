@@ -12,10 +12,15 @@ interface EventCardProps {
   onSelect: (event: CampusEvent) => void;
 }
 
+function toDate(val: string | Date): Date {
+  return typeof val === "string" ? parseISO(val) : new Date(val);
+}
+
 export function EventCard({ event, onSelect }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
-  const startDate = parseISO(event.start_time);
-  const endDate = parseISO(event.end_time);
+  const startDate = toDate(event.start_time);
+  const endDate = toDate(event.end_time);
+
   const isSameDayEvent = isSameDay(startDate, endDate);
 
   const catStyle = CATEGORY_STYLES[event.category] || {
