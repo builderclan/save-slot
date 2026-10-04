@@ -59,6 +59,12 @@ export const CreateVenueSchema = z.object({
   notes: z.string().trim().optional(),
 });
 
+export const UpdateVenueSchema = z.object({
+  id: z.string().uuid("Invalid venue ID"),
+  is_active: z.boolean({ message: "is_active must be a boolean" }),
+});
+
+
 export const ConflictCheckSchema = z.object({
   venueId: z.string().uuid("Invalid venue ID"),
   startTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
