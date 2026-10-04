@@ -30,11 +30,12 @@ Phase 7: End-to-End Testing & Polish
   1. SQL migration creating `campuses`, `venues`, `communities`, `users`, and `events`.
   2. Indexing for fast range lookups (`start_time`, `end_time`, `venue_id`).
   3. Seed script provisioning:
-     * 1 Campus: *"Apex Institute of Technology"*.
-     * 4 Venues: *Main Auditorium*, *Seminar Hall A*, *Innovation Lab*, *Open Amphitheater*.
+     * 1 Campus: *"Albertian Institute of Science & Technology (AISAT)"*.
+     * 4 Venues: *Turing Auditorium*, *Seminar Hall A*, *Innovation Lab 201*, *Central Quad Pavilion*.
      * 3 Communities: *Coding Club*, *Design Society*, *E-Cell*.
-     * 4 Users (1 Admin, 3 Community Leads).
+     * 5 Users (1 Principal, 1 Admin, 3 Community Leads).
      * 10+ Pre-populated Events (Mix of Approved, Pending, and scheduled conflicts to test the engine).
+
 
 ### Phase 2: Authentication & Role Middleware
 
@@ -103,8 +104,10 @@ Phase 7: End-to-End Testing & Polish
 
 | Role | Name | Email | Password | Assigned Community |
 | :--- | :--- | :--- | :--- | :--- |
+| **Principal** | Dr. K. S. Mathew (Principal) | `principal@campus.edu` | `principal123` | Institutional Authority |
 | **Admin** | Campus Dean of Affairs | `admin@campus.edu` | `admin123` | *All (Campus-wide)* |
 | **Lead** | Alex Chen (Coding Club) | `lead.coding@campus.edu` | `lead123` | *Coding Club* |
 | **Lead** | Sarah Lin (Design Society) | `lead.design@campus.edu` | `lead123` | *Design Society* |
 | **Lead** | Marcus Vance (E-Cell) | `lead.ecell@campus.edu` | `lead123` | *E-Cell* |
 | **Student** | Public Visitor | *No login needed* | *N/A* | *Public access* |
+
