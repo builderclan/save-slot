@@ -37,73 +37,79 @@ interface DemoAccount {
   activeClass: string;
 }
 
-const DEMO_PERSONAS: DemoAccount[] = [
-  {
-    id: "principal",
-    role: "College Principal",
-    department: "Executive Office of the Principal",
-    email: "principal@campus.edu",
-    password: "principal123",
-    shortTag: "Principal",
-    icon: GraduationCap,
-    iconBg: "bg-purple-100 text-purple-700 border-purple-200",
-    iconColor: "text-purple-700",
-    tagStyle: "bg-purple-50 text-purple-800 border-purple-200",
-    activeClass: "border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20",
-  },
-  {
-    id: "admin",
-    role: "Campus Admin",
-    department: "Office of Student Affairs",
-    email: "admin@campus.edu",
-    password: "admin123",
-    shortTag: "Admin",
-    icon: Shield,
-    iconBg: "bg-amber-100 text-amber-700 border-amber-200",
-    iconColor: "text-amber-700",
-    tagStyle: "bg-amber-50 text-amber-800 border-amber-200",
-    activeClass: "border-amber-500 bg-amber-50/50 ring-2 ring-amber-500/20",
-  },
-  {
-    id: "coding",
-    role: "Coding Club Lead",
-    department: "Dept. of Computer Science",
-    email: "lead.coding@campus.edu",
-    password: "lead123",
-    shortTag: "Tech",
-    icon: Code2,
-    iconBg: "bg-indigo-100 text-indigo-700 border-indigo-200",
-    iconColor: "text-indigo-700",
-    tagStyle: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    activeClass: "border-indigo-500 bg-indigo-50/50 ring-2 ring-indigo-500/20",
-  },
-  {
-    id: "design",
-    role: "Design Society Lead",
-    department: "Media & Arts Collective",
-    email: "lead.design@campus.edu",
-    password: "lead123",
-    shortTag: "Arts",
-    icon: Palette,
-    iconBg: "bg-purple-100 text-purple-700 border-purple-200",
-    iconColor: "text-purple-700",
-    tagStyle: "bg-purple-50 text-purple-700 border-purple-200",
-    activeClass: "border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20",
-  },
-  {
-    id: "ecell",
-    role: "E-Cell Lead",
-    department: "Innovation & Incubation Cell",
-    email: "lead.ecell@campus.edu",
-    password: "lead123",
-    shortTag: "Career",
-    icon: Briefcase,
-    iconBg: "bg-emerald-100 text-emerald-700 border-emerald-200",
-    iconColor: "text-emerald-700",
-    tagStyle: "bg-emerald-50 text-emerald-800 border-emerald-200",
-    activeClass: "border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20",
-  },
-];
+const SHOW_DEMO_PERSONAS =
+  process.env.NEXT_PUBLIC_ENABLE_DEMO_LOGINS === "true" ||
+  process.env.NODE_ENV !== "production";
+
+const DEMO_PERSONAS: DemoAccount[] = SHOW_DEMO_PERSONAS
+  ? [
+      {
+        id: "principal",
+        role: "College Principal",
+        department: "Executive Office of the Principal",
+        email: "principal@campus.edu",
+        password: "principal123",
+        shortTag: "Principal",
+        icon: GraduationCap,
+        iconBg: "bg-purple-100 text-purple-700 border-purple-200",
+        iconColor: "text-purple-700",
+        tagStyle: "bg-purple-50 text-purple-800 border-purple-200",
+        activeClass: "border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20",
+      },
+      {
+        id: "admin",
+        role: "Campus Admin",
+        department: "Office of Student Affairs",
+        email: "admin@campus.edu",
+        password: "admin123",
+        shortTag: "Admin",
+        icon: Shield,
+        iconBg: "bg-amber-100 text-amber-700 border-amber-200",
+        iconColor: "text-amber-700",
+        tagStyle: "bg-amber-50 text-amber-800 border-amber-200",
+        activeClass: "border-amber-500 bg-amber-50/50 ring-2 ring-amber-500/20",
+      },
+      {
+        id: "coding",
+        role: "Coding Club Lead",
+        department: "Dept. of Computer Science",
+        email: "lead.coding@campus.edu",
+        password: "lead123",
+        shortTag: "Tech",
+        icon: Code2,
+        iconBg: "bg-indigo-100 text-indigo-700 border-indigo-200",
+        iconColor: "text-indigo-700",
+        tagStyle: "bg-indigo-50 text-indigo-700 border-indigo-200",
+        activeClass: "border-indigo-500 bg-indigo-50/50 ring-2 ring-indigo-500/20",
+      },
+      {
+        id: "design",
+        role: "Design Society Lead",
+        department: "Media & Arts Collective",
+        email: "lead.design@campus.edu",
+        password: "lead123",
+        shortTag: "Arts",
+        icon: Palette,
+        iconBg: "bg-purple-100 text-purple-700 border-purple-200",
+        iconColor: "text-purple-700",
+        tagStyle: "bg-purple-50 text-purple-700 border-purple-200",
+        activeClass: "border-purple-500 bg-purple-50/50 ring-2 ring-purple-500/20",
+      },
+      {
+        id: "ecell",
+        role: "E-Cell Lead",
+        department: "Innovation & Incubation Cell",
+        email: "lead.ecell@campus.edu",
+        password: "lead123",
+        shortTag: "Career",
+        icon: Briefcase,
+        iconBg: "bg-emerald-100 text-emerald-700 border-emerald-200",
+        iconColor: "text-emerald-700",
+        tagStyle: "bg-emerald-50 text-emerald-800 border-emerald-200",
+        activeClass: "border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20",
+      },
+    ]
+  : [];
 
 function LoginParamsHandler({
   onSetError,
@@ -405,69 +411,71 @@ export default function LoginPage() {
             </form>
 
             {/* Quick Demo Accounts Switcher with Color Accents */}
-            <div className="mt-6 pt-5 border-t border-slate-100">
-              <div className="flex items-center justify-between mb-2.5">
-                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
-                  One-Click Demo Personas
-                </span>
-                {activePersonaId && (
-                  <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
-                    <Check className="w-3 h-3 text-emerald-600" aria-hidden="true" />
-                    Ready
+            {SHOW_DEMO_PERSONAS && DEMO_PERSONAS.length > 0 && (
+              <div className="mt-6 pt-5 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    One-Click Demo Personas
                   </span>
-                )}
-              </div>
+                  {activePersonaId && (
+                    <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
+                      <Check className="w-3 h-3 text-emerald-600" aria-hidden="true" />
+                      Ready
+                    </span>
+                  )}
+                </div>
 
-              <div className="space-y-1.5">
-                {DEMO_PERSONAS.map((p) => {
-                  const isSelected = activePersonaId === p.id;
-                  const Icon = p.icon;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => selectPersona(p)}
-                      className={`w-full text-left px-3 py-2 rounded-xl border transition-all text-xs flex items-center justify-between gap-3 cursor-pointer ${
-                        isSelected
-                          ? p.activeClass
-                          : "border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/70 text-slate-700"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${p.iconBg}`}
-                        >
-                          <Icon className={`w-3.5 h-3.5 ${p.iconColor}`} aria-hidden="true" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-semibold text-xs text-slate-900 truncate leading-tight">
-                            {p.role}
+                <div className="space-y-1.5">
+                  {DEMO_PERSONAS.map((p) => {
+                    const isSelected = activePersonaId === p.id;
+                    const Icon = p.icon;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => selectPersona(p)}
+                        className={`w-full text-left px-3 py-2 rounded-xl border transition-all text-xs flex items-center justify-between gap-3 cursor-pointer ${
+                          isSelected
+                            ? p.activeClass
+                            : "border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/70 text-slate-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${p.iconBg}`}
+                          >
+                            <Icon className={`w-3.5 h-3.5 ${p.iconColor}`} aria-hidden="true" />
                           </div>
-                          <div className="text-[10px] text-slate-500 truncate leading-tight mt-0.5">
-                            {p.department}
+                          <div className="min-w-0">
+                            <div className="font-semibold text-xs text-slate-900 truncate leading-tight">
+                              {p.role}
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate leading-tight mt-0.5">
+                              {p.department}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold border ${p.tagStyle}`}
-                        >
-                          {p.shortTag}
-                        </span>
-                        <ChevronRight
-                          className={`w-3.5 h-3.5 transition-colors ${
-                            isSelected ? "text-slate-900" : "text-slate-300"
-                          }`}
-                          aria-hidden="true"
-                        />
-                      </div>
-                    </button>
-                  );
-                })}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded-md font-semibold border ${p.tagStyle}`}
+                          >
+                            {p.shortTag}
+                          </span>
+                          <ChevronRight
+                            className={`w-3.5 h-3.5 transition-colors ${
+                              isSelected ? "text-slate-900" : "text-slate-300"
+                            }`}
+                            aria-hidden="true"
+                          />
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
 
