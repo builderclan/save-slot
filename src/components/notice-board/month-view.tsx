@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   format,
   startOfMonth,
@@ -47,9 +47,28 @@ export function MonthView({
   const days = eachDayOfInterval({ start: startDate, end: endDate });
   const weekCount = Math.ceil(days.length / 7);
 
-  const getEventsForDay = (day: Date) => {
-    return events.filter((ev) => isSameDay(parseISO(ev.start_time), day));
-  };
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CampusEvent[]>();
+    for (const ev of events) {
+      if (!ev.start_time) continue;
+      const key = format(parseISO(ev.start_time), "yyyy-MM-dd");
+      const list = map.get(key);
+      if (list) {
+        list.push(ev);
+      } else {
+        map.set(key, [ev]);
+      }
+    }
+    return map;
+  }, [events]);
+
+  const getEventsForDay = useCallback(
+    (day: Date) => {
+      const key = format(day, "yyyy-MM-dd");
+      return eventsByDay.get(key) || [];
+    },
+    [eventsByDay]
+  );
 
   const popoverEvents = popoverDay ? getEventsForDay(popoverDay) : [];
   const selectedDayEvents = getEventsForDay(activeDate);

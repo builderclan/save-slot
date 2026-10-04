@@ -1,12 +1,22 @@
 const { Client } = require("pg");
 
 async function migrateAndSeedPrincipal() {
+  const password = process.env.DB_PASSWORD || process.env.DB_password;
+  const host = process.env.DB_HOST;
+  const port = parseInt(process.env.DB_PORT || "6543", 10);
+  const database = process.env.DB_NAME || "postgres";
+  const user = process.env.DB_USER;
+
+  if (!password || !host || !user) {
+    throw new Error("Missing required database environment variables (DB_HOST, DB_USER, DB_PASSWORD).");
+  }
+
   const client = new Client({
-    host: process.env.DB_HOST || "aws-0-ap-south-1.pooler.supabase.com",
-    port: parseInt(process.env.DB_PORT || "6543", 10),
-    database: process.env.DB_NAME || "postgres",
-    user: process.env.DB_USER || "postgres.dxwumvmscmictbnbfqyb",
-    password: process.env.DB_password || "T5fz8KcpVYxRsuQm",
+    host,
+    port,
+    database,
+    user,
+    password,
     ssl: { rejectUnauthorized: false },
   });
 

@@ -4,11 +4,17 @@ let pool: Pool | null = null;
 
 export function getDbPool(): Pool {
   if (!pool) {
-    const password = process.env.DB_password || "T5fz8KcpVYxRsuQm";
-    const host = process.env.DB_HOST || "aws-0-ap-south-1.pooler.supabase.com";
+    const password = process.env.DB_PASSWORD || process.env.DB_password;
+    const host = process.env.DB_HOST;
     const port = parseInt(process.env.DB_PORT || "6543", 10);
-    const user = process.env.DB_USER || "postgres.dxwumvmscmictbnbfqyb";
+    const user = process.env.DB_USER;
     const database = process.env.DB_NAME || "postgres";
+
+    if (!password || !host || !user) {
+      throw new Error(
+        "Database configuration error: Missing required environment variables (DB_HOST, DB_USER, or DB_PASSWORD)."
+      );
+    }
 
     pool = new Pool({
       host,

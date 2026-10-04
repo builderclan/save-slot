@@ -2,34 +2,23 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { query } from "@/lib/db";
 import { UserProfile } from "@/types/database";
+import { LoginSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => null);
-    if (!body || typeof body !== "object") {
-      return NextResponse.json(
-        { error: "Invalid request payload" },
-        { status: 400 }
-      );
+    const rawBody = await request.json().catch(() => null);
+    const parsed = LoginSchema.safeParse(rawBody);
+
+    if (!parsed.success) {
+      const errorMessage = parsed.error.issues[0]?.message || "Invalid login credentials";
+      return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
 
-    const { email, password } = body;
-
-    if (
-      typeof email !== "string" ||
-      typeof password !== "string" ||
-      !email.trim() ||
-      !password
-    ) {
-      return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 }
-      );
-    }
+    const { email, password } = parsed.data;
 
     const supabase = await createClient();
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
+      email: email.toLowerCase(),
       password,
     });
 

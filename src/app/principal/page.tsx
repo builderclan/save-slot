@@ -18,8 +18,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  AlertCircle,
 } from "lucide-react";
-import { CampusEvent, Venue } from "@/types/database";
+import { CampusEvent, ConflictCheckResult } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
 
@@ -55,7 +56,6 @@ export default function PrincipalDeskPage() {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState<PrincipalSession | null>(null);
   const [events, setEvents] = useState<CampusEvent[]>([]);
-  const [venues, setVenues] = useState<Venue[]>([]);
 
   // Navigation tab: 'inbox' | 'master-schedule' | 'history'
   const [activeTab, setActiveTab] = useState<"inbox" | "master-schedule" | "history">("inbox");
@@ -63,6 +63,10 @@ export default function PrincipalDeskPage() {
   // Selected event for split view
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [mobileDetailView, setMobileDetailView] = useState(false);
+
+  // Active conflict state for the selected pending event
+  const [activeConflictResult, setActiveConflictResult] = useState<ConflictCheckResult | null>(null);
+  const [checkingActiveConflict, setCheckingActiveConflict] = useState(false);
 
   // Preview modal state
   const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
@@ -93,11 +97,7 @@ export default function PrincipalDeskPage() {
       }
       setSession(meData.user);
 
-      const [evRes, venuesRes] = await Promise.all([
-        fetch("/api/lead/events"),
-        fetch("/api/venues"),
-      ]);
-
+      const evRes = await fetch("/api/lead/events");
       if (evRes.ok) {
         const evData = await evRes.json();
         const evList: CampusEvent[] = evData.events || [];
@@ -110,11 +110,6 @@ export default function PrincipalDeskPage() {
         } else if (evList.length > 0) {
           setSelectedEventId(evList[0].id);
         }
-      }
-
-      if (venuesRes.ok) {
-        const vData = await venuesRes.json();
-        setVenues(vData.venues || []);
       }
     } catch (err) {
       console.error("Principal portal load error:", err);
@@ -202,6 +197,42 @@ export default function PrincipalDeskPage() {
     if (!selectedEventId) return pendingEvents[0] || events[0] || null;
     return events.find((e) => e.id === selectedEventId) || pendingEvents[0] || null;
   }, [events, selectedEventId, pendingEvents]);
+
+  // Dynamically verify venue conflict for the active inspected event
+  useEffect(() => {
+    let isMounted = true;
+    async function verifyConflict() {
+      if (!activeEvent || !activeEvent.venue_id) {
+        setActiveConflictResult(null);
+        return;
+      }
+      setCheckingActiveConflict(true);
+      try {
+        const res = await fetch("/api/conflicts/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            venueId: activeEvent.venue_id,
+            startTime: activeEvent.start_time,
+            endTime: activeEvent.end_time,
+            excludeEventId: activeEvent.id,
+          }),
+        });
+        if (res.ok && isMounted) {
+          const data: ConflictCheckResult = await res.json();
+          setActiveConflictResult(data);
+        }
+      } catch (err) {
+        console.error("Conflict check error:", err);
+      } finally {
+        if (isMounted) setCheckingActiveConflict(false);
+      }
+    }
+    verifyConflict();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeEvent]);
 
   // Keyboard navigation for queue items
   useEffect(() => {
@@ -352,10 +383,15 @@ export default function PrincipalDeskPage() {
       {/* PANE 1: FULL SCREEN LEFT NAVIGATION SIDEBAR / MOBILE SEGMENTED CONTROL */}
       <aside className={`w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-slate-200/90 bg-white lg:bg-slate-50/80 p-2 sm:p-3 lg:p-4 flex-col lg:justify-between ${mobileDetailView ? "hidden lg:flex" : "flex"}`}>
         <div className="space-y-2 lg:space-y-4">
-          <div className="hidden lg:block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-2">
-            Desk Views
+          <div className="hidden lg:flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5 px-2">
+            <span>Desk Views</span>
+            {session?.fullName && (
+              <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200 truncate max-w-[120px]" title={session.fullName}>
+                {session.fullName}
+              </span>
+            )}
           </div>
-          <nav className="grid grid-cols-3 lg:flex lg:flex-col gap-1 p-1 lg:p-0 bg-slate-100/80 lg:bg-transparent rounded-xl lg:rounded-none w-full">
+          <nav className="grid grid-cols-3 lg:flex lg:flex-col gap-1 p-1 lg:bg-transparent rounded-xl lg:rounded-none w-full">
             <button
               type="button"
               onClick={() => {
@@ -586,8 +622,14 @@ export default function PrincipalDeskPage() {
                             <span className="text-xs font-bold text-slate-800 truncate">
                               {ev.community?.name}
                             </span>
-                            <span className="text-[10px] text-emerald-800 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0">
-                              ✓ Safe Slot
+                            <span
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
+                                leadNotice < 7
+                                  ? "text-amber-800 bg-amber-50 border-amber-200"
+                                  : "text-emerald-800 bg-emerald-50 border-emerald-200"
+                              }`}
+                            >
+                              {leadNotice < 7 ? `${leadNotice}d notice` : "✓ Safe Slot"}
                             </span>
                           </div>
 
@@ -708,10 +750,43 @@ export default function PrincipalDeskPage() {
                           </div>
                         </div>
 
-                        {/* Safe Slot Clearance */}
-                        <div className="pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-emerald-900">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <span className="font-medium text-xs">Deterministic Safe Slot Verified • Zero conflicts detected</span>
+                        {/* Dynamic Safe Slot Clearance / Conflict Alert */}
+                        <div className="pt-3 border-t border-slate-100">
+                          {checkingActiveConflict ? (
+                            <div className="flex items-center gap-2 text-xs text-slate-500 py-1">
+                              <div className="w-3.5 h-3.5 border-2 border-purple-600 border-t-transparent rounded-full animate-spin shrink-0" />
+                              <span>Verifying venue occupancy & campus schedule...</span>
+                            </div>
+                          ) : activeConflictResult?.hasConflict ? (
+                            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <div className="font-semibold text-amber-950">
+                                  Venue Collision Detected
+                                </div>
+                                <div className="mt-0.5 text-amber-800 leading-relaxed">
+                                  {activeConflictResult.message}
+                                </div>
+                              </div>
+                            </div>
+                          ) : activeConflictResult?.hasLeadTimeViolation ? (
+                            <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-xs flex items-start gap-2">
+                              <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <span className="font-semibold text-amber-950">Notice Policy Exception: </span>
+                                <span className="text-amber-800">
+                                  Submitted with {activeConflictResult.leadTimeDays}d notice (policy: 7d). Venue is available.
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-xs text-emerald-900 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span className="font-medium text-xs">
+                                Deterministic Safe Slot Verified • Zero conflicts detected
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
 

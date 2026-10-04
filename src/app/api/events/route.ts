@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import { CampusEvent } from "@/types/database";
 
 export async function GET(request: Request) {
@@ -8,7 +9,22 @@ export async function GET(request: Request) {
     const category = searchParams.get("category");
     const communitySlug = searchParams.get("community");
     const search = searchParams.get("search");
-    const status = searchParams.get("status") || "published";
+    const requestedStatus = searchParams.get("status") || "published";
+
+    // Access control: Only admins & principals can view non-published (pending, draft, rejected) events
+    let effectiveStatus = "published";
+    if (requestedStatus !== "published") {
+      const session = await getCurrentUser();
+      if (session?.isAdmin || session?.isPrincipal) {
+        effectiveStatus = requestedStatus;
+      }
+    }
+
+    // Safe pagination defaults
+    const rawLimit = parseInt(searchParams.get("limit") || "150", 10);
+    const limit = isNaN(rawLimit) || rawLimit < 1 ? 150 : Math.min(rawLimit, 300);
+    const rawOffset = parseInt(searchParams.get("offset") || "0", 10);
+    const offset = isNaN(rawOffset) || rawOffset < 0 ? 0 : rawOffset;
 
     let sql = `
       SELECT 
@@ -24,21 +40,24 @@ export async function GET(request: Request) {
           'category', c.category,
           'logo_url', c.logo_url
         ) as community,
-        json_build_object(
-          'id', v.id,
-          'name', v.name,
-          'building', v.building,
-          'capacity', v.capacity,
-          'address', v.address,
-          'notes', v.notes
-        ) as venue
+        CASE 
+          WHEN v.id IS NULL THEN NULL 
+          ELSE json_build_object(
+            'id', v.id,
+            'name', v.name,
+            'building', v.building,
+            'capacity', v.capacity,
+            'address', v.address,
+            'notes', v.notes
+          )
+        END as venue
       FROM public.events e
       JOIN public.communities c ON c.id = e.community_id
       LEFT JOIN public.venues v ON v.id = e.venue_id
       WHERE e.status = $1
     `;
 
-    const params: unknown[] = [status];
+    const params: unknown[] = [effectiveStatus];
     let paramIndex = 2;
 
     if (category && category !== "all") {
@@ -57,7 +76,8 @@ export async function GET(request: Request) {
       paramIndex++;
     }
 
-    sql += ` ORDER BY e.start_time ASC;`;
+    sql += ` ORDER BY e.start_time ASC LIMIT $${paramIndex++} OFFSET $${paramIndex++};`;
+    params.push(limit, offset);
 
     const res = await query<CampusEvent>(sql, params);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   format,
   startOfWeek,
@@ -34,9 +34,28 @@ export function WeekView({
   const weekEnd = endOfWeek(activeDate);
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
-  const getEventsForDay = (day: Date) => {
-    return events.filter((ev) => isSameDay(parseISO(ev.start_time), day));
-  };
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CampusEvent[]>();
+    for (const ev of events) {
+      if (!ev.start_time) continue;
+      const key = format(parseISO(ev.start_time), "yyyy-MM-dd");
+      const list = map.get(key);
+      if (list) {
+        list.push(ev);
+      } else {
+        map.set(key, [ev]);
+      }
+    }
+    return map;
+  }, [events]);
+
+  const getEventsForDay = useCallback(
+    (day: Date) => {
+      const key = format(day, "yyyy-MM-dd");
+      return eventsByDay.get(key) || [];
+    },
+    [eventsByDay]
+  );
 
   const handleSelectDay = (day: Date) => {
     setSelectedMobileDay(day);

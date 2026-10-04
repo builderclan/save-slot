@@ -10,11 +10,11 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "*.supabase.co",
       },
     ],
   },
-  allowedDevOrigins: ['192.168.1.35'],
+  allowedDevOrigins: ['192.168.1.37'],
 };
 
 export default nextConfig;

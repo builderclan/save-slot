@@ -413,7 +413,9 @@ export function Navbar() {
               <div className="flex items-center gap-2.5 min-w-0">
                 <div
                   className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border shrink-0 ${
-                    user.role === "admin"
+                    user.role === "principal"
+                      ? "bg-purple-100 border-purple-200 text-purple-800"
+                      : user.role === "admin"
                       ? "bg-amber-100 border-amber-200 text-amber-800"
                       : "bg-indigo-100 border-indigo-200 text-indigo-800"
                   }`}
@@ -425,7 +427,7 @@ export function Navbar() {
                     {user.fullName}
                   </div>
                   <div className="text-[11px] text-slate-500 truncate">
-                    {user.email} · <span className="capitalize font-medium">{user.role === "admin" ? "Campus Admin" : "Lead"}</span>
+                    {user.email} · <span className="capitalize font-medium">{user.role === "principal" ? "College Principal" : user.role === "admin" ? "Campus Admin" : "Lead"}</span>
                   </div>
                 </div>
               </div>
