@@ -24,7 +24,7 @@ export async function GET() {
 
     let sql = `
       SELECT 
-        e.id, e.campus_id, e.community_id, e.venue_id, e.created_by,
+        e.id, e.campus_id, e.community_id, e.venue_id, e.created_by, e.reviewed_by,
         e.title, e.slug, e.description, e.category, e.tags,
         e.start_time, e.end_time, e.timezone, e.location_name,
         e.is_virtual, e.virtual_link, e.external_registration_url, e.cover_image_url,
@@ -33,10 +33,20 @@ export async function GET() {
         CASE 
           WHEN v.id IS NULL THEN NULL 
           ELSE json_build_object('id', v.id, 'name', v.name, 'building', v.building, 'capacity', v.capacity) 
-        END as venue
+        END as venue,
+        CASE
+          WHEN reviewer.id IS NULL THEN NULL
+          ELSE json_build_object(
+            'id', reviewer.id,
+            'full_name', reviewer.full_name,
+            'email', reviewer.email,
+            'role', reviewer.role
+          )
+        END as reviewer
       FROM public.events e
       JOIN public.communities c ON c.id = e.community_id
       LEFT JOIN public.venues v ON v.id = e.venue_id
+      LEFT JOIN public.users reviewer ON reviewer.id = e.reviewed_by
     `;
 
     const params: unknown[] = [];

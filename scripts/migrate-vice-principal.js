@@ -43,7 +43,7 @@ async function migrateAndSeedVicePrincipal() {
     // 3. Create or update Vice Principal user in auth.users & public.users
     const vpEmail = "viceprincipal@campus.edu";
     const vpPassword = "viceprincipal123";
-    const vpName = "Dr. Sarah Varghese (Vice Principal)";
+    const vpName = "Dr. Sarah Varghese";
 
     let vpId;
     const existingAuth = await client.query("SELECT id FROM auth.users WHERE email = $1;", [vpEmail]);

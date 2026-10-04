@@ -377,5 +377,10 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     expect(data.success).toBe(true);
     expect(data.event.status).toBe("published");
     expect(mockQuery).toHaveBeenCalledTimes(3);
+
+    // Verify that the UPDATE query attributes decision to the Vice Principal
+    const updateCall = mockQuery.mock.calls[2];
+    expect(updateCall[0]).toContain("reviewed_by = $3");
+    expect(updateCall[1]).toEqual(["published", null, vicePrincipalSession.userId, eventId]);
   });
 });

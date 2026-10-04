@@ -43,7 +43,7 @@ async function migrateAndSeedPrincipal() {
     // 3. Create or update Principal user in auth.users & public.users
     const principalEmail = "principal@campus.edu";
     const principalPassword = "principal123";
-    const principalName = "Dr. K. S. Mathew (Principal)";
+    const principalName = "Dr. K. S. Mathew";
 
     let principalId;
     const existingAuth = await client.query("SELECT id FROM auth.users WHERE email = $1;", [principalEmail]);
