@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense, useCallback } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -232,14 +233,21 @@ export default function LoginPage() {
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-lg shadow-indigo-950/5">
           <div className="p-6 sm:p-8">
             {/* Institution Brand Header */}
-            <div className="mb-6 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-base shadow-sm shadow-indigo-600/25 shrink-0">
-                S
+            <div className="mb-6 flex items-center gap-3.5">
+              <div className="relative w-12 h-12 rounded-xl overflow-hidden shadow-sm shrink-0 ring-1 ring-slate-900/5">
+                <Image
+                  src="/icon.png"
+                  alt="SaveSlot"
+                  width={48}
+                  height={48}
+                  priority
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-bold text-slate-900 tracking-tight">
-                    SaveSlot Portal
+                  <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                    Save<span className="text-[#8B5CF6]">Slot</span> Portal
                   </h1>
                 </div>
                 <p className="text-xs text-slate-500 truncate">

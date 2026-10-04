@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -116,16 +117,23 @@ export function Navbar() {
         <div className="flex items-center gap-1.5 sm:gap-4 min-w-0 shrink">
           {/* Brand & Campus Badge */}
           <Link href="/" className="flex items-center gap-2 group shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-xs group-hover:bg-indigo-700 transition-colors">
-              S
+            <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 shadow-xs ring-1 ring-slate-900/5 transition-transform group-hover:scale-105">
+              <Image
+                src="/icon.png"
+                alt="SaveSlot"
+                width={32}
+                height={32}
+                priority
+                className="w-full h-full object-contain"
+              />
             </div>
             <div className="hidden xs:block sm:block">
               <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-xs sm:text-sm tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
-                  SaveSlot
+                <span className="font-bold text-sm sm:text-base tracking-tight text-slate-900">
+                  Save<span className="text-[#8B5CF6]">Slot</span>
                 </span>
                 <span
-                  className="hidden xl:inline-block text-[10px] px-1.5 py-0.5 rounded-full border border-indigo-100 bg-indigo-50 text-indigo-700 font-semibold"
+                  className="hidden xl:inline-block text-[10px] px-1.5 py-0.5 rounded-full border border-purple-100 bg-purple-50 text-purple-700 font-semibold"
                   title="Albertian Institute of Science & Technology"
                 >
                   AISAT
