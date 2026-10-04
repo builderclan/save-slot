@@ -27,6 +27,7 @@ interface UserSession {
   role: string;
   isAdmin: boolean;
   isPrincipal: boolean;
+  isVicePrincipal?: boolean;
   isLead: boolean;
   leadCommunities: Array<{ id: string; name: string; slug: string }>;
 }
@@ -279,7 +280,7 @@ export function Navbar() {
                   }`}
                 >
                   <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
-                  <span>Principal Desk</span>
+                  <span>{user?.role === "vice_principal" ? "Vice Principal Desk" : "Principal Desk"}</span>
                 </Link>
               )}
 
@@ -319,7 +320,7 @@ export function Navbar() {
               className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50/50 hover:bg-purple-100/60 text-xs font-semibold text-purple-900 transition-colors shadow-2xs"
             >
               <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
-              <span>Principal Desk</span>
+              <span>{user?.role === "vice_principal" ? "Vice Principal Desk" : "Principal Desk"}</span>
             </Link>
           )}
 
@@ -345,6 +346,8 @@ export function Navbar() {
                 <div className="text-[10px] text-slate-500 capitalize">
                   {user.role === "principal"
                     ? "College Principal"
+                    : user.role === "vice_principal"
+                    ? "Vice Principal"
                     : user.role === "admin"
                     ? "Campus Admin"
                     : "Community Lead"}
@@ -356,6 +359,8 @@ export function Navbar() {
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border shadow-xs ${
                   user.role === "principal"
                     ? "bg-purple-100 border-purple-200 text-purple-800"
+                    : user.role === "vice_principal"
+                    ? "bg-indigo-100 border-indigo-200 text-indigo-800"
                     : user.role === "admin"
                     ? "bg-amber-100 border-amber-200 text-amber-800"
                     : "bg-indigo-100 border-indigo-200 text-indigo-800"
@@ -415,6 +420,8 @@ export function Navbar() {
                   className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border shrink-0 ${
                     user.role === "principal"
                       ? "bg-purple-100 border-purple-200 text-purple-800"
+                      : user.role === "vice_principal"
+                      ? "bg-indigo-100 border-indigo-200 text-indigo-800"
                       : user.role === "admin"
                       ? "bg-amber-100 border-amber-200 text-amber-800"
                       : "bg-indigo-100 border-indigo-200 text-indigo-800"
@@ -427,7 +434,7 @@ export function Navbar() {
                     {user.fullName}
                   </div>
                   <div className="text-[11px] text-slate-500 truncate">
-                    {user.email} · <span className="capitalize font-medium">{user.role === "principal" ? "College Principal" : user.role === "admin" ? "Campus Admin" : "Lead"}</span>
+                    {user.email} · <span className="capitalize font-medium">{user.role === "principal" ? "College Principal" : user.role === "vice_principal" ? "Vice Principal" : user.role === "admin" ? "Campus Admin" : "Lead"}</span>
                   </div>
                 </div>
               </div>
@@ -499,7 +506,7 @@ export function Navbar() {
                 }`}
               >
                 <GraduationCap className="w-4 h-4 text-purple-600" />
-                <span>Principal Approval Desk</span>
+                <span>{user?.role === "vice_principal" ? "Vice Principal Approval Desk" : "Principal Approval Desk"}</span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 font-semibold ml-auto">
                   Executive
                 </span>

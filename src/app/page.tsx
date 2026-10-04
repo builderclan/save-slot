@@ -66,6 +66,8 @@ export default async function StudentNoticeBoardPage() {
           isLead: session.isLead,
           isAdmin: session.isAdmin,
           isPrincipal: session.isPrincipal,
+          isVicePrincipal: session.isVicePrincipal,
+          role: session.profile.role,
           leadCommunities: session.leadCommunities.map((c) => ({
             id: c.id,
             name: c.name,

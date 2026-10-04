@@ -24,6 +24,7 @@ interface PrincipalSession {
   role: string;
   isAdmin: boolean;
   isPrincipal: boolean;
+  isVicePrincipal?: boolean;
 }
 
 export default function PrincipalDeskPage() {
@@ -337,7 +338,7 @@ export default function PrincipalDeskPage() {
     return (
       <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center text-center bg-white">
         <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-slate-400 font-medium">Loading Principal Desk...</p>
+        <p className="text-xs text-slate-400 font-medium">Loading Executive Desk...</p>
       </div>
     );
   }

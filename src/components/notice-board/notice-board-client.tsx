@@ -74,6 +74,8 @@ export interface UserSessionState {
     isLead: boolean;
     isAdmin: boolean;
     isPrincipal: boolean;
+    isVicePrincipal?: boolean;
+    role?: string;
     leadCommunities?: Array<{ id: string; name: string }>;
   };
 }
