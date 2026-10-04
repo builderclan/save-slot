@@ -3,6 +3,7 @@
 import { format, parseISO } from "date-fns";
 import { Clock, MapPin, Search, ChevronRight, X, CheckCircle2, XCircle } from "lucide-react";
 import { CampusEvent } from "@/types/database";
+import { formatDisplayName } from "@/lib/utils";
 
 interface PrincipalHistoryViewProps {
   filteredHistoryEvents: CampusEvent[];
@@ -193,6 +194,29 @@ export function PrincipalHistoryView({
                           <span className="truncate max-w-[120px]">{ev.venue?.name || "Venue"}</span>
                         </span>
                       </div>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-500">
+                        <span className="text-slate-400">By:</span>
+                        <span className="font-medium text-slate-800 truncate max-w-[150px]">
+                          {formatDisplayName(ev.reviewer?.full_name) || "Campus Executive"}
+                        </span>
+                        {ev.reviewer?.role && (
+                          <span
+                            className={`text-[9px] font-semibold px-1 py-0.2 rounded border ${
+                              ev.reviewer.role === "vice_principal"
+                                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                                : ev.reviewer.role === "principal"
+                                ? "bg-purple-50 border-purple-200 text-purple-700"
+                                : "bg-amber-50 border-amber-200 text-amber-800"
+                            }`}
+                          >
+                            {ev.reviewer.role === "vice_principal"
+                              ? "VP"
+                              : ev.reviewer.role === "principal"
+                              ? "Principal"
+                              : "Admin"}
+                          </span>
+                        )}
+                      </div>
                       {ev.status === "rejected" && ev.rejection_reason && (
                         <div className="mt-2 p-2 rounded-lg bg-rose-50/80 border border-rose-100 text-[11px] text-rose-800 leading-relaxed">
                           <span className="font-semibold text-rose-900">Reason: </span>
@@ -222,6 +246,7 @@ export function PrincipalHistoryView({
                     <th className="py-3 px-4">Host Club</th>
                     <th className="py-3 px-4">Scheduled For</th>
                     <th className="py-3 px-4">Verdict</th>
+                    <th className="py-3 px-4">Decision Author</th>
                     <th className="py-3 px-4">Decision Date & Remarks</th>
                   </tr>
                 </thead>
@@ -269,6 +294,32 @@ export function PrincipalHistoryView({
                             </>
                           )}
                         </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs">
+                        <div className="font-semibold text-slate-900 truncate max-w-[160px]">
+                          {formatDisplayName(ev.reviewer?.full_name) || "Campus Executive"}
+                        </div>
+                        <div className="mt-0.5">
+                          <span
+                            className={`inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold border ${
+                              ev.reviewer?.role === "vice_principal"
+                                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                                : ev.reviewer?.role === "principal"
+                                ? "bg-purple-50 border-purple-200 text-purple-700"
+                                : ev.reviewer?.role === "admin"
+                                ? "bg-amber-50 border-amber-200 text-amber-800"
+                                : "bg-slate-100 border-slate-200 text-slate-600"
+                            }`}
+                          >
+                            {ev.reviewer?.role === "vice_principal"
+                              ? "Vice Principal"
+                              : ev.reviewer?.role === "principal"
+                              ? "College Principal"
+                              : ev.reviewer?.role === "admin"
+                              ? "Campus Admin"
+                              : "Executive Desk"}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-3.5 px-4 text-xs text-slate-600 max-w-xs">
                         <div className="text-[11px] font-medium text-slate-400 mb-0.5">

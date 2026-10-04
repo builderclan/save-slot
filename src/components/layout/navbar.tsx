@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isSameMonth, isSameYear } from "date-fns";
 import { useCalendar } from "@/context/calendar-context";
+import { formatDisplayName } from "@/lib/utils";
 
 interface UserSession {
   id: string;
@@ -341,7 +342,7 @@ export function Navbar() {
             <div className="hidden sm:flex items-center gap-2">
               <div className="text-right hidden xl:block">
                 <div className="text-xs font-semibold text-slate-900 truncate max-w-[220px]">
-                  {user.fullName}
+                  {formatDisplayName(user.fullName)}
                 </div>
                 <div className="text-[10px] text-slate-500 capitalize">
                   {user.role === "principal"
@@ -365,9 +366,9 @@ export function Navbar() {
                     ? "bg-amber-100 border-amber-200 text-amber-800"
                     : "bg-indigo-100 border-indigo-200 text-indigo-800"
                 }`}
-                title={user.fullName}
+                title={formatDisplayName(user.fullName)}
               >
-                {user.fullName.charAt(0)}
+                {formatDisplayName(user.fullName).charAt(0) || "U"}
               </div>
 
               <button
@@ -427,11 +428,11 @@ export function Navbar() {
                       : "bg-indigo-100 border-indigo-200 text-indigo-800"
                   }`}
                 >
-                  {user.fullName.charAt(0)}
+                  {formatDisplayName(user.fullName).charAt(0) || "U"}
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-semibold text-slate-900 truncate">
-                    {user.fullName}
+                    {formatDisplayName(user.fullName)}
                   </div>
                   <div className="text-[11px] text-slate-500 truncate">
                     {user.email} · <span className="capitalize font-medium">{user.role === "principal" ? "College Principal" : user.role === "vice_principal" ? "Vice Principal" : user.role === "admin" ? "Campus Admin" : "Lead"}</span>
