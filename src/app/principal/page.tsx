@@ -16,6 +16,7 @@ import {
   PrincipalRejectionModal,
   DEFAULT_REJECTION_PRESETS,
 } from "@/components/principal/principal-rejection-modal";
+import { formatDisplayName } from "@/lib/utils";
 
 interface PrincipalSession {
   id: string;
@@ -163,6 +164,7 @@ export default function PrincipalDeskPage() {
         (ev.community?.name && ev.community.name.toLowerCase().includes(q)) ||
         (ev.venue?.name && ev.venue.name.toLowerCase().includes(q)) ||
         (ev.rejection_reason && ev.rejection_reason.toLowerCase().includes(q)) ||
+        (ev.reviewer?.full_name && formatDisplayName(ev.reviewer.full_name).toLowerCase().includes(q)) ||
         ev.category.toLowerCase().includes(q)
       );
     });
@@ -434,6 +436,7 @@ export default function PrincipalDeskPage() {
         {activeTab === "history" && (
           <PrincipalHistoryView
             filteredHistoryEvents={filteredHistoryEvents}
+            allHistoryEvents={historyEvents}
             historyCounts={historyCounts}
             historyStatusFilter={historyStatusFilter}
             onStatusFilterChange={setHistoryStatusFilter}
