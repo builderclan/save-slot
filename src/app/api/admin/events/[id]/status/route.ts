@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { UpdateEventStatusSchema } from "@/lib/validations";
 
 export async function POST(
   request: Request,
@@ -13,12 +14,15 @@ export async function POST(
     }
 
     const { id } = await params;
-    const body = await request.json();
-    const { status, rejectionReason } = body;
+    const rawBody = await request.json().catch(() => null);
+    const parsed = UpdateEventStatusSchema.safeParse(rawBody);
 
-    if (!["published", "rejected", "pending"].includes(status)) {
-      return NextResponse.json({ error: "Invalid status value" }, { status: 400 });
+    if (!parsed.success) {
+      const errorMsg = parsed.error.issues[0]?.message || "Invalid status payload";
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
+
+    const { status, rejectionReason } = parsed.data;
 
     const sql = `
       UPDATE public.events

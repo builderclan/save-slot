@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
 import { checkEventConflicts } from "@/lib/conflicts/engine";
+import { ConflictCheckSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { venueId, startTime, endTime, category, excludeEventId } = body;
+    const rawBody = await request.json().catch(() => null);
+    const parsed = ConflictCheckSchema.safeParse(rawBody);
 
-    if (!venueId || !startTime || !endTime) {
-      return NextResponse.json(
-        { error: "venueId, startTime, and endTime are required" },
-        { status: 400 }
-      );
+    if (!parsed.success) {
+      const errorMsg = parsed.error.issues[0]?.message || "Invalid conflict check parameters";
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
+
+    const { venueId, startTime, endTime, category, excludeEventId } = parsed.data;
 
     const result = await checkEventConflicts({
       venueId,
