@@ -9,6 +9,7 @@ export interface AuthSession {
   leadCommunities: Community[];
   isAdmin: boolean;
   isPrincipal: boolean;
+  isVicePrincipal: boolean;
   isLead: boolean;
 }
 
@@ -46,7 +47,8 @@ export async function getCurrentUser(): Promise<AuthSession | null> {
     );
 
     const isAdmin = profile.role === "admin";
-    const isPrincipal = profile.role === "principal";
+    const isVicePrincipal = profile.role === "vice_principal";
+    const isPrincipal = profile.role === "principal" || isVicePrincipal;
     const isLead = profile.role === "organizer" || commsRes.rows.length > 0;
 
     return {
@@ -56,6 +58,7 @@ export async function getCurrentUser(): Promise<AuthSession | null> {
       leadCommunities: commsRes.rows,
       isAdmin,
       isPrincipal,
+      isVicePrincipal,
       isLead,
     };
   } catch (err) {
