@@ -17,8 +17,12 @@ export function getDbPool(): Pool {
     }
 
     const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
+    const connectionTimeoutMillis = parseInt(
+      process.env.DB_CONNECTION_TIMEOUT_MS || "15000",
+      10
+    );
 
-    globalForDb.pgPool = new Pool({
+    const pool = new Pool({
       host,
       port,
       user,
@@ -27,8 +31,16 @@ export function getDbPool(): Pool {
       ssl: { rejectUnauthorized },
       max: 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000,
+      connectionTimeoutMillis,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 10000,
     });
+
+    pool.on("error", (err) => {
+      console.warn("Unexpected error on idle PostgreSQL client:", err?.message || err);
+    });
+
+    globalForDb.pgPool = pool;
   }
   return globalForDb.pgPool;
 }
@@ -38,7 +50,23 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   params?: unknown[]
 ): Promise<QueryResult<T>> {
   const db = getDbPool();
-  return db.query<T>(text, params);
+  try {
+    return await db.query<T>(text, params);
+  } catch (err: unknown) {
+    const errorMsg = (err as Error)?.message || "";
+    const errorCode = (err as { code?: string })?.code;
+    const isConnectionError =
+      errorMsg.includes("Connection terminated") ||
+      errorMsg.includes("connection timeout") ||
+      errorCode === "ECONNRESET" ||
+      errorCode === "57P01";
+
+    if (isConnectionError) {
+      console.warn("Database connection issue encountered; retrying query once...");
+      return await db.query<T>(text, params);
+    }
+    throw err;
+  }
 }
 
 export async function withTransaction<T>(
