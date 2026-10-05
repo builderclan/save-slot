@@ -186,14 +186,16 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Center: View Switcher (Month | Week | Board) for md+ screens */}
+        {/* Center: View Switcher (Month / Week / Board) and/or Main Nav */}
+        {/* Center: Unified Navigation / View Switcher */}
         <div className="hidden md:flex items-center justify-center shrink-0">
           {isCalendarHome && calendar ? (
             <div
               role="tablist"
-              aria-label="Calendar view switcher"
+              aria-label="Calendar view and navigation"
               className="flex items-center p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 text-xs shadow-2xs"
             >
+              {/* Calendar View Switcher (Month | Week | Board) */}
               <button
                 type="button"
                 role="tab"
@@ -239,15 +241,55 @@ export function Navbar() {
                 <LayoutGrid className="w-3.5 h-3.5" />
                 <span>Board</span>
               </button>
+
+              {/* Hairline Divider & Workspace Shortcuts */}
+              {(user?.isPrincipal || user?.isLead || user?.isAdmin) && (
+                <>
+                  <div className="w-px h-4 bg-slate-300/80 mx-1 shrink-0" aria-hidden="true" />
+
+                  {user?.isPrincipal && (
+                    <Link
+                      href="/principal"
+                      className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-purple-900 hover:bg-white/80 hover:text-purple-950 active:scale-[0.98]"
+                      title={user?.role === "vice_principal" ? "Vice Principal Desk" : "Principal Desk"}
+                    >
+                      <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
+                      <span>{user?.role === "vice_principal" ? "Vice Principal Desk" : "Principal Desk"}</span>
+                    </Link>
+                  )}
+
+                  {user?.isLead && (
+                    <Link
+                      href="/lead"
+                      className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-slate-700 hover:bg-white/80 hover:text-slate-900 active:scale-[0.98]"
+                      title="Lead Workspace"
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Lead Workspace</span>
+                    </Link>
+                  )}
+
+                  {user?.isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-amber-900 hover:bg-white/80 hover:text-amber-950 active:scale-[0.98]"
+                      title="Admin Console"
+                    >
+                      <Shield className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Admin Console</span>
+                    </Link>
+                  )}
+                </>
+              )}
             </div>
           ) : (
             <nav
               aria-label="Main navigation"
-              className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-2xs"
+              className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-2xs text-xs"
             >
               <Link
                 href="/"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
                   pathname === "/"
                     ? "bg-white text-slate-900 font-semibold shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -257,24 +299,10 @@ export function Navbar() {
                 <span>Calendar</span>
               </Link>
 
-              {user?.isLead && (
-                <Link
-                  href="/lead"
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    pathname.startsWith("/lead")
-                      ? "bg-white text-slate-900 font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Lead Workspace</span>
-                </Link>
-              )}
-
               {user?.isPrincipal && (
                 <Link
                   href="/principal"
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
                     pathname.startsWith("/principal")
                       ? "bg-white text-purple-950 font-semibold shadow-xs"
                       : "text-slate-600 hover:text-slate-900"
@@ -285,10 +313,24 @@ export function Navbar() {
                 </Link>
               )}
 
+              {user?.isLead && (
+                <Link
+                  href="/lead"
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+                    pathname.startsWith("/lead")
+                      ? "bg-white text-slate-900 font-semibold shadow-xs"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Lead Workspace</span>
+                </Link>
+              )}
+
               {user?.isAdmin && (
                 <Link
                   href="/admin"
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
                     pathname.startsWith("/admin")
                       ? "bg-white text-slate-900 font-semibold shadow-xs"
                       : "text-slate-600 hover:text-slate-900"
@@ -302,38 +344,8 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Right side: Desktop Workspaces + Auth */}
+        {/* Right side: Desktop Auth */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          {/* Quick link to workspaces on calendar home (Visible on lg+) */}
-          {isCalendarHome && user?.isLead && (
-            <Link
-              href="/lead"
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors shadow-2xs"
-            >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span>Lead Workspace</span>
-            </Link>
-          )}
-
-          {isCalendarHome && user?.isPrincipal && (
-            <Link
-              href="/principal"
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-200 bg-purple-50/50 hover:bg-purple-100/60 text-xs font-semibold text-purple-900 transition-colors shadow-2xs"
-            >
-              <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
-              <span>{user?.role === "vice_principal" ? "Vice Principal Desk" : "Principal Desk"}</span>
-            </Link>
-          )}
-
-          {isCalendarHome && user?.isAdmin && (
-            <Link
-              href="/admin"
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-100/60 text-xs font-semibold text-amber-900 transition-colors shadow-2xs"
-            >
-              <Shield className="w-3.5 h-3.5 text-amber-600" />
-              <span>Admin Console</span>
-            </Link>
-          )}
 
           {/* Auth session / logout / login (Desktop) */}
           {loading ? (
