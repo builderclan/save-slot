@@ -8,6 +8,8 @@ A centralized, conflict-free event discovery and scheduling platform built speci
 
 Detailed design documents, specifications, and architecture are maintained in [`docs/`](./docs):
 
+- **[System Design Doc (`docs/DESIGN_DOC.md`)](./docs/DESIGN_DOC.md)**: Comprehensive architectural blueprint, concurrency control, connection resilience, and schema specs.
+- **[UI / UX Design System (`docs/UI_DESIGN_DOC.md`)](./docs/UI_DESIGN_DOC.md)**: Visual aesthetic, design tokens, typography pairing (Inter + JetBrains Mono), responsive breakpoints, and component specs.
 - **[Product Specification (`docs/PRODUCT_SPEC.md`)](./docs/PRODUCT_SPEC.md)**: Product philosophy, user personas, lead-time rules, and feature requirements.
 - **[System Architecture (`docs/ARCHITECTURE.md`)](./docs/ARCHITECTURE.md)**: Database ERD, deterministic conflict engine algorithms, and RBAC matrix.
 - **[Development Plan (`docs/DEVELOPMENT_PLAN.md`)](./docs/DEVELOPMENT_PLAN.md)**: Phased implementation roadmap, milestone checklist, and test scenarios.
@@ -20,7 +22,8 @@ Detailed design documents, specifications, and architecture are maintained in [`
 | :--- | :--- | :--- |
 | **Students** | Public (No login) | Browse visual notice board, month/week calendar views, filter by club/category, and export to Google/Apple Calendar. |
 | **Community Leads** | Authenticated (`/lead`) | Propose events for their assigned club with real-time clash warnings and automatic "Safe Slot" suggestions. |
-| **College Principal** | Authenticated (`/principal`) | Executive sign-off authority: review Safe-Slot cleared club proposals, grant institutional approval, or decline with feedback. |
+| **Vice Principal** | Authenticated (`/principal`) | Executive sign-off authority: review Safe-Slot cleared club proposals, grant institutional approval, or decline with feedback. |
+| **College Principal** | Authenticated (`/principal`) | Executive sign-off authority: institutional approval, master schedule triage, and policy enforcement. |
 | **Campus Admin** | Authenticated (`/admin`) | Operations management: manage physical venues, user accounts, and campus clubs. |
 
 ### Pre-seeded Demo Accounts
