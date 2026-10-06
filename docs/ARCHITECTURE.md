@@ -95,7 +95,7 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('student', 'organizer', 'admin', 'principal')),
+    role VARCHAR(20) NOT NULL CHECK (role IN ('student', 'organizer', 'admin', 'principal', 'vice_principal')),
     community_id UUID REFERENCES communities(id) ON DELETE SET NULL, -- Null for admins and principal
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()
@@ -113,12 +113,13 @@ CREATE TABLE events (
     community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
     venue_id UUID REFERENCES venues(id) ON DELETE RESTRICT,
     created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     category VARCHAR(50) NOT NULL,
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'published', 'rejected', 'cancelled', 'draft')),
     rejection_reason TEXT,
     cover_image TEXT,
     registration_url TEXT,
@@ -200,6 +201,7 @@ To prevent Time-of-Check to Time-of-Use (TOCTOU) race conditions when concurrent
 - **Framework**: Next.js 16.3.5 (App Router with Turbopack).
 - **UI Library**: React 19.2.8.
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/postcss`).
-- **Database & Client**: Supabase (`@supabase/supabase-js`, `@supabase/ssr`, `pg`).
+- **Typography**: Inter (UI & tabular numerals) & JetBrains Mono (metrics & codes) via `next/font/google`.
+- **Database & Client**: Supabase (`@supabase/supabase-js`, `@supabase/ssr`, `pg` with TCP keepAlive & 15s timeout).
 - **Icons & Components**: `lucide-react`, `date-fns` v4.
 - **Validation**: `zod` v4.
