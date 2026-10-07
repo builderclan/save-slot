@@ -8,6 +8,7 @@ import { AdminTab } from "@/components/admin/admin-metrics-row";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AdminTriageView } from "@/components/admin/admin-triage-view";
 import { AdminEventsView } from "@/components/admin/admin-events-view";
+import { AdminArchiveView } from "@/components/admin/admin-archive-view";
 import {
   AdminUsersView,
   AdminUserRow,
@@ -472,9 +473,17 @@ export default function AdminConsolePage() {
     }
   };
 
+  const [nowTimestamp, setNowTimestamp] = useState<number>(0);
+
+  useEffect(() => {
+    setNowTimestamp(Date.now());
+  }, []);
+
   const pendingEvents = allEvents.filter((e) => e.status === "pending");
   const publishedEvents = allEvents.filter((e) => e.status === "published");
-
+  const archivedEvents = allEvents.filter((e) =>
+    nowTimestamp ? new Date(e.end_time).getTime() < nowTimestamp : false
+  );
 
   if (loading) {
     return (
@@ -521,6 +530,7 @@ export default function AdminConsolePage() {
         onTabChange={setActiveTab}
         pendingCount={pendingEvents.length}
         publishedCount={publishedEvents.length}
+        archivedCount={archivedEvents.length}
         usersCount={users.length}
         venuesCount={venues.length}
         currentUserName={currentUserName}
@@ -546,6 +556,15 @@ export default function AdminConsolePage() {
         {activeTab === "all-events" && (
           <AdminEventsView
             allEvents={allEvents}
+            onDeleteEvent={handleDeleteEvent}
+            onPreviewEvent={(ev) => setPreviewEvent(ev)}
+            actionInProgress={actionInProgress}
+          />
+        )}
+
+        {activeTab === "archive" && (
+          <AdminArchiveView
+            events={allEvents}
             onDeleteEvent={handleDeleteEvent}
             onPreviewEvent={(ev) => setPreviewEvent(ev)}
             actionInProgress={actionInProgress}

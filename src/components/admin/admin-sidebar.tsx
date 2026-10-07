@@ -3,6 +3,7 @@
 import {
   Inbox,
   Calendar,
+  Archive,
   Users,
   Building,
   ShieldCheck,
@@ -14,6 +15,7 @@ interface AdminSidebarProps {
   onTabChange: (tab: AdminTab) => void;
   pendingCount: number;
   publishedCount: number;
+  archivedCount?: number;
   usersCount: number;
   venuesCount: number;
   currentUserName?: string;
@@ -25,6 +27,7 @@ export function AdminSidebar({
   onTabChange,
   pendingCount,
   publishedCount,
+  archivedCount = 0,
   usersCount,
   venuesCount,
   currentUserName = "Campus Dean of Affairs",
@@ -44,6 +47,14 @@ export function AdminSidebar({
       shortLabel: "Calendar",
       icon: Calendar,
       count: publishedCount,
+      highlight: false,
+    },
+    {
+      id: "archive" as AdminTab,
+      label: "Event Archive",
+      shortLabel: "Archive",
+      icon: Archive,
+      count: archivedCount,
       highlight: false,
     },
     {
@@ -81,7 +92,7 @@ export function AdminSidebar({
           )}
         </div>
 
-        <nav className="grid grid-cols-4 lg:flex lg:flex-col gap-1 p-1 lg:bg-transparent rounded-xl lg:rounded-none w-full">
+        <nav className="grid grid-cols-5 lg:flex lg:flex-col gap-1 p-1 lg:bg-transparent rounded-xl lg:rounded-none w-full">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;

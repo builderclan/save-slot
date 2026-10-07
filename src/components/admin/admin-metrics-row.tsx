@@ -2,7 +2,7 @@
 
 import { Clock, CheckCircle2, Users, Building } from "lucide-react";
 
-export type AdminTab = "triage" | "all-events" | "users" | "venues";
+export type AdminTab = "triage" | "all-events" | "archive" | "users" | "venues";
 
 interface AdminMetricsRowProps {
   activeTab: AdminTab;
