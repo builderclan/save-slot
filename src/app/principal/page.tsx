@@ -104,11 +104,23 @@ export default function PrincipalDeskPage() {
     return events.filter((e) => e.status === "pending");
   }, [events]);
 
+  const [nowTimestamp, setNowTimestamp] = useState<number>(0);
+  useEffect(() => {
+    setNowTimestamp(Date.now());
+  }, []);
+
   const approvedEvents = useMemo(() => {
     return [...events]
       .filter((e) => e.status === "published")
       .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
   }, [events]);
+
+  const activeApprovedEvents = useMemo(() => {
+    return approvedEvents.filter((e) => {
+      if (!e.end_time || !nowTimestamp) return true;
+      return new Date(e.end_time).getTime() >= nowTimestamp;
+    });
+  }, [approvedEvents, nowTimestamp]);
 
   const availableCategories = useMemo(() => {
     const cats = new Set<string>();
@@ -387,7 +399,7 @@ export default function PrincipalDeskPage() {
           setMobileDetailView(false);
         }}
         pendingCount={pendingEvents.length}
-        approvedCount={approvedEvents.length}
+        approvedCount={activeApprovedEvents.length}
         historyCount={historyEvents.length}
         userName={session?.fullName}
         mobileDetailView={mobileDetailView}
@@ -416,7 +428,7 @@ export default function PrincipalDeskPage() {
               setActiveTab("history");
               setMobileDetailView(false);
             }}
-            approvedCount={approvedEvents.length}
+            approvedCount={activeApprovedEvents.length}
             historyCount={historyEvents.length}
           />
         )}

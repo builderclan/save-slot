@@ -484,6 +484,11 @@ export default function AdminConsolePage() {
   const archivedEvents = allEvents.filter((e) =>
     nowTimestamp ? new Date(e.end_time).getTime() < nowTimestamp : false
   );
+  const activePublishedEvents = allEvents.filter(
+    (e) =>
+      e.status === "published" &&
+      (!e.end_time || (nowTimestamp ? new Date(e.end_time).getTime() >= nowTimestamp : true))
+  );
 
   if (loading) {
     return (
@@ -529,7 +534,7 @@ export default function AdminConsolePage() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         pendingCount={pendingEvents.length}
-        publishedCount={publishedEvents.length}
+        publishedCount={activePublishedEvents.length}
         archivedCount={archivedEvents.length}
         usersCount={users.length}
         venuesCount={venues.length}
@@ -558,7 +563,9 @@ export default function AdminConsolePage() {
             allEvents={allEvents}
             onDeleteEvent={handleDeleteEvent}
             onPreviewEvent={(ev) => setPreviewEvent(ev)}
+            onNavigateToArchive={() => setActiveTab("archive")}
             actionInProgress={actionInProgress}
+            nowTimestamp={nowTimestamp}
           />
         )}
 

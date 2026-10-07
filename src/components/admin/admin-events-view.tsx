@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import {
@@ -11,6 +11,8 @@ import {
   Clock,
   MapPin,
   Eye,
+  EyeOff,
+  Archive,
   X,
   ArrowUpDown,
   ArrowUp,
@@ -23,8 +25,10 @@ interface AdminEventsViewProps {
   allEvents: CampusEvent[];
   onDeleteEvent: (id: string) => void;
   onPreviewEvent?: (event: CampusEvent) => void;
+  onNavigateToArchive?: () => void;
   actionInProgress: string | null;
   initialStatusFilter?: "all" | "published" | "pending" | "rejected";
+  nowTimestamp?: number;
 }
 
 const CATEGORIES: EventCategory[] = [
@@ -44,9 +48,19 @@ export function AdminEventsView({
   allEvents,
   onDeleteEvent,
   onPreviewEvent,
+  onNavigateToArchive,
   actionInProgress,
   initialStatusFilter = "all",
+  nowTimestamp: externalNow,
 }: AdminEventsViewProps) {
+  const [internalNow, setInternalNow] = useState<number>(0);
+
+  useEffect(() => {
+    setInternalNow(Date.now());
+  }, []);
+
+  const nowTimestamp = externalNow || internalNow;
+
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "pending" | "rejected">(
     initialStatusFilter
@@ -54,16 +68,30 @@ export function AdminEventsView({
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortField, setSortField] = useState<EventSortField>("time");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [hideCompleted, setHideCompleted] = useState<boolean>(true);
 
-  // Status counts for badge tabs
+  // Count concluded/past events
+  const completedCount = useMemo(() => {
+    if (!nowTimestamp) return 0;
+    return allEvents.filter((ev) => {
+      if (!ev.end_time) return false;
+      return new Date(ev.end_time).getTime() < nowTimestamp;
+    }).length;
+  }, [allEvents, nowTimestamp]);
+
+  // Status counts for badge tabs (respects hideCompleted)
   const counts = useMemo(() => {
+    const pool =
+      hideCompleted && nowTimestamp
+        ? allEvents.filter((ev) => !ev.end_time || new Date(ev.end_time).getTime() >= nowTimestamp)
+        : allEvents;
     return {
-      all: allEvents.length,
-      published: allEvents.filter((e) => e.status === "published").length,
-      pending: allEvents.filter((e) => e.status === "pending").length,
-      rejected: allEvents.filter((e) => e.status === "rejected").length,
+      all: pool.length,
+      published: pool.filter((e) => e.status === "published").length,
+      pending: pool.filter((e) => e.status === "pending").length,
+      rejected: pool.filter((e) => e.status === "rejected").length,
     };
-  }, [allEvents]);
+  }, [allEvents, hideCompleted, nowTimestamp]);
 
   // Toggle sort direction or change column
   const handleSort = (field: EventSortField) => {
@@ -91,6 +119,13 @@ export function AdminEventsView({
   // Filtered and sorted event pipeline
   const filteredEvents = useMemo(() => {
     let result = allEvents.filter((ev) => {
+      // Hide completed events if enabled
+      if (hideCompleted && nowTimestamp && ev.end_time) {
+        if (new Date(ev.end_time).getTime() < nowTimestamp) {
+          return false;
+        }
+      }
+
       // Status filter
       if (statusFilter !== "all" && ev.status !== statusFilter) return false;
 
@@ -140,7 +175,16 @@ export function AdminEventsView({
     });
 
     return result;
-  }, [allEvents, statusFilter, categoryFilter, searchQuery, sortField, sortDirection]);
+  }, [
+    allEvents,
+    statusFilter,
+    categoryFilter,
+    searchQuery,
+    sortField,
+    sortDirection,
+    hideCompleted,
+    nowTimestamp,
+  ]);
 
   return (
     <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/50 relative">
@@ -212,67 +256,109 @@ export function AdminEventsView({
             })}
           </div>
 
-          {/* Status Tabs Strip */}
-          <div className="flex items-center gap-1.5 border-t border-slate-100 pt-2 overflow-x-auto pb-0.5">
-            <button
-              type="button"
-              onClick={() => setStatusFilter("all")}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                statusFilter === "all"
-                  ? "bg-slate-800 text-white font-semibold"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              All ({counts.all})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("published")}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                statusFilter === "published"
-                  ? "bg-emerald-600 text-white font-semibold"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <span>Published</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                statusFilter === "published" ? "bg-emerald-700 text-white" : "bg-emerald-100 text-emerald-800"
-              }`}>
-                {counts.published}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("pending")}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                statusFilter === "pending"
-                  ? "bg-amber-500 text-white font-semibold"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <span>Pending Review</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                statusFilter === "pending" ? "bg-amber-600 text-white" : "bg-amber-100 text-amber-800"
-              }`}>
-                {counts.pending}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter("rejected")}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                statusFilter === "rejected"
-                  ? "bg-rose-600 text-white font-semibold"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-              }`}
-            >
-              <span>Declined</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                statusFilter === "rejected" ? "bg-rose-700 text-white" : "bg-rose-100 text-rose-800"
-              }`}>
-                {counts.rejected}
-              </span>
-            </button>
+          {/* Status Tabs & Completed Toggle Strip */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-slate-100 pt-2 gap-2 pb-0.5">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+              <button
+                type="button"
+                onClick={() => setStatusFilter("all")}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                  statusFilter === "all"
+                    ? "bg-slate-800 text-white font-semibold"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                All ({counts.all})
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("published")}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  statusFilter === "published"
+                    ? "bg-emerald-600 text-white font-semibold"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <span>Published</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  statusFilter === "published" ? "bg-emerald-700 text-white" : "bg-emerald-100 text-emerald-800"
+                }`}>
+                  {counts.published}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("pending")}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  statusFilter === "pending"
+                    ? "bg-amber-500 text-white font-semibold"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <span>Pending Review</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  statusFilter === "pending" ? "bg-amber-600 text-white" : "bg-amber-100 text-amber-800"
+                }`}>
+                  {counts.pending}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatusFilter("rejected")}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                  statusFilter === "rejected"
+                    ? "bg-rose-600 text-white font-semibold"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              >
+                <span>Declined</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  statusFilter === "rejected" ? "bg-rose-700 text-white" : "bg-rose-100 text-rose-800"
+                }`}>
+                  {counts.rejected}
+                </span>
+              </button>
+            </div>
+
+            {/* Completed Events Filter Toggle */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setHideCompleted((prev) => !prev)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border active:scale-[0.98] ${
+                  hideCompleted
+                    ? "bg-slate-100 text-slate-700 border-slate-200/90 hover:bg-slate-200/80"
+                    : "bg-indigo-50 text-indigo-700 border-indigo-200/90 hover:bg-indigo-100/80 font-semibold"
+                }`}
+                title={
+                  hideCompleted
+                    ? "Completed events are hidden. Click to show."
+                    : "Completed events are visible. Click to hide."
+                }
+              >
+                {hideCompleted ? (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Hide Completed</span>
+                    {completedCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-slate-200 text-slate-700 tabular-nums">
+                        {completedCount}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Showing Completed</span>
+                    {completedCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-indigo-200/70 text-indigo-800 tabular-nums">
+                        {completedCount}
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -281,10 +367,38 @@ export function AdminEventsView({
           {filteredEvents.length === 0 ? (
             <div className="text-center py-16 p-6 rounded-xl border border-dashed border-slate-200 bg-white m-4 md:m-0">
               <Calendar className="w-9 h-9 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-800">No events found</p>
+              <p className="text-sm font-semibold text-slate-800">No active events found</p>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Try adjusting your search query, status, or category filter.
+                {hideCompleted && completedCount > 0 ? (
+                  <>
+                    {completedCount} concluded {completedCount === 1 ? "event is" : "events are"} hidden from the master calendar.
+                  </>
+                ) : (
+                  "Try adjusting your search query, status, or category filter."
+                )}
               </p>
+              {hideCompleted && completedCount > 0 && (
+                <div className="mt-3.5 flex items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setHideCompleted(false)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Show completed events ({completedCount})
+                  </button>
+                  {onNavigateToArchive && (
+                    <button
+                      type="button"
+                      onClick={onNavigateToArchive}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors cursor-pointer"
+                    >
+                      <Archive className="w-3.5 h-3.5" />
+                      Open Event Archive
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-3">
