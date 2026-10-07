@@ -46,8 +46,12 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-screen flex flex-col bg-white text-slate-800 selection:bg-indigo-100 selection:text-indigo-900 font-sans">
+      <body
+        className="min-h-screen flex flex-col bg-white text-slate-800 selection:bg-indigo-100 selection:text-indigo-900 font-sans"
+        suppressHydrationWarning
+      >
         <CalendarProvider>
           <Navbar />
           <main className="flex-1 w-full flex flex-col min-h-0">{children}</main>
