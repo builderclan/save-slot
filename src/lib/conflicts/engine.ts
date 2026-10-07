@@ -106,7 +106,7 @@ export async function checkEventConflicts(params: {
 
       // Option 2: Alternative Active Campus Venue on the Earliest Safe Date
       if (campusId) {
-        let altSql = `SELECT v.id, v.name, v.building, v.capacity
+        const altSql = `SELECT v.id, v.name, v.building, v.capacity
            FROM public.venues v
            WHERE v.campus_id = $1 
              AND v.id != $2 
@@ -195,7 +195,7 @@ export async function checkEventConflicts(params: {
 
       // Option 2: Alternative Active Campus Venue at the Exact Same Time
       if (campusId) {
-        let altSql = `SELECT v.id, v.name, v.building, v.capacity
+        const altSql = `SELECT v.id, v.name, v.building, v.capacity
            FROM public.venues v
            WHERE v.campus_id = $1 
              AND v.id != $2 

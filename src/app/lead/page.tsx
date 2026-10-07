@@ -7,8 +7,6 @@ import {
   format,
   parseISO,
   differenceInCalendarDays,
-  isPast,
-  isToday,
 } from "date-fns";
 import {
   Calendar,
@@ -27,13 +25,11 @@ import {
   Trash2,
   Sparkles,
   RotateCcw,
-  Check,
   AlertTriangle,
-  Building,
   X,
   SlidersHorizontal,
 } from "lucide-react";
-import { CampusEvent, Venue, EventCategory } from "@/types/database";
+import { CampusEvent, Venue } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
 import { ProposeEventModal } from "@/components/lead/propose-event-modal";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
@@ -922,7 +918,7 @@ export default function LeadWorkspacePage() {
 
             <p className="text-xs text-slate-600 leading-relaxed">
               Are you sure you want to withdraw{" "}
-              <strong className="text-slate-900">"{withdrawingEvent.title}"</strong>? This will
+              <strong className="text-slate-900">&ldquo;{withdrawingEvent.title}&rdquo;</strong>? This will
               remove the proposal from the administrative triage queue. This action cannot be
               undone.
             </p>
