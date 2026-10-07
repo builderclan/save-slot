@@ -14,7 +14,10 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  allowedDevOrigins: ['192.168.1.37', "10.121.77.175"],
+  allowedDevOrigins: ['192.168.1.37', "10.121.77.175", "192.168.11.31"],
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns"],
+  },
 };
 
 export default nextConfig;
