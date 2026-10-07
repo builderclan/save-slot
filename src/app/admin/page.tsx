@@ -2,26 +2,31 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Clock, Calendar, Users, Building, Plus, CheckCircle2, AlertTriangle } from "lucide-react";
+import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { CampusEvent, Venue } from "@/types/database";
-import {
-  AdminMetricsRow,
-  AdminTab,
-} from "@/components/admin/admin-metrics-row";
+import { AdminTab } from "@/components/admin/admin-metrics-row";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AdminTriageView } from "@/components/admin/admin-triage-view";
 import { AdminEventsView } from "@/components/admin/admin-events-view";
+import { AdminArchiveView } from "@/components/admin/admin-archive-view";
 import {
   AdminUsersView,
   AdminUserRow,
 } from "@/components/admin/admin-users-view";
 import { AdminVenuesView } from "@/components/admin/admin-venues-view";
 import { AdminAddUserModal } from "@/components/admin/admin-add-user-modal";
+import { AdminEditUserModal } from "@/components/admin/admin-edit-user-modal";
 import { AdminAddVenueModal } from "@/components/admin/admin-add-venue-modal";
+import { AdminEditVenueModal } from "@/components/admin/admin-edit-venue-modal";
 import { AdminRejectionModal } from "@/components/admin/admin-rejection-modal";
+import { EventDetailModal } from "@/components/events/event-detail-modal";
 
 export default function AdminConsolePage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [currentUserName, setCurrentUserName] = useState<string>("Campus Dean of Affairs");
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>("admin@campus.edu");
   const [activeTab, setActiveTab] = useState<AdminTab>("triage");
 
   const [allEvents, setAllEvents] = useState<CampusEvent[]>([]);
@@ -36,11 +41,14 @@ export default function AdminConsolePage() {
     type: "success" | "error";
   } | null>(null);
 
-  // Modals state
+  // Event Preview Drawer Modal
+  const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
+
+  // Rejection Modal State
   const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
   const [rejectionNote, setRejectionNote] = useState("");
 
-  // New User Modal State
+  // Add User Modal State
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -49,13 +57,32 @@ export default function AdminConsolePage() {
   const [newUserCommId, setNewUserCommId] = useState("");
   const [userModalError, setUserModalError] = useState<string | null>(null);
 
-  // New Venue Modal State
+  // Edit User Modal State
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUserRow | null>(null);
+  const [editUserName, setEditUserName] = useState("");
+  const [editUserRole, setEditUserRole] = useState<"admin" | "principal" | "vice_principal" | "organizer">("organizer");
+  const [editUserCommId, setEditUserCommId] = useState("");
+  const [editUserError, setEditUserError] = useState<string | null>(null);
+
+  // Add Venue Modal State
   const [isAddVenueOpen, setIsAddVenueOpen] = useState(false);
   const [newVenueName, setNewVenueName] = useState("");
   const [newVenueBuilding, setNewVenueBuilding] = useState("");
   const [newVenueCapacity, setNewVenueCapacity] = useState("100");
   const [newVenueAddress, setNewVenueAddress] = useState("");
   const [newVenueNotes, setNewVenueNotes] = useState("");
+
+  // Edit Venue Modal State
+  const [isEditVenueOpen, setIsEditVenueOpen] = useState(false);
+  const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
+  const [editVenueName, setEditVenueName] = useState("");
+  const [editVenueBuilding, setEditVenueBuilding] = useState("");
+  const [editVenueCapacity, setEditVenueCapacity] = useState("100");
+  const [editVenueAddress, setEditVenueAddress] = useState("");
+  const [editVenueNotes, setEditVenueNotes] = useState("");
+  const [editVenueIsActive, setEditVenueIsActive] = useState(true);
+  const [editVenueError, setEditVenueError] = useState<string | null>(null);
 
   const loadAllData = useCallback(async () => {
     try {
@@ -68,6 +95,9 @@ export default function AdminConsolePage() {
         router.push("/login?error=admin_required");
         return;
       }
+      setCurrentUserId(meData.user.id);
+      if (meData.user.fullName) setCurrentUserName(meData.user.fullName);
+      if (meData.user.email) setCurrentUserEmail(meData.user.email);
 
       // 2. Fetch all events (including pending and rejected)
       const evRes = await fetch("/api/lead/events");
@@ -100,6 +130,7 @@ export default function AdminConsolePage() {
     loadAllData();
   }, [loadAllData]);
 
+  // Event Approval
   const handleApprove = async (eventId: string) => {
     setActionInProgress(eventId);
     try {
@@ -136,6 +167,7 @@ export default function AdminConsolePage() {
     }
   };
 
+  // Event Rejection
   const handleReject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!rejectingEvent) return;
@@ -162,7 +194,7 @@ export default function AdminConsolePage() {
         setRejectingEvent(null);
         setRejectionNote("");
         setAdminNotice({
-          message: "Event rejected and returned with feedback.",
+          message: "Event rejected and returned with administrative feedback.",
           type: "success",
         });
         setTimeout(() => setAdminNotice(null), 5000);
@@ -185,8 +217,9 @@ export default function AdminConsolePage() {
     }
   };
 
+  // Event Deletion
   const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm("Are you sure you want to permanently delete this event?")) return;
+    if (!confirm("Are you sure you want to permanently delete this event? This action cannot be undone.")) return;
 
     setActionInProgress(eventId);
     try {
@@ -195,12 +228,23 @@ export default function AdminConsolePage() {
       });
       if (res.ok) {
         setAllEvents((prev) => prev.filter((e) => e.id !== eventId));
+        setAdminNotice({
+          message: "Event record permanently deleted from campus registry.",
+          type: "success",
+        });
+        setTimeout(() => setAdminNotice(null), 4000);
+      } else {
+        const err = await res.json();
+        setAdminNotice({ message: err.error || "Failed to delete event", type: "error" });
       }
+    } catch {
+      setAdminNotice({ message: "Network error while deleting event", type: "error" });
     } finally {
       setActionInProgress(null);
     }
   };
 
+  // Create User
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setUserModalError(null);
@@ -225,11 +269,84 @@ export default function AdminConsolePage() {
       setNewUserEmail("");
       setNewUserPassword("");
       loadAllData();
+      setAdminNotice({ message: "User account provisioned successfully.", type: "success" });
+      setTimeout(() => setAdminNotice(null), 4000);
     } catch (err: unknown) {
       setUserModalError(err instanceof Error ? err.message : "Error creating user");
     }
   };
 
+  // Open Edit User
+  const handleOpenEditUser = (user: AdminUserRow) => {
+    setEditingUser(user);
+    setEditUserName(user.full_name);
+    setEditUserRole(user.role as "admin" | "principal" | "vice_principal" | "organizer");
+    setEditUserCommId(user.community_id || "");
+    setEditUserError(null);
+    setIsEditUserOpen(true);
+  };
+
+  // Submit Edit User
+  const handleSaveEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setEditUserError(null);
+    setActionInProgress(editingUser.id);
+
+    try {
+      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: editUserName,
+          role: editUserRole,
+          communityId: editUserRole === "organizer" ? editUserCommId : null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update user");
+
+      setIsEditUserOpen(false);
+      setEditingUser(null);
+      loadAllData();
+      setAdminNotice({ message: "User account permissions updated successfully.", type: "success" });
+      setTimeout(() => setAdminNotice(null), 4000);
+    } catch (err: unknown) {
+      setEditUserError(err instanceof Error ? err.message : "Error updating user");
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  // Delete User
+  const handleDeleteUser = async (user: AdminUserRow) => {
+    if (!confirm(`Are you sure you want to permanently delete user account: ${user.full_name} (${user.email})?`)) {
+      return;
+    }
+
+    setActionInProgress(user.id);
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAdminNotice({ message: data.error || "Failed to delete user", type: "error" });
+        setTimeout(() => setAdminNotice(null), 6000);
+      } else {
+        setUsers((prev) => prev.filter((u) => u.id !== user.id));
+        setAdminNotice({ message: `User ${user.email} removed from system.`, type: "success" });
+        setTimeout(() => setAdminNotice(null), 4000);
+      }
+    } catch {
+      setAdminNotice({ message: "Network error while deleting user", type: "error" });
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  // Create Venue
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -249,13 +366,96 @@ export default function AdminConsolePage() {
         setIsAddVenueOpen(false);
         setNewVenueName("");
         setNewVenueBuilding("");
+        setNewVenueCapacity("100");
+        setNewVenueAddress("");
+        setNewVenueNotes("");
         loadAllData();
+        setAdminNotice({ message: "Campus facility registered successfully.", type: "success" });
+        setTimeout(() => setAdminNotice(null), 4000);
+      } else {
+        const data = await res.json();
+        setAdminNotice({ message: data.error || "Failed to create venue", type: "error" });
       }
     } catch (err) {
       console.error("Create venue error:", err);
     }
   };
 
+  // Open Edit Venue
+  const handleOpenEditVenue = (venue: Venue) => {
+    setEditingVenue(venue);
+    setEditVenueName(venue.name);
+    setEditVenueBuilding(venue.building || "");
+    setEditVenueCapacity(String(venue.capacity || 100));
+    setEditVenueAddress(venue.address || "");
+    setEditVenueNotes(venue.notes || "");
+    setEditVenueIsActive(venue.is_active);
+    setEditVenueError(null);
+    setIsEditVenueOpen(true);
+  };
+
+  // Submit Edit Venue
+  const handleSaveEditVenue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingVenue) return;
+    setEditVenueError(null);
+    setActionInProgress(editingVenue.id);
+
+    try {
+      const res = await fetch(`/api/admin/venues/${editingVenue.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editVenueName,
+          building: editVenueBuilding,
+          capacity: parseInt(editVenueCapacity, 10),
+          address: editVenueAddress,
+          notes: editVenueNotes,
+          is_active: editVenueIsActive,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update facility");
+
+      setIsEditVenueOpen(false);
+      setEditingVenue(null);
+      loadAllData();
+      setAdminNotice({ message: "Facility details updated successfully.", type: "success" });
+      setTimeout(() => setAdminNotice(null), 4000);
+    } catch (err: unknown) {
+      setEditVenueError(err instanceof Error ? err.message : "Error updating facility");
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  // Delete Venue
+  const handleDeleteVenue = async (venue: Venue) => {
+    if (!confirm(`Are you sure you want to delete facility: "${venue.name}"?`)) return;
+
+    setActionInProgress(venue.id);
+    try {
+      const res = await fetch(`/api/admin/venues/${venue.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAdminNotice({ message: data.error || "Failed to delete facility", type: "error" });
+        setTimeout(() => setAdminNotice(null), 7000);
+      } else {
+        setVenues((prev) => prev.filter((v) => v.id !== venue.id));
+        setAdminNotice({ message: `Facility "${venue.name}" deleted.`, type: "success" });
+        setTimeout(() => setAdminNotice(null), 4000);
+      }
+    } catch {
+      setAdminNotice({ message: "Network error while deleting facility", type: "error" });
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  // Toggle Venue Active
   const handleToggleVenueActive = async (venue: Venue) => {
     try {
       const res = await fetch("/api/admin/venues", {
@@ -273,28 +473,42 @@ export default function AdminConsolePage() {
     }
   };
 
+  const [nowTimestamp, setNowTimestamp] = useState<number>(0);
+
+  useEffect(() => {
+    setNowTimestamp(Date.now());
+  }, []);
+
   const pendingEvents = allEvents.filter((e) => e.status === "pending");
   const publishedEvents = allEvents.filter((e) => e.status === "published");
+  const archivedEvents = allEvents.filter((e) =>
+    nowTimestamp ? new Date(e.end_time).getTime() < nowTimestamp : false
+  );
+  const activePublishedEvents = allEvents.filter(
+    (e) =>
+      e.status === "published" &&
+      (!e.end_time || (nowTimestamp ? new Date(e.end_time).getTime() >= nowTimestamp : true))
+  );
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-slate-400">Loading Admin Operations Console...</p>
+      <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center text-center bg-white">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3" />
+        <p className="text-xs text-slate-400 font-medium">Loading Operations Console...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Notice Banner */}
+    <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row overflow-hidden bg-white relative">
+      {/* FLOATING TOAST NOTIFICATION */}
       {adminNotice && (
         <div
-          role="alert"
-          className={`mb-6 p-4 rounded-2xl border text-xs sm:text-sm font-medium flex items-center justify-between gap-3 shadow-xs ${
+          role="status"
+          className={`fixed top-18 right-6 z-50 p-3.5 rounded-2xl border text-xs sm:text-sm font-medium flex items-center justify-between gap-3 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-top-2 ${
             adminNotice.type === "success"
-              ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-              : "bg-rose-50 border-rose-200 text-rose-900"
+              ? "bg-emerald-50/95 border-emerald-200 text-emerald-950"
+              : "bg-rose-50/95 border-rose-200 text-rose-950"
           }`}
         >
           <div className="flex items-center gap-2.5">
@@ -315,145 +529,85 @@ export default function AdminConsolePage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-8 mb-8 border-b border-slate-200">
-        <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-900 text-xs font-semibold mb-2">
-            <Shield className="w-3.5 h-3.5 text-amber-600" />
-            <span>Campus Administration</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-            Central Triage & Operations Console
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Albertian Institute of Science & Technology (AISAT) · Institutional calendar oversight, safety audit, and staff provisioning
-          </p>
-        </div>
-
-        {/* Global Quick Actions */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button
-            type="button"
-            onClick={() => setIsAddUserOpen(true)}
-            className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
-          >
-            <Plus className="w-3.5 h-3.5 text-slate-600" />
-            <span>Add User</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsAddVenueOpen(true)}
-            className="flex-1 sm:flex-none px-3.5 sm:px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98]"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add Facility</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Metrics Row */}
-      <AdminMetricsRow
+      {/* LEFT SIDEBAR NAVIGATION */}
+      <AdminSidebar
         activeTab={activeTab}
-        onTabSelect={setActiveTab}
+        onTabChange={setActiveTab}
         pendingCount={pendingEvents.length}
-        publishedCount={publishedEvents.length}
+        publishedCount={activePublishedEvents.length}
+        archivedCount={archivedEvents.length}
         usersCount={users.length}
         venuesCount={venues.length}
+        currentUserName={currentUserName}
+        currentUserEmail={currentUserEmail}
       />
 
-      {/* Tabs Switcher */}
-      <div className="flex p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 mb-6 overflow-x-auto max-w-full">
-        <button
-          type="button"
-          onClick={() => setActiveTab("triage")}
-          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
-            activeTab === "triage"
-              ? "bg-white text-slate-900 shadow-xs font-semibold"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5 text-amber-600" />
-          <span>Pending Submissions ({pendingEvents.length})</span>
-        </button>
+      {/* WORKSPACE CONTENT AREA */}
+      <div className="flex-1 flex min-w-0 h-full overflow-hidden bg-white">
+        {activeTab === "triage" && (
+          <AdminTriageView
+            pendingEvents={pendingEvents}
+            publishedEvents={publishedEvents}
+            communities={communities}
+            onApprove={handleApprove}
+            onOpenReject={(ev) => {
+              setRejectingEvent(ev);
+              setRejectionNote("");
+            }}
+            actionInProgress={actionInProgress}
+          />
+        )}
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("all-events")}
-          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
-            activeTab === "all-events"
-              ? "bg-white text-slate-900 shadow-xs font-semibold"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5 text-slate-500" />
-          <span>Master Calendar ({allEvents.length})</span>
-        </button>
+        {activeTab === "all-events" && (
+          <AdminEventsView
+            allEvents={allEvents}
+            onDeleteEvent={handleDeleteEvent}
+            onPreviewEvent={(ev) => setPreviewEvent(ev)}
+            onNavigateToArchive={() => setActiveTab("archive")}
+            actionInProgress={actionInProgress}
+            nowTimestamp={nowTimestamp}
+          />
+        )}
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("users")}
-          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
-            activeTab === "users"
-              ? "bg-white text-slate-900 shadow-xs font-semibold"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Users className="w-3.5 h-3.5 text-slate-500" />
-          <span>User Accounts ({users.length})</span>
-        </button>
+        {activeTab === "archive" && (
+          <AdminArchiveView
+            events={allEvents}
+            onDeleteEvent={handleDeleteEvent}
+            onPreviewEvent={(ev) => setPreviewEvent(ev)}
+            actionInProgress={actionInProgress}
+          />
+        )}
 
-        <button
-          type="button"
-          onClick={() => setActiveTab("venues")}
-          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
-            activeTab === "venues"
-              ? "bg-white text-slate-900 shadow-xs font-semibold"
-              : "text-slate-600 hover:text-slate-900"
-          }`}
-        >
-          <Building className="w-3.5 h-3.5 text-slate-500" />
-          <span>Campus Venues ({venues.length})</span>
-        </button>
+        {activeTab === "users" && (
+          <AdminUsersView
+            users={users}
+            currentUserId={currentUserId}
+            onAddUserClick={() => setIsAddUserOpen(true)}
+            onEditUserClick={handleOpenEditUser}
+            onDeleteUserClick={handleDeleteUser}
+            actionInProgress={actionInProgress}
+          />
+        )}
+
+        {activeTab === "venues" && (
+          <AdminVenuesView
+            venues={venues}
+            onToggleVenueActive={handleToggleVenueActive}
+            onAddVenueClick={() => setIsAddVenueOpen(true)}
+            onEditVenueClick={handleOpenEditVenue}
+            onDeleteVenueClick={handleDeleteVenue}
+            actionInProgress={actionInProgress}
+          />
+        )}
       </div>
 
-      {/* Tab Views */}
-      {activeTab === "triage" && (
-        <AdminTriageView
-          pendingEvents={pendingEvents}
-          onApprove={handleApprove}
-          onOpenReject={(ev) => {
-            setRejectingEvent(ev);
-            setRejectionNote("");
-          }}
-          actionInProgress={actionInProgress}
-        />
-      )}
+      {/* PREVIEW MODAL */}
+      <EventDetailModal
+        event={previewEvent}
+        onClose={() => setPreviewEvent(null)}
+      />
 
-      {activeTab === "all-events" && (
-        <AdminEventsView
-          allEvents={allEvents}
-          onDeleteEvent={handleDeleteEvent}
-          actionInProgress={actionInProgress}
-        />
-      )}
-
-      {activeTab === "users" && (
-        <AdminUsersView
-          users={users}
-          onAddUserClick={() => setIsAddUserOpen(true)}
-        />
-      )}
-
-      {activeTab === "venues" && (
-        <AdminVenuesView
-          venues={venues}
-          onToggleVenueActive={handleToggleVenueActive}
-          onAddVenueClick={() => setIsAddVenueOpen(true)}
-        />
-      )}
-
-      {/* REJECT MODAL WITH NOTE */}
+      {/* REJECT MODAL WITH NOTE & PRESETS */}
       <AdminRejectionModal
         rejectingEvent={rejectingEvent}
         rejectionNote={rejectionNote}
@@ -482,6 +636,23 @@ export default function AdminConsolePage() {
         error={userModalError}
       />
 
+      {/* EDIT USER MODAL */}
+      <AdminEditUserModal
+        isOpen={isEditUserOpen}
+        onClose={() => setIsEditUserOpen(false)}
+        onSubmit={handleSaveEditUser}
+        user={editingUser}
+        name={editUserName}
+        onNameChange={setEditUserName}
+        role={editUserRole}
+        onRoleChange={setEditUserRole}
+        communityId={editUserCommId}
+        onCommunityIdChange={setEditUserCommId}
+        communities={communities}
+        error={editUserError}
+        isSubmitting={actionInProgress === editingUser?.id}
+      />
+
       {/* ADD VENUE MODAL */}
       <AdminAddVenueModal
         isOpen={isAddVenueOpen}
@@ -497,6 +668,28 @@ export default function AdminConsolePage() {
         onAddressChange={setNewVenueAddress}
         notes={newVenueNotes}
         onNotesChange={setNewVenueNotes}
+      />
+
+      {/* EDIT VENUE MODAL */}
+      <AdminEditVenueModal
+        isOpen={isEditVenueOpen}
+        onClose={() => setIsEditVenueOpen(false)}
+        onSubmit={handleSaveEditVenue}
+        venue={editingVenue}
+        name={editVenueName}
+        onNameChange={setEditVenueName}
+        building={editVenueBuilding}
+        onBuildingChange={setEditVenueBuilding}
+        capacity={editVenueCapacity}
+        onCapacityChange={setEditVenueCapacity}
+        address={editVenueAddress}
+        onAddressChange={setEditVenueAddress}
+        notes={editVenueNotes}
+        onNotesChange={setEditVenueNotes}
+        isActive={editVenueIsActive}
+        onIsActiveChange={setEditVenueIsActive}
+        error={editVenueError}
+        isSubmitting={actionInProgress === editingVenue?.id}
       />
     </div>
   );

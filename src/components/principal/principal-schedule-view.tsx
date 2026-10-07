@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import {
   Calendar,
@@ -10,6 +10,8 @@ import {
   ChevronRight,
   X,
   Check,
+  Eye,
+  EyeOff,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -46,9 +48,16 @@ export function PrincipalScheduleView({
   availableCategories,
   onSelectEvent,
 }: PrincipalScheduleViewProps) {
+  const [internalNow, setInternalNow] = useState<number>(0);
+
+  useEffect(() => {
+    setInternalNow(Date.now());
+  }, []);
+
   // Sorting state
   const [sortField, setSortField] = useState<ScheduleSortField>("time");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [hideCompleted, setHideCompleted] = useState<boolean>(true);
 
   // Auto-hide toolbar on scroll down, show on scroll up
   const [toolbarVisible, setToolbarVisible] = useState(true);
@@ -90,9 +99,26 @@ export function PrincipalScheduleView({
     }
   };
 
+  // Count concluded/past events
+  const completedCount = useMemo(() => {
+    if (!internalNow) return 0;
+    return filteredApprovedEvents.filter(
+      (ev) => ev.end_time && new Date(ev.end_time).getTime() < internalNow
+    ).length;
+  }, [filteredApprovedEvents, internalNow]);
+
+  // Filter completed events if hideCompleted is active
+  const visibleApprovedEvents = useMemo(() => {
+    if (!hideCompleted || !internalNow) return filteredApprovedEvents;
+    return filteredApprovedEvents.filter((ev) => {
+      if (!ev.end_time) return true;
+      return new Date(ev.end_time).getTime() >= internalNow;
+    });
+  }, [filteredApprovedEvents, hideCompleted, internalNow]);
+
   // Apply Sorting
   const sortedEvents = useMemo(() => {
-    return [...filteredApprovedEvents].sort((a, b) => {
+    return [...visibleApprovedEvents].sort((a, b) => {
       let comparison = 0;
       switch (sortField) {
         case "time": {
@@ -120,7 +146,7 @@ export function PrincipalScheduleView({
       }
       return sortDirection === "asc" ? comparison : -comparison;
     });
-  }, [filteredApprovedEvents, sortField, sortDirection]);
+  }, [visibleApprovedEvents, sortField, sortDirection]);
 
   // Header Sort Icon helper
   const renderSortIndicator = (field: ScheduleSortField) => {
@@ -157,8 +183,8 @@ export function PrincipalScheduleView({
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-bold text-slate-900 tracking-tight">Campus Schedule</h3>
                 <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium tabular-nums border border-slate-200/60">
-                  {filteredApprovedEvents.length}{" "}
-                  {filteredApprovedEvents.length === 1 ? "event" : "events"}
+                  {sortedEvents.length}{" "}
+                  {sortedEvents.length === 1 ? "event" : "events"}
                 </span>
                 {hasActiveFilters && (
                   <span className="inline-flex items-center text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200/60">
@@ -193,26 +219,68 @@ export function PrincipalScheduleView({
             </div>
           </div>
 
-          {/* Horizontal Category Filter Strip */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 py-0.5">
-            {availableCategories.map((cat) => {
-              const isSelected = calendarCategoryFilter.toLowerCase() === cat.toLowerCase();
-              const label = cat === "all" ? "All Categories" : cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => onCategoryFilterChange(cat)}
-                  className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                    isSelected
-                      ? "bg-slate-900 text-white shadow-2xs font-semibold"
-                      : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
+          {/* Horizontal Category Filter Strip & Completed Toggle */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-100 pt-1.5 -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
+              {availableCategories.map((cat) => {
+                const isSelected = calendarCategoryFilter.toLowerCase() === cat.toLowerCase();
+                const label = cat === "all" ? "All Categories" : cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => onCategoryFilterChange(cat)}
+                    className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                      isSelected
+                        ? "bg-slate-900 text-white shadow-2xs font-semibold"
+                        : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Completed Events Toggle */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setHideCompleted((prev) => !prev)}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border active:scale-[0.98] ${
+                  hideCompleted
+                    ? "bg-slate-100 text-slate-700 border-slate-200/90 hover:bg-slate-200/80"
+                    : "bg-purple-50 text-purple-700 border-purple-200/90 hover:bg-purple-100/80 font-semibold"
+                }`}
+                title={
+                  hideCompleted
+                    ? "Completed events are hidden. Click to show."
+                    : "Completed events are visible. Click to hide."
+                }
+              >
+                {hideCompleted ? (
+                  <>
+                    <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Hide Completed</span>
+                    {completedCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-slate-200 text-slate-700 tabular-nums">
+                        {completedCount}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Showing Completed</span>
+                    {completedCount > 0 && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-purple-200/70 text-purple-800 tabular-nums">
+                        {completedCount}
+                      </span>
+                    )}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -223,10 +291,28 @@ export function PrincipalScheduleView({
               <Calendar className="w-9 h-9 text-slate-300 mx-auto mb-2" />
               <p className="text-sm font-semibold text-slate-800">No scheduled events found</p>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                {calendarSearch || calendarCategoryFilter !== "all"
-                  ? "Try adjusting your search query or category filter."
-                  : "No approved campus events yet."}
+                {hideCompleted && completedCount > 0 ? (
+                  <>
+                    {completedCount} concluded {completedCount === 1 ? "event is" : "events are"} hidden from the master calendar.
+                  </>
+                ) : calendarSearch || calendarCategoryFilter !== "all" ? (
+                  "Try adjusting your search query or category filter."
+                ) : (
+                  "No approved campus events yet."
+                )}
               </p>
+              {hideCompleted && completedCount > 0 && (
+                <div className="mt-3.5 flex items-center justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setHideCompleted(false)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Show completed events ({completedCount})
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-3">

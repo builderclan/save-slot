@@ -16,8 +16,8 @@ RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
 # Copy dependency manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
 
-# Install dependencies strictly matching the lockfile
-RUN pnpm install --frozen-lockfile
+# Install dependencies strictly matching the lockfile with build cache
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # Builder stage
 FROM base AS builder

@@ -87,3 +87,18 @@ export const CreateUserSchema = z.object({
   communityId: z.string().uuid("Invalid community ID").optional().nullable().or(z.literal("")),
 });
 
+export const UpdateUserSchema = z.object({
+  fullName: z.string().trim().min(2, "Full name must be at least 2 characters").optional(),
+  role: z.enum(["admin", "principal", "vice_principal", "organizer"]).optional(),
+  communityId: z.string().uuid("Invalid community ID").optional().nullable().or(z.literal("")),
+});
+
+export const UpdateVenueFullSchema = z.object({
+  name: z.string().trim().min(2, "Venue name must be at least 2 characters").optional(),
+  building: z.string().trim().optional(),
+  capacity: z.coerce.number().int().positive().optional(),
+  address: z.string().trim().optional().nullable(),
+  notes: z.string().trim().optional().nullable(),
+  is_active: z.boolean().optional(),
+});
+
