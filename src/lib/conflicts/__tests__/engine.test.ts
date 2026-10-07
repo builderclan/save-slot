@@ -69,8 +69,9 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
     mockQuery
       .mockResolvedValueOnce(mockDbResult([mockVenue])) // venue
       .mockResolvedValueOnce(mockDbResult([])) // no venue collision
+      .mockResolvedValueOnce(mockDbResult([])) // earliest safe date check
       .mockResolvedValueOnce(mockDbResult([])) // alt venues query
-      .mockResolvedValueOnce(mockDbResult([])); // next available day check
+      .mockResolvedValueOnce(mockDbResult([])); // following day check
 
     const result = await checkEventConflicts({
       venueId,
@@ -83,6 +84,29 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
     expect(result.message).toContain("must be submitted at least 7 days in advance");
     expect(result.leadTimeDays).toBeLessThan(7);
     expect(result.safeSlots.length).toBeGreaterThan(0);
+    // Verified that suggestions are policy-cleared safe dates (>= 7 days in advance)
+    expect(result.safeSlots[0].label).toContain("Earliest Safe Date");
+  });
+
+  it("handles overnight events ending the following day with positive duration", async () => {
+    const futureDate = addDays(new Date(), 10);
+    const startTime = new Date(futureDate.setHours(21, 0, 0, 0)).toISOString();
+    const nextDay = addDays(futureDate, 1);
+    const endTime = new Date(nextDay.setHours(2, 0, 0, 0)).toISOString();
+
+    mockQuery
+      .mockResolvedValueOnce(mockDbResult([mockVenue]))
+      .mockResolvedValueOnce(mockDbResult([]));
+
+    const result = await checkEventConflicts({
+      venueId,
+      startTime,
+      endTime,
+    });
+
+    expect(result.hasConflict).toBe(false);
+    expect(result.hasLeadTimeViolation).toBe(false);
+    expect(result.message).toContain("verified and completely clash-free");
   });
 
   it("detects a hard collision when another event occupies the same venue at overlapping time", async () => {
