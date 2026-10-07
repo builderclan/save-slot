@@ -30,10 +30,10 @@ export function AdminMetricsRow({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") onTabSelect("triage");
         }}
-        className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+        className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-[0.98] ${
           activeTab === "triage"
             ? "border-amber-400 bg-amber-50/50 ring-2 ring-amber-400/30"
-            : "border-slate-200/90 bg-white hover:border-slate-300"
+            : "border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-sm"
         }`}
       >
         <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-800 mb-1 flex items-center gap-1.5">
@@ -50,10 +50,10 @@ export function AdminMetricsRow({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") onTabSelect("all-events");
         }}
-        className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+        className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-[0.98] ${
           activeTab === "all-events"
             ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/30"
-            : "border-slate-200/90 bg-white hover:border-slate-300"
+            : "border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-sm"
         }`}
       >
         <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1.5">
@@ -70,10 +70,10 @@ export function AdminMetricsRow({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") onTabSelect("users");
         }}
-        className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+        className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-[0.98] ${
           activeTab === "users"
             ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/30"
-            : "border-slate-200/90 bg-white hover:border-slate-300"
+            : "border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-sm"
         }`}
       >
         <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1.5">
@@ -90,10 +90,10 @@ export function AdminMetricsRow({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") onTabSelect("venues");
         }}
-        className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs ${
+        className={`p-4 sm:p-5 rounded-2xl border transition-all cursor-pointer shadow-xs active:scale-[0.98] ${
           activeTab === "venues"
             ? "border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-600/30"
-            : "border-slate-200/90 bg-white hover:border-slate-300"
+            : "border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-sm"
         }`}
       >
         <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1.5">
