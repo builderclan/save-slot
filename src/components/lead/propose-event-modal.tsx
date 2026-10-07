@@ -17,8 +17,8 @@ import {
   Check,
   Sparkles,
 } from "lucide-react";
-import { format, addDays } from "date-fns";
-import { Venue, ConflictCheckResult, SafeSlotSuggestion, EventCategory } from "@/types/database";
+import { format, addDays, parseISO } from "date-fns";
+import { Venue, ConflictCheckResult, SafeSlotSuggestion, EventCategory, CampusEvent } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
 
 const PRESET_COVERS = [
@@ -54,6 +54,8 @@ interface ProposeEventModalProps {
   venues: Venue[];
   communityId?: string;
   communityName?: string;
+  initialEvent?: CampusEvent | null;
+  mode?: "create" | "edit";
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -62,24 +64,41 @@ export function ProposeEventModal({
   venues,
   communityId,
   communityName,
+  initialEvent,
+  mode = "create",
   onClose,
   onSuccess,
 }: ProposeEventModalProps) {
+  const isEditMode = mode === "edit" || !!initialEvent;
   // Multi-stage step state (1: Details, 2: Schedule & Venue, 3: Poster & Review)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
-  // Default date to 8 days in the future to satisfy 7-day rule
-  const defaultDate = format(addDays(new Date(), 8), "yyyy-MM-dd");
+  // Initial values based on initialEvent if editing
+  const initDate = initialEvent
+    ? format(parseISO(initialEvent.start_time), "yyyy-MM-dd")
+    : format(addDays(new Date(), 8), "yyyy-MM-dd");
+  const initStartTime = initialEvent
+    ? format(parseISO(initialEvent.start_time), "HH:mm")
+    : "14:00";
+  const initEndTime = initialEvent
+    ? format(parseISO(initialEvent.end_time), "HH:mm")
+    : "17:00";
 
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<EventCategory>("Tech");
-  const [venueId, setVenueId] = useState(venues[0]?.id || "");
-  const [dateStr, setDateStr] = useState(defaultDate);
-  const [startTimeStr, setStartTimeStr] = useState("14:00");
-  const [endTimeStr, setEndTimeStr] = useState("17:00");
-  const [description, setDescription] = useState("");
-  const [coverImageUrl, setCoverImageUrl] = useState(PRESET_COVERS[0].url);
-  const [registrationUrl, setRegistrationUrl] = useState("");
+  const [title, setTitle] = useState(initialEvent?.title || "");
+  const [category, setCategory] = useState<EventCategory>(initialEvent?.category || "Tech");
+  const [venueId, setVenueId] = useState(
+    initialEvent?.venue?.id || initialEvent?.venue_id || venues[0]?.id || ""
+  );
+  const [dateStr, setDateStr] = useState(initDate);
+  const [startTimeStr, setStartTimeStr] = useState(initStartTime);
+  const [endTimeStr, setEndTimeStr] = useState(initEndTime);
+  const [description, setDescription] = useState(initialEvent?.description || "");
+  const [coverImageUrl, setCoverImageUrl] = useState(
+    initialEvent?.cover_image_url || PRESET_COVERS[0].url
+  );
+  const [registrationUrl, setRegistrationUrl] = useState(
+    initialEvent?.external_registration_url || ""
+  );
 
   const [stepError, setStepError] = useState<string | null>(null);
   const [checkingConflict, setCheckingConflict] = useState(false);
@@ -87,11 +106,18 @@ export function ProposeEventModal({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // Compute full ISO strings
+  const isOvernight = Boolean(startTimeStr && endTimeStr && endTimeStr < startTimeStr);
+
+  // Compute full ISO strings with overnight support
   const getIsoTimestamps = useCallback(() => {
     try {
       const start = new Date(`${dateStr}T${startTimeStr}:00`);
-      const end = new Date(`${dateStr}T${endTimeStr}:00`);
+      let end = new Date(`${dateStr}T${endTimeStr}:00`);
+      // If end time is earlier than start time (e.g. 21:00 to 02:00),
+      // it means the event runs overnight into the next morning
+      if (endTimeStr < startTimeStr) {
+        end = addDays(end, 1);
+      }
       return { startIso: start.toISOString(), endIso: end.toISOString() };
     } catch {
       return { startIso: null, endIso: null };
@@ -118,6 +144,7 @@ export function ProposeEventModal({
             startTime: startIso,
             endTime: endIso,
             category,
+            excludeEventId: initialEvent?.id,
           }),
         });
 
@@ -136,7 +163,7 @@ export function ProposeEventModal({
       isCurrent = false;
       clearTimeout(timer);
     };
-  }, [venueId, dateStr, startTimeStr, endTimeStr, category, getIsoTimestamps]);
+  }, [venueId, dateStr, startTimeStr, endTimeStr, category, initialEvent?.id, getIsoTimestamps]);
 
   // Apply a recommended Safe Slot
   const applySafeSlot = (slot: SafeSlotSuggestion) => {
@@ -149,6 +176,8 @@ export function ProposeEventModal({
     if (slot.venue_id) {
       setVenueId(slot.venue_id);
     }
+    setStepError(null);
+    setSubmitError(null);
   };
 
   const handleNextFromStep1 = () => {
@@ -169,11 +198,20 @@ export function ProposeEventModal({
       setStepError("Please specify a venue, date, and valid times.");
       return;
     }
+    if (startTimeStr === endTimeStr) {
+      setStepError("End time cannot be identical to start time (minimum 30 minutes duration).");
+      return;
+    }
     if (conflictResult?.hasConflict) {
       setStepError("This venue has an active booking conflict during this time. Please select an alternate Safe Slot below.");
       return;
     }
+    if (conflictResult?.hasLeadTimeViolation) {
+      setStepError("Campus policy requires at least 7 days advance notice. Please select a recommended Safe Slot below.");
+      return;
+    }
     setStepError(null);
+    setSubmitError(null);
     setCurrentStep(3);
   };
 
@@ -190,8 +228,11 @@ export function ProposeEventModal({
     }
 
     try {
-      const res = await fetch("/api/lead/events", {
-        method: "POST",
+      const url = initialEvent ? `/api/lead/events/${initialEvent.id}` : "/api/lead/events";
+      const method = initialEvent ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
@@ -234,10 +275,15 @@ export function ProposeEventModal({
               <span>Safe-Slot Assistant</span>
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
-              Propose New Campus Event
+              {isEditMode
+                ? initialEvent?.status === "rejected"
+                  ? "Revise & Resubmit Proposal"
+                  : "Edit Proposal Details"
+                : "Propose New Campus Event"}
             </h2>
             <p className="text-xs text-slate-500">
-              Submitting for: <span className="font-semibold text-slate-800">{communityName || "Your Community"}</span>
+              {isEditMode ? "Editing submission for: " : "Submitting for: "}
+              <span className="font-semibold text-slate-800">{communityName || "Your Community"}</span>
             </p>
           </div>
 
@@ -250,6 +296,22 @@ export function ProposeEventModal({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Administrative Feedback Banner for Rejected Proposals */}
+        {initialEvent?.rejection_reason && (
+          <div className="mx-6 mt-4 p-3.5 rounded-xl bg-rose-50/90 border border-rose-200 text-xs text-rose-950 flex items-start gap-2.5 shrink-0">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <strong className="font-semibold text-rose-900 block">
+                Administrative Revision Feedback:
+              </strong>
+              <p className="leading-relaxed text-rose-900/90">{initialEvent.rejection_reason}</p>
+              <p className="text-[11px] text-rose-700/80 mt-1">
+                Updating your venue or schedule to resolve this conflict will resubmit your event directly to campus administrators.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Step Progress Tracker */}
         <div className="px-6 py-3.5 bg-slate-50/70 border-b border-slate-100 shrink-0">
@@ -443,15 +505,26 @@ export function ProposeEventModal({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      <span>End Time *</span>
+                    <label className="text-xs font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span>End Time *</span>
+                      </span>
+                      {isOvernight && (
+                        <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200/70 px-1.5 py-0.5 rounded-md">
+                          Overnight (+1 day)
+                        </span>
+                      )}
                     </label>
                     <input
                       type="time"
                       required
                       value={endTimeStr}
-                      onChange={(e) => setEndTimeStr(e.target.value)}
+                      onChange={(e) => {
+                        setEndTimeStr(e.target.value);
+                        setStepError(null);
+                        setSubmitError(null);
+                      }}
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-indigo-600 shadow-xs cursor-pointer"
                     />
                   </div>
@@ -692,8 +765,14 @@ export function ProposeEventModal({
               ) : (
                 <>
                   <span>
-                    <span className="hidden sm:inline">Submit for Admin Review</span>
-                    <span className="sm:hidden">Submit Event</span>
+                    <span className="hidden sm:inline">
+                      {isEditMode
+                        ? initialEvent?.status === "rejected"
+                          ? "Resubmit for Admin Review"
+                          : "Save Proposal Changes"
+                        : "Submit for Admin Review"}
+                    </span>
+                    <span className="sm:hidden">{isEditMode ? "Resubmit" : "Submit Event"}</span>
                   </span>
                   <Check className="w-3.5 h-3.5" />
                 </>
