@@ -30,6 +30,11 @@ export function getDbPool(): Pool {
       10
     );
 
+    const max = parseInt(
+      process.env.DB_POOL_MAX || (process.env.VERCEL ? "2" : "10"),
+      10
+    );
+
     const pool = new Pool({
       host,
       port,
@@ -37,7 +42,7 @@ export function getDbPool(): Pool {
       password,
       database,
       ssl: { rejectUnauthorized },
-      max: 10,
+      max,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis,
       keepAlive: true,

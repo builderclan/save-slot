@@ -8,13 +8,15 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/db", () => ({
   query: vi.fn(),
+  withTransaction: vi.fn(),
 }));
 
 import { getCurrentUser, type AuthSession } from "@/lib/auth";
-import { query } from "@/lib/db";
+import { query, withTransaction } from "@/lib/db";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockQuery = vi.mocked(query);
+const mockWithTransaction = vi.mocked(withTransaction);
 
 function mockDbResult<T extends QueryResultRow>(rows: T[]): QueryResult<T> {
   return {
@@ -129,10 +131,19 @@ describe("Admin Venue Details API (/api/admin/venues/[id])", () => {
       mockGetCurrentUser.mockResolvedValue(adminSession);
       // 1. Check active events (0)
       mockQuery.mockResolvedValueOnce(mockDbResult([{ count: "0", titles: "" }]));
-      // 2. Detach historical events
-      mockQuery.mockResolvedValueOnce(mockDbResult([]));
-      // 3. Delete venue
-      mockQuery.mockResolvedValueOnce(mockDbResult([{ id: "venue-uuid-1" }]));
+
+      const mockClient = {
+        query: vi.fn().mockImplementation(async (sql: string) => {
+          if (sql.includes("DELETE FROM public.venues")) {
+            return mockDbResult([{ id: "venue-uuid-1" }]);
+          }
+          return mockDbResult([]);
+        }),
+      } as unknown as import("pg").PoolClient;
+
+      mockWithTransaction.mockImplementation(async (callback) => {
+        return callback(mockClient);
+      });
 
       const req = new Request("http://localhost/api/admin/venues/venue-uuid-1", {
         method: "DELETE",
@@ -143,6 +154,7 @@ describe("Admin Venue Details API (/api/admin/venues/[id])", () => {
       const data = await res.json();
       expect(data.success).toBe(true);
       expect(data.deletedId).toBe("venue-uuid-1");
+      expect(mockClient.query).toHaveBeenCalledTimes(2);
     });
   });
 });

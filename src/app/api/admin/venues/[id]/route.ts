@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query } from "@/lib/db";
+import { query, withTransaction } from "@/lib/db";
 import { UpdateVenueFullSchema } from "@/lib/validations";
 import { Venue } from "@/types/database";
 
@@ -105,11 +105,15 @@ export async function DELETE(
       );
     }
 
-    // Detach any rejected or historical events before deletion
-    await query("UPDATE public.events SET venue_id = NULL WHERE venue_id = $1;", [id]);
+    const deleted = await withTransaction(async (client) => {
+      // Detach any rejected or historical events before deletion
+      await client.query("UPDATE public.events SET venue_id = NULL WHERE venue_id = $1;", [id]);
 
-    const res = await query("DELETE FROM public.venues WHERE id = $1 RETURNING id;", [id]);
-    if (res.rows.length === 0) {
+      const res = await client.query("DELETE FROM public.venues WHERE id = $1 RETURNING id;", [id]);
+      return res.rows.length > 0;
+    });
+
+    if (!deleted) {
       return NextResponse.json({ error: "Venue not found" }, { status: 404 });
     }
 
