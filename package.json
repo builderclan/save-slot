@@ -10,6 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:migrate": "node scripts/migrate.js",
+    "db:migrate:status": "node scripts/migrate.js --status",
     "validate": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
   },
   "dependencies": {
