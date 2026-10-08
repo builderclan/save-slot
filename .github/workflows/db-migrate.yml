@@ -1,0 +1,72 @@
+name: Database Migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "migrations/**"
+      - "scripts/migrate.js"
+      - ".github/workflows/db-migrate.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target Environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - preview
+
+# Never cancel migrations in progress to avoid partial state
+concurrency:
+  group: db-migrations-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Run Database Migrations
+    runs-on: ubuntu-latest
+
+    env:
+      DB_HOST: ${{ secrets.PROD_DB_HOST || secrets.DB_HOST }}
+      DB_PORT: ${{ secrets.PROD_DB_PORT || secrets.DB_PORT || '6543' }}
+      DB_USER: ${{ secrets.PROD_DB_USER || secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD || secrets.DB_PASSWORD }}
+      DB_NAME: ${{ secrets.PROD_DB_NAME || secrets.DB_NAME || 'postgres' }}
+      DB_SSL_REJECT_UNAUTHORIZED: ${{ secrets.DB_SSL_REJECT_UNAUTHORIZED || 'false' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Database Secrets
+        run: |
+          if [ -z "$DB_HOST" ] || [ -z "$DB_PASSWORD" ]; then
+            echo "::error::Production database credentials are not configured in GitHub Secrets."
+            echo "Please configure PROD_DB_HOST (or DB_HOST) and PROD_DB_PASSWORD (or DB_PASSWORD) in repository secrets."
+            exit 1
+          fi
+
+      - name: Check Ledger Migration Status (Pre-run)
+        run: pnpm db:migrate:status
+
+      - name: Apply Pending Database Migrations
+        run: pnpm db:migrate
+
+      - name: Verify Ledger Status (Post-run)
+        run: pnpm db:migrate:status
