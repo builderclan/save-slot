@@ -12,6 +12,7 @@ Detailed design documents, specifications, and architecture are maintained in [`
 - **[UI / UX Design System (`docs/UI_DESIGN_DOC.md`)](./docs/UI_DESIGN_DOC.md)**: Visual aesthetic, design tokens, typography pairing (Inter + JetBrains Mono), responsive breakpoints, and component specs.
 - **[Product Specification (`docs/PRODUCT_SPEC.md`)](./docs/PRODUCT_SPEC.md)**: Product philosophy, user personas, lead-time rules, and feature requirements.
 - **[System Architecture (`docs/ARCHITECTURE.md`)](./docs/ARCHITECTURE.md)**: Database ERD, deterministic conflict engine algorithms, and RBAC matrix.
+- **[Database Migrations Guide (`docs/MIGRATIONS.md`)](./docs/MIGRATIONS.md)**: Versioned SQL migrations, ledger table architecture, dev/prod workflows, and CI/CD automation.
 - **[Development Plan (`docs/DEVELOPMENT_PLAN.md`)](./docs/DEVELOPMENT_PLAN.md)**: Phased implementation roadmap, milestone checklist, and test scenarios.
 
 ---
@@ -59,7 +60,17 @@ pnpm install
 
 Ensure your `.env` contains valid Supabase database credentials (see `.env.example`).
 
-### 3. Run Development Server
+### 3. Run Database Migrations
+
+```bash
+# Check ledger status of applied and pending migrations
+pnpm db:migrate:status
+
+# Apply pending migrations safely
+pnpm db:migrate
+```
+
+### 4. Run Development Server
 
 ```bash
 pnpm dev
@@ -67,7 +78,7 @@ pnpm dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-### 4. Build for Production
+### 5. Build for Production
 
 ```bash
 pnpm build

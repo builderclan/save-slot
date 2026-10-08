@@ -40,7 +40,14 @@ Please treat all members of the community with dignity, respect, and professiona
    cp .env.example .env
    ```
 
-4. **Run the development server**:
+4. **Run database migrations**:
+
+   ```bash
+   pnpm db:migrate:status
+   pnpm db:migrate
+   ```
+
+5. **Run the development server**:
 
    ```bash
    pnpm dev
