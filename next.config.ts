@@ -1,7 +1,13 @@
 import type { NextConfig } from "next";
 
+// Parse custom dev origins from environment (comma-separated hostnames/IPs)
+const allowedDevOrigins = (process.env.ALLOWED_DEV_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: process.env.DOCKER_BUILD === "true" ? "standalone" : undefined,
   images: {
     remotePatterns: [
       {
@@ -14,7 +20,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  allowedDevOrigins: ['192.168.1.37', "10.121.77.175", "192.168.11.31"],
+  ...(allowedDevOrigins.length > 0 ? { allowedDevOrigins } : {}),
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
