@@ -58,8 +58,8 @@ export async function PATCH(
     if (leadUserId && leadUserId.trim().length > 0) {
       const leadUserCheck = await query<{ id: string }>(
         `SELECT id FROM public.users 
-         WHERE id = $1 AND ($2::uuid IS NULL OR campus_id = $2) AND role = 'organizer';`,
-        [leadUserId, campusId || null]
+         WHERE id = $1 AND ($2::uuid IS NULL OR campus_id IS NULL OR campus_id = $2) AND role = 'organizer';`,
+        [leadUserId, currentComm.campus_id]
       );
       if (leadUserCheck.rows.length === 0) {
         return NextResponse.json(
@@ -133,11 +133,18 @@ export async function PATCH(
             [id]
           );
         } else {
-          // Upgrade user to organizer if currently student
-          await client.query(
-            "UPDATE public.users SET role = 'organizer' WHERE id = $1 AND role = 'student';",
-            [leadUserId]
+          // Atomically upgrade student to organizer and bind campus, verifying user belongs to campus
+          const leadUpdateRes = await client.query(
+            `UPDATE public.users 
+             SET role = CASE WHEN role = 'student' THEN 'organizer'::user_role ELSE role END,
+                 campus_id = COALESCE(campus_id, $1)
+             WHERE id = $2 AND (campus_id IS NULL OR campus_id = $1);`,
+            [currentComm.campus_id, leadUserId]
           );
+
+          if ((leadUpdateRes.rowCount ?? 0) === 0) {
+            throw new Error("Assigned lead user does not exist in this campus or is not eligible.");
+          }
 
           // Clear prior leads for this club
           await client.query(
@@ -175,6 +182,9 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, community: updatedCommunity });
   } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes("Assigned lead user")) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     if (
       typeof err === "object" &&
       err !== null &&

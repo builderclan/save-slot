@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
+import { getPrimaryCampusId } from "@/lib/campus";
 import { AdminCommunityRow, Community } from "@/types/database";
 import { CreateCommunitySchema } from "@/lib/validations";
 
@@ -57,10 +58,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
-    const campusId = session.profile.campus_id;
+    let campusId = session.profile.campus_id;
+    if (!campusId) {
+      campusId = await getPrimaryCampusId();
+    }
     if (!campusId) {
       return NextResponse.json(
-        { error: "Admin profile is not associated with any campus." },
+        { error: "No active campus found in the system." },
         { status: 400 }
       );
     }
@@ -97,7 +101,7 @@ export async function POST(request: Request) {
     if (leadUserId && leadUserId.trim().length > 0) {
       const leadUserCheck = await query<{ id: string }>(
         `SELECT id FROM public.users 
-         WHERE id = $1 AND campus_id = $2 AND role = 'organizer';`,
+         WHERE id = $1 AND ($2::uuid IS NULL OR campus_id IS NULL OR campus_id = $2) AND role = 'organizer';`,
         [leadUserId, campusId]
       );
       if (leadUserCheck.rows.length === 0) {
@@ -133,11 +137,18 @@ export async function POST(request: Request) {
 
       // 2. Link community lead if provided
       if (leadUserId && leadUserId.trim().length > 0) {
-        // Upgrade role to organizer if current role is student
-        await client.query(
-          "UPDATE public.users SET role = 'organizer' WHERE id = $1 AND role = 'student';",
-          [leadUserId]
+        // Atomically upgrade student to organizer and bind campus, verifying user belongs to campus
+        const leadUpdateRes = await client.query(
+          `UPDATE public.users 
+           SET role = CASE WHEN role = 'student' THEN 'organizer'::user_role ELSE role END,
+               campus_id = COALESCE(campus_id, $1)
+           WHERE id = $2 AND (campus_id IS NULL OR campus_id = $1);`,
+          [campusId, leadUserId]
         );
+
+        if ((leadUpdateRes.rowCount ?? 0) === 0) {
+          throw new Error("Assigned lead user does not exist in this campus or is not eligible.");
+        }
 
         await client.query(
           `INSERT INTO public.community_members (id, community_id, user_id, role, status)
@@ -152,6 +163,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, community: createdCommunity }, { status: 201 });
   } catch (err: unknown) {
+    if (err instanceof Error && err.message.includes("Assigned lead user")) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
     if (
       typeof err === "object" &&
       err !== null &&

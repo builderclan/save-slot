@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { query } from "@/lib/db";
+import { getPrimaryCampusId } from "@/lib/campus";
 import { UserProfile } from "@/types/database";
 import { LoginSchema } from "@/lib/validations";
 
@@ -36,6 +37,22 @@ export async function POST(request: Request) {
     );
 
     const profile = userRes.rows[0];
+
+    // Self-heal: ensure user is bound to the primary campus (AISAT) upon login
+    if (profile && !profile.campus_id) {
+      try {
+        const primaryCampusId = await getPrimaryCampusId();
+        if (primaryCampusId) {
+          await query(
+            "UPDATE public.users SET campus_id = $1 WHERE id = $2 AND campus_id IS NULL;",
+            [primaryCampusId, profile.id]
+          );
+        }
+      } catch (healErr) {
+        console.error("[login] Campus self-heal non-blocking error:", healErr);
+      }
+    }
+
     let role = profile?.role || "student";
 
     // If not flagged as admin/organizer directly, check community_members
