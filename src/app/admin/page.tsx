@@ -516,7 +516,7 @@ export default function AdminConsolePage() {
     const seen = new Set<string>();
     const result: Array<{ id: string; fullName: string; email: string; role: string }> = [];
     for (const u of users) {
-      if (u.role !== "student" && u.role !== "organizer") {
+      if (u.role !== "organizer") {
         continue;
       }
       if (!seen.has(u.id)) {

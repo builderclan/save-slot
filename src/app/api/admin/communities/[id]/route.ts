@@ -58,12 +58,12 @@ export async function PATCH(
     if (leadUserId && leadUserId.trim().length > 0) {
       const leadUserCheck = await query<{ id: string }>(
         `SELECT id FROM public.users 
-         WHERE id = $1 AND ($2::uuid IS NULL OR campus_id = $2) AND role IN ('student', 'organizer');`,
+         WHERE id = $1 AND ($2::uuid IS NULL OR campus_id = $2) AND role = 'organizer';`,
         [leadUserId, campusId || null]
       );
       if (leadUserCheck.rows.length === 0) {
         return NextResponse.json(
-          { error: "Assigned lead user does not exist in this campus or is not eligible." },
+          { error: "Assigned lead user does not exist in this campus or is not an organizer." },
           { status: 400 }
         );
       }

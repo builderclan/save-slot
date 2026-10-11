@@ -170,7 +170,7 @@ describe("Admin Communities API (/api/admin/communities)", () => {
       const res = await POST(req);
       expect(res.status).toBe(400);
       const data = await res.json();
-      expect(data.error).toContain("Assigned lead user does not exist in this campus or is not eligible");
+      expect(data.error).toContain("Assigned lead user does not exist in this campus or is not an organizer");
     });
 
     it("creates community and returns 201 on success", async () => {
