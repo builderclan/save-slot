@@ -102,7 +102,10 @@ export function NoticeBoardClient({
   const setActiveDate = calendar?.setActiveDate || (() => {});
   const viewMode = calendar?.viewMode || "month";
   const search = calendar?.search || "";
-  const setSearch = calendar?.setSearch || (() => {});
+  const setSearch = useMemo(
+    () => calendar?.setSearch || (() => {}),
+    [calendar?.setSearch]
+  );
 
   // Filter States
   const [selectedCategories, setSelectedCategories] = useState<string[]>(CATEGORIES);
@@ -226,7 +229,7 @@ export function NoticeBoardClient({
     setSearch("");
     setSelectedCategories(CATEGORIES);
     setSelectedHorizon("all");
-  }, []);
+  }, [setSearch]);
 
   return (
     <div className="calendar-shell w-full flex-1 flex flex-col lg:flex-row bg-white min-h-0">
