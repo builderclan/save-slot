@@ -60,6 +60,22 @@ describe("GET /auth/callback", () => {
     expect(location).toContain("/reset-password?error=invalid_token");
   });
 
+  it("falls back to /reset-password if next contains an external or protocol-relative open redirect", async () => {
+    mockExchangeCodeForSession.mockResolvedValueOnce({
+      data: { session: { user: { id: "user-123" } } },
+      error: null,
+    });
+
+    const request = new Request(
+      "http://localhost:3000/auth/callback?code=valid-auth-code&next=//attacker.com"
+    );
+
+    const res = await GET(request);
+    expect(res.status).toBe(307);
+    const location = res.headers.get("location");
+    expect(location).toBe("http://localhost:3000/reset-password");
+  });
+
   it("redirects to error state when neither code nor error is provided", async () => {
     const request = new Request("http://localhost:3000/auth/callback");
 
@@ -69,3 +85,4 @@ describe("GET /auth/callback", () => {
     expect(location).toContain("/reset-password?error=invalid_token");
   });
 });
+

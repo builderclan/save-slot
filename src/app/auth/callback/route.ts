@@ -4,7 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") || "/reset-password";
+  const rawNext = searchParams.get("next") || "/reset-password";
+  // Prevent open redirect attacks by ensuring next is an internal relative route
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/reset-password";
   const errorDescription = searchParams.get("error_description");
   const error = searchParams.get("error");
 
