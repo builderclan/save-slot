@@ -130,11 +130,33 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
       expect(res.status).toBe(403);
     });
 
+    it("returns 404 if community not found or belongs to another campus", async () => {
+      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
+      mockWithTransaction.mockImplementationOnce(async (cb) => {
+        const fakeClient = {
+          query: vi.fn().mockResolvedValueOnce(mockDbResult([])), // community not found
+        };
+        return cb(fakeClient as any);
+      });
+
+      const req = new Request("http://localhost/api/admin/communities/comm-999", { method: "DELETE" });
+      const res = await DELETE(req, { params: Promise.resolve({ id: "comm-999" }) });
+      expect(res.status).toBe(404);
+      const data = await res.json();
+      expect(data.error).toBe("Community not found");
+    });
+
     it("prevents deletion when active events are scheduled under this community", async () => {
       mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockQuery.mockResolvedValueOnce(
-        mockDbResult([{ count: "3", titles: "Hackathon, Workshop, Meetup" }])
-      );
+      mockWithTransaction.mockImplementationOnce(async (cb) => {
+        const fakeClient = {
+          query: vi
+            .fn()
+            .mockResolvedValueOnce(mockDbResult([{ id: "comm-1" }])) // community found
+            .mockResolvedValueOnce(mockDbResult([{ count: "3", titles: "Hackathon, Workshop, Meetup" }])), // active events
+        };
+        return cb(fakeClient as any);
+      });
 
       const req = new Request("http://localhost/api/admin/communities/comm-1", { method: "DELETE" });
       const res = await DELETE(req, { params: Promise.resolve({ id: "comm-1" }) });
@@ -145,11 +167,15 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
 
     it("deletes community when no active events exist", async () => {
       mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockQuery.mockResolvedValueOnce(mockDbResult([{ count: "0", titles: "" }]));
-
       mockWithTransaction.mockImplementationOnce(async (cb) => {
         const fakeClient = {
-          query: vi.fn().mockResolvedValue(mockDbResult([{ id: "comm-1" }])),
+          query: vi
+            .fn()
+            .mockResolvedValueOnce(mockDbResult([{ id: "comm-1" }])) // community found
+            .mockResolvedValueOnce(mockDbResult([{ count: "0", titles: "" }])) // 0 active events
+            .mockResolvedValueOnce(mockDbResult([])) // detach events
+            .mockResolvedValueOnce(mockDbResult([])) // delete memberships
+            .mockResolvedValueOnce(mockDbResult([{ id: "comm-1" }])), // delete community
         };
         return cb(fakeClient as any);
       });

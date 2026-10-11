@@ -14,6 +14,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
+    const campusId = session.profile.campus_id;
     const { id } = await params;
     const body = await request.json().catch(() => null);
     const parsed = UpdateCommunityFullSchema.safeParse(body);
@@ -25,8 +26,11 @@ export async function PATCH(
       );
     }
 
-    // Check existing community
-    const existingRes = await query<Community>("SELECT * FROM public.communities WHERE id = $1;", [id]);
+    // Check existing community scoped to campus
+    const existingRes = await query<Community>(
+      "SELECT * FROM public.communities WHERE id = $1 AND ($2::uuid IS NULL OR campus_id = $2);",
+      [id, campusId || null]
+    );
     if (existingRes.rows.length === 0) {
       return NextResponse.json({ error: "Community not found" }, { status: 404 });
     }
@@ -34,15 +38,17 @@ export async function PATCH(
 
     const { name, slug, category, description, logoUrl, website, instagram, leadUserId, status } = parsed.data;
 
+    const normalizedSlug = slug ? slug.trim().toLowerCase() : undefined;
+
     // Check slug collision if slug is being updated
-    if (slug && slug !== currentComm.slug) {
+    if (normalizedSlug && normalizedSlug !== currentComm.slug) {
       const slugCollision = await query(
         "SELECT id FROM public.communities WHERE campus_id = $1 AND slug = $2 AND id != $3;",
-        [currentComm.campus_id, slug, id]
+        [currentComm.campus_id, normalizedSlug, id]
       );
       if (slugCollision.rows.length > 0) {
         return NextResponse.json(
-          { error: `Slug '${slug}' is already taken by another community.` },
+          { error: `Slug '${normalizedSlug}' is already taken by another community.` },
           { status: 400 }
         );
       }
@@ -57,9 +63,9 @@ export async function PATCH(
         updates.push(`name = $${idx++}`);
         values.push(name.trim());
       }
-      if (slug !== undefined) {
+      if (normalizedSlug !== undefined) {
         updates.push(`slug = $${idx++}`);
-        values.push(slug.trim().toLowerCase());
+        values.push(normalizedSlug);
       }
       if (category !== undefined) {
         updates.push(`category = $${idx++}`);
@@ -96,6 +102,15 @@ export async function PATCH(
 
       // Handle community lead reassignment
       if (leadUserId !== undefined) {
+        // Capture outgoing leads for this community before clearing
+        const priorLeadsRes = await client.query<{ user_id: string }>(
+          "SELECT user_id FROM public.community_members WHERE community_id = $1 AND role = 'lead';",
+          [id]
+        );
+        const outgoingLeadIds = priorLeadsRes.rows
+          .map((r) => r.user_id)
+          .filter((uid) => uid !== leadUserId);
+
         if (!leadUserId || leadUserId.trim().length === 0) {
           // Clear lead role from current members
           await client.query(
@@ -124,17 +139,20 @@ export async function PATCH(
           );
         }
 
-        // Clean up outgoing organizers: if any organizer user no longer has any active club leads,
-        // downgrade them to view-only student
-        await client.query(
-          `UPDATE public.users u
-           SET role = 'student'
-           WHERE u.role = 'organizer'
-             AND NOT EXISTS (
-               SELECT 1 FROM public.community_members cm
-               WHERE cm.user_id = u.id AND cm.role = 'lead'
-             );`
-        );
+        // Downgrade only outgoing leads of this community who no longer have any active club leads
+        if (outgoingLeadIds.length > 0) {
+          await client.query(
+            `UPDATE public.users u
+             SET role = 'student'
+             WHERE u.id = ANY($1::uuid[])
+               AND u.role = 'organizer'
+               AND NOT EXISTS (
+                 SELECT 1 FROM public.community_members cm
+                 WHERE cm.user_id = u.id AND cm.role = 'lead'
+               );`,
+            [outgoingLeadIds]
+          );
+        }
       }
 
       return comm;
@@ -142,6 +160,17 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, community: updatedCommunity });
   } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: string }).code === "23505"
+    ) {
+      return NextResponse.json(
+        { error: "A community with this slug already exists." },
+        { status: 400 }
+      );
+    }
     const message = err instanceof Error ? err.message : "Failed to update community";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -157,38 +186,49 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
+    const campusId = session.profile.campus_id;
     const { id } = await params;
 
-    // Safety guard: Check for active or pending events scheduled by this community
-    const activeEventsRes = await query<{ count: string; titles: string }>(
-      `SELECT count(*)::text as count, string_agg(title, ', ') as titles
-       FROM public.events 
-       WHERE community_id = $1 AND status IN ('pending', 'published');`,
-      [id]
-    );
-
-    const activeCount = parseInt(activeEventsRes.rows[0]?.count || "0", 10);
-    if (activeCount > 0) {
-      return NextResponse.json(
-        {
-          error: `Cannot delete community: ${activeCount} upcoming or pending event(s) belong to it. Please reassign or conclude those events first, or change the community status to 'rejected'.`,
-        },
-        { status: 400 }
+    const result = await withTransaction(async (client) => {
+      // 1. Lock and verify the community belongs to this campus
+      const commRes = await client.query<{ id: string }>(
+        "SELECT id FROM public.communities WHERE id = $1 AND ($2::uuid IS NULL OR campus_id = $2) FOR UPDATE;",
+        [id, campusId || null]
       );
-    }
+      if (commRes.rows.length === 0) {
+        return { status: 404, error: "Community not found" } as const;
+      }
 
-    const deleted = await withTransaction(async (client) => {
-      // Detach any rejected or archived events before deletion
+      // 2. Safety guard: Check for active or pending events scheduled by this community
+      const activeEventsRes = await client.query<{ count: string; titles: string }>(
+        `SELECT count(*)::text as count, string_agg(title, ', ') as titles
+         FROM public.events 
+         WHERE community_id = $1 AND status IN ('pending', 'published');`,
+        [id]
+      );
+
+      const activeCount = parseInt(activeEventsRes.rows[0]?.count || "0", 10);
+      if (activeCount > 0) {
+        return {
+          status: 400,
+          error: `Cannot delete community: ${activeCount} upcoming or pending event(s) belong to it. Please reassign or conclude those events first, or change the community status to 'rejected'.`,
+        } as const;
+      }
+
+      // 3. Detach any rejected or archived events before deletion
       await client.query("UPDATE public.events SET community_id = NULL WHERE community_id = $1;", [id]);
-      // Remove memberships
+      // 4. Remove memberships
       await client.query("DELETE FROM public.community_members WHERE community_id = $1;", [id]);
-      // Delete community
+      // 5. Delete community
       const res = await client.query("DELETE FROM public.communities WHERE id = $1 RETURNING id;", [id]);
-      return res.rows.length > 0;
+      if (res.rows.length === 0) {
+        return { status: 404, error: "Community not found" } as const;
+      }
+      return { status: 200, success: true } as const;
     });
 
-    if (!deleted) {
-      return NextResponse.json({ error: "Community not found" }, { status: 404 });
+    if (result.status !== 200) {
+      return NextResponse.json({ error: result.error }, { status: result.status });
     }
 
     return NextResponse.json({ success: true, deletedId: id });

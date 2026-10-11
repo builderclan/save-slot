@@ -512,6 +512,9 @@ export default function AdminConsolePage() {
     const seen = new Set<string>();
     const result: Array<{ id: string; fullName: string; email: string; role: string }> = [];
     for (const u of users) {
+      if (u.role === "admin" || u.role === "principal" || u.role === "vice_principal") {
+        continue;
+      }
       if (!seen.has(u.id)) {
         seen.add(u.id);
         result.push({

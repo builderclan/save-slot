@@ -116,6 +116,14 @@ export const ResetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
+const SafeUrlSchema = z
+  .string()
+  .trim()
+  .url("Invalid URL format")
+  .refine((url) => /^https?:\/\//i.test(url), {
+    message: "URL must start with http:// or https://",
+  });
+
 export const CreateCommunitySchema = z.object({
   name: z
     .string()
@@ -131,8 +139,8 @@ export const CreateCommunitySchema = z.object({
     .or(z.literal("")),
   category: EventCategoryEnum,
   description: z.string().trim().optional().nullable().or(z.literal("")),
-  logoUrl: z.string().trim().url("Invalid logo URL format").optional().nullable().or(z.literal("")),
-  website: z.string().trim().url("Invalid website URL format").optional().nullable().or(z.literal("")),
+  logoUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  website: SafeUrlSchema.optional().nullable().or(z.literal("")),
   instagram: z.string().trim().optional().nullable().or(z.literal("")),
   leadUserId: z.string().uuid("Invalid community lead ID").optional().nullable().or(z.literal("")),
 });
@@ -152,8 +160,8 @@ export const UpdateCommunityFullSchema = z.object({
     .optional(),
   category: EventCategoryEnum.optional(),
   description: z.string().trim().optional().nullable(),
-  logoUrl: z.string().trim().url("Invalid logo URL format").optional().nullable().or(z.literal("")),
-  website: z.string().trim().url("Invalid website URL format").optional().nullable().or(z.literal("")),
+  logoUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  website: SafeUrlSchema.optional().nullable().or(z.literal("")),
   instagram: z.string().trim().optional().nullable(),
   leadUserId: z.string().uuid("Invalid community lead ID").optional().nullable().or(z.literal("")),
   status: z.enum(["approved", "pending", "rejected"]).optional(),

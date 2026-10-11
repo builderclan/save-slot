@@ -366,7 +366,7 @@ export function AdminCommunitiesView({
                     {/* Footer Actions */}
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 text-slate-400 text-xs">
-                        {comm.website && (
+                        {comm.website && /^https?:\/\//i.test(comm.website) && (
                           <a
                             href={comm.website}
                             target="_blank"
