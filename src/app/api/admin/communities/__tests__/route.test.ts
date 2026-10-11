@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "../route";
-import type { QueryResult, QueryResultRow } from "pg";
+import type { QueryResult, QueryResultRow, PoolClient } from "pg";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentUser: vi.fn(),
@@ -150,8 +150,8 @@ describe("Admin Communities API (/api/admin/communities)", () => {
       mockWithTransaction.mockImplementationOnce(async (cb) => {
         const fakeClient = {
           query: vi.fn().mockResolvedValue(mockDbResult([createdComm])),
-        };
-        return cb(fakeClient as any);
+        } as unknown as PoolClient;
+        return cb(fakeClient);
       });
 
       const req = new Request("http://localhost/api/admin/communities", {

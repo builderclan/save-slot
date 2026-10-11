@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PATCH, DELETE } from "../route";
-import type { QueryResult, QueryResultRow } from "pg";
+import type { QueryResult, QueryResultRow, PoolClient } from "pg";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentUser: vi.fn(),
@@ -106,8 +106,8 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
       mockWithTransaction.mockImplementationOnce(async (cb) => {
         const fakeClient = {
           query: vi.fn().mockResolvedValue(mockDbResult([updated])),
-        };
-        return cb(fakeClient as any);
+        } as unknown as PoolClient;
+        return cb(fakeClient);
       });
 
       const req = new Request("http://localhost/api/admin/communities/comm-1", {
@@ -135,8 +135,8 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
       mockWithTransaction.mockImplementationOnce(async (cb) => {
         const fakeClient = {
           query: vi.fn().mockResolvedValueOnce(mockDbResult([])), // community not found
-        };
-        return cb(fakeClient as any);
+        } as unknown as PoolClient;
+        return cb(fakeClient);
       });
 
       const req = new Request("http://localhost/api/admin/communities/comm-999", { method: "DELETE" });
@@ -154,8 +154,8 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
             .fn()
             .mockResolvedValueOnce(mockDbResult([{ id: "comm-1" }])) // community found
             .mockResolvedValueOnce(mockDbResult([{ count: "3", titles: "Hackathon, Workshop, Meetup" }])), // active events
-        };
-        return cb(fakeClient as any);
+        } as unknown as PoolClient;
+        return cb(fakeClient);
       });
 
       const req = new Request("http://localhost/api/admin/communities/comm-1", { method: "DELETE" });
@@ -176,8 +176,8 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
             .mockResolvedValueOnce(mockDbResult([])) // detach events
             .mockResolvedValueOnce(mockDbResult([])) // delete memberships
             .mockResolvedValueOnce(mockDbResult([{ id: "comm-1" }])), // delete community
-        };
-        return cb(fakeClient as any);
+        } as unknown as PoolClient;
+        return cb(fakeClient);
       });
 
       const req = new Request("http://localhost/api/admin/communities/comm-1", { method: "DELETE" });
