@@ -102,3 +102,18 @@ export const UpdateVenueFullSchema = z.object({
   is_active: z.boolean().optional(),
 });
 
+export const ForgotPasswordSchema = z.object({
+  email: z.string().trim().email("Please enter a valid campus email address"),
+});
+
+export const ResetPasswordSchema = z
+  .object({
+    password: z.string().min(6, "Password must be at least 6 characters long"),
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+

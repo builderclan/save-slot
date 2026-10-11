@@ -126,13 +126,18 @@ const DEMO_PERSONAS: DemoAccount[] = SHOW_DEMO_PERSONAS
 
 function LoginParamsHandler({
   onSetError,
+  onSetSuccess,
   onSetRedirect,
 }: {
   onSetError: (msg: string) => void;
+  onSetSuccess: (msg: string) => void;
   onSetRedirect: (url: string) => void;
 }) {
   const searchParams = useSearchParams();
   useEffect(() => {
+    if (searchParams.get("reset") === "success") {
+      onSetSuccess("Password successfully updated. Please sign in with your new credentials.");
+    }
     if (searchParams.get("error") === "admin_required") {
       onSetError(
         "Administrative privileges required to access the Admin Console. Please sign in with an Administrator account."
@@ -142,7 +147,7 @@ function LoginParamsHandler({
     if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
       onSetRedirect(redirectParam);
     }
-  }, [searchParams, onSetError, onSetRedirect]);
+  }, [searchParams, onSetError, onSetSuccess, onSetRedirect]);
   return null;
 }
 
@@ -153,6 +158,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
   const [customRedirect, setCustomRedirect] = useState<string | null>(null);
   const [loggingOutExisting, setLoggingOutExisting] = useState(false);
@@ -198,6 +204,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
       const res = await fetch("/api/auth/login", {
@@ -226,12 +233,17 @@ export default function LoginPage() {
     setPassword(persona.password);
     setActivePersonaId(persona.id);
     setError(null);
+    setSuccessMessage(null);
   }, []);
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)] flex flex-col justify-between bg-gradient-to-b from-indigo-50/30 via-slate-50/50 to-slate-50 py-8 px-4 sm:px-6">
       <Suspense fallback={null}>
-        <LoginParamsHandler onSetError={setError} onSetRedirect={setCustomRedirect} />
+        <LoginParamsHandler
+          onSetError={setError}
+          onSetSuccess={setSuccessMessage}
+          onSetRedirect={setCustomRedirect}
+        />
       </Suspense>
 
       {/* Top navigation row with subtle institutional accent */}
@@ -312,6 +324,18 @@ export default function LoginPage() {
               </div>
             )}
 
+            {/* Success Message */}
+            {successMessage && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mb-5 p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 text-xs flex items-start gap-2.5"
+              >
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-600" aria-hidden="true" />
+                <div className="flex-1 font-medium">{successMessage}</div>
+              </div>
+            )}
+
             {/* Error Message */}
             {error && (
               <div
@@ -350,6 +374,7 @@ export default function LoginPage() {
                     onChange={(e) => {
                       setEmail(e.target.value);
                       if (activePersonaId) setActivePersonaId(null);
+                      if (successMessage) setSuccessMessage(null);
                     }}
                     aria-invalid={Boolean(error)}
                     aria-describedby={error ? "login-error-msg" : undefined}
@@ -360,12 +385,20 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label
-                  htmlFor="login-password"
-                  className="block text-xs font-semibold text-slate-700 mb-1.5"
-                >
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label
+                    htmlFor="login-password"
+                    className="block text-xs font-semibold text-slate-700"
+                  >
+                    Password
+                  </label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-[11px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
                 <div className="relative">
                   <Lock
                     className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none"
