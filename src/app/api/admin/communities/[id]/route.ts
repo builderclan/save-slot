@@ -136,7 +136,7 @@ export async function PATCH(
           // Atomically upgrade student to organizer and bind campus, verifying user belongs to campus
           const leadUpdateRes = await client.query(
             `UPDATE public.users 
-             SET role = CASE WHEN role = 'student' THEN 'organizer'::user_role ELSE role END,
+             SET role = CASE WHEN role = 'student' THEN 'organizer' ELSE role END,
                  campus_id = COALESCE(campus_id, $1)
              WHERE id = $2 AND (campus_id IS NULL OR campus_id = $1);`,
             [currentComm.campus_id, leadUserId]
