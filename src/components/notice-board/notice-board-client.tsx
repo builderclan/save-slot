@@ -216,6 +216,18 @@ export function NoticeBoardClient({
     });
   }, [events, search, selectedCategories, selectedHorizon]);
 
+  const hasActiveFilters = Boolean(
+    search.trim() !== "" ||
+      selectedCategories.length !== CATEGORIES.length ||
+      selectedHorizon !== "all"
+  );
+
+  const handleResetFilters = useCallback(() => {
+    setSearch("");
+    setSelectedCategories(CATEGORIES);
+    setSelectedHorizon("all");
+  }, []);
+
   return (
     <div className="calendar-shell w-full flex-1 flex flex-col lg:flex-row bg-white min-h-0">
       {/* Mobile Secondary Bar (Visible only on < lg) */}
@@ -540,31 +552,48 @@ export function NoticeBoardClient({
             <div className="p-8 m-6 text-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-800">
               <p className="text-sm font-medium">{error}</p>
             </div>
-          ) : filteredEvents.length === 0 ? (
+          ) : viewMode === "cards" && filteredEvents.length === 0 ? (
             <div className="text-center py-24 p-8 my-auto">
               <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
                 <Search className="w-5 h-5" />
               </div>
               <h3 className="text-base font-semibold text-slate-800 mb-1">
-                No events found matching your filters
+                {hasActiveFilters
+                  ? "No events found matching your filters"
+                  : "No campus events scheduled"}
               </h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
-                Try adjusting your search terms or selecting more categories in the sidebar.
+                {hasActiveFilters
+                  ? "Try adjusting your search terms or selecting more categories in the sidebar."
+                  : "Check back later or switch to Month view to explore the calendar."}
               </p>
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setSelectedCategories(CATEGORIES);
-                  setSelectedHorizon("all");
-                }}
-                className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs"
-              >
-                Reset All Filters
-              </button>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
+                >
+                  Reset All Filters
+                </button>
+              )}
             </div>
           ) : (
             <>
+              {filteredEvents.length === 0 && hasActiveFilters && (
+                <div className="px-4 py-2.5 bg-indigo-50/70 border-b border-indigo-100/80 flex items-center justify-between text-xs text-slate-700 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Search className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>No events match your current filters in this view.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer underline underline-offset-2 shrink-0"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              )}
               {viewMode === "month" && (
                 <MonthView
                   events={filteredEvents}
