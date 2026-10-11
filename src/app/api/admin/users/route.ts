@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
+import { getPrimaryCampusId } from "@/lib/campus";
 import { UserProfile } from "@/types/database";
 import { CreateUserSchema } from "@/lib/validations";
 
@@ -58,7 +59,13 @@ export async function POST(request: Request) {
     const { fullName, email, password, role, communityId } = parsed.data;
 
     const normalizedEmail = email.trim().toLowerCase();
-    const campusId = session.profile.campus_id;
+    const campusId = session.profile.campus_id || (await getPrimaryCampusId());
+    if (!campusId) {
+      return NextResponse.json(
+        { error: "No active campus found in the system." },
+        { status: 400 }
+      );
+    }
 
     // Check if user already exists
     const existing = await query("SELECT id FROM public.users WHERE email = $1;", [normalizedEmail]);

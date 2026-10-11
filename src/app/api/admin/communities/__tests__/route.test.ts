@@ -13,6 +13,7 @@ vi.mock("@/lib/db", () => ({
 
 import { getCurrentUser, type AuthSession } from "@/lib/auth";
 import { query, withTransaction } from "@/lib/db";
+import { resetCampusCache } from "@/lib/campus";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockQuery = vi.mocked(query);
@@ -65,6 +66,7 @@ describe("Admin Communities API (/api/admin/communities)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetCampusCache();
   });
 
   describe("GET /api/admin/communities", () => {
@@ -134,11 +136,14 @@ describe("Admin Communities API (/api/admin/communities)", () => {
       expect(data.error).toContain("already exists");
     });
 
-    it("returns 400 if admin profile is missing campus_id", async () => {
+    it("returns 400 if admin profile is missing campus_id and no active campus exists", async () => {
       mockGetCurrentUser.mockResolvedValueOnce({
         ...adminSession,
         profile: { ...adminSession.profile, campus_id: "" },
       });
+      mockQuery
+        .mockResolvedValueOnce(mockDbResult([])) // No campus in database
+        .mockResolvedValueOnce(mockDbResult([])); // Seed attempt returns empty
 
       const req = new Request("http://localhost/api/admin/communities", {
         method: "POST",
@@ -150,7 +155,46 @@ describe("Admin Communities API (/api/admin/communities)", () => {
       const res = await POST(req);
       expect(res.status).toBe(400);
       const data = await res.json();
-      expect(data.error).toContain("Admin profile is not associated with any campus");
+      expect(data.error).toContain("No active campus found in the system");
+    });
+
+    it("automatically falls back to primary campus if admin profile is missing campus_id", async () => {
+      mockGetCurrentUser.mockResolvedValueOnce({
+        ...adminSession,
+        profile: { ...adminSession.profile, campus_id: "" },
+      });
+      mockQuery
+        .mockResolvedValueOnce(mockDbResult([{ id: "campus-uuid-1" }])) // Fallback primary campus
+        .mockResolvedValueOnce(mockDbResult([])); // No slug collision
+
+      const createdComm = {
+        id: "new-comm-uuid",
+        campus_id: "campus-uuid-1",
+        name: "Robotics Club",
+        slug: "robotics-club",
+        category: "Tech",
+        status: "approved",
+      };
+
+      mockWithTransaction.mockImplementationOnce(async (cb) => {
+        const fakeClient = {
+          query: vi.fn().mockResolvedValue(mockDbResult([createdComm])),
+        } as unknown as PoolClient;
+        return cb(fakeClient);
+      });
+
+      const req = new Request("http://localhost/api/admin/communities", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Robotics Club",
+          category: "Tech",
+        }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.success).toBe(true);
+      expect(data.community.campus_id).toBe("campus-uuid-1");
     });
 
     it("returns 400 if assigned lead user does not exist or is ineligible", async () => {

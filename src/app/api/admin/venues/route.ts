@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { query } from "@/lib/db";
+import { getPrimaryCampusId } from "@/lib/campus";
 import { Venue } from "@/types/database";
 import { CreateVenueSchema, UpdateVenueSchema } from "@/lib/validations";
 
@@ -37,7 +38,13 @@ export async function POST(request: Request) {
     }
 
     const { name, building, capacity, address, notes } = parsed.data;
-    const campusId = session.profile.campus_id;
+    const campusId = session.profile.campus_id || (await getPrimaryCampusId());
+    if (!campusId) {
+      return NextResponse.json(
+        { error: "No active campus found in the system." },
+        { status: 400 }
+      );
+    }
 
     const res = await query<Venue>(
       `INSERT INTO public.venues (campus_id, name, building, capacity, address, notes, is_active)
