@@ -14,10 +14,20 @@ export async function GET() {
     const sql = `
       SELECT 
         u.id, u.email, u.full_name, u.role, u.campus_id, u.created_at,
-        c.id as community_id, c.name as community_name, c.slug as community_slug
+        (
+          SELECT cm.community_id 
+          FROM public.community_members cm 
+          WHERE cm.user_id = u.id AND cm.role = 'lead' 
+          ORDER BY cm.created_at ASC 
+          LIMIT 1
+        ) as community_id,
+        (
+          SELECT string_agg(c.name, ', ' ORDER BY c.name)
+          FROM public.community_members cm
+          JOIN public.communities c ON c.id = cm.community_id
+          WHERE cm.user_id = u.id AND cm.role = 'lead'
+        ) as community_name
       FROM public.users u
-      LEFT JOIN public.community_members cm ON cm.user_id = u.id AND cm.role = 'lead'
-      LEFT JOIN public.communities c ON c.id = cm.community_id
       ORDER BY u.created_at DESC;
     `;
 
