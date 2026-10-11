@@ -7,6 +7,8 @@ import {
   CreateVenueSchema,
   UpdateVenueSchema,
   CreateUserSchema,
+  ForgotPasswordSchema,
+  ResetPasswordSchema,
 } from "../index";
 
 
@@ -226,4 +228,67 @@ describe("Zod Validation Schemas", () => {
       expect(result.success).toBe(false);
     });
   });
+
+  describe("ForgotPasswordSchema", () => {
+    it("accepts valid email and trims whitespace", () => {
+      const result = ForgotPasswordSchema.safeParse({
+        email: "  student@campus.edu  ",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.email).toBe("student@campus.edu");
+      }
+    });
+
+    it("rejects invalid email addresses", () => {
+      const result = ForgotPasswordSchema.safeParse({
+        email: "not-an-email",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe("Please enter a valid campus email address");
+      }
+    });
+
+    it("rejects empty email string", () => {
+      const result = ForgotPasswordSchema.safeParse({
+        email: "",
+      });
+      expect(result.success).toBe(false);
+    });
+  });
+
+  describe("ResetPasswordSchema", () => {
+    it("accepts valid matching passwords of 6+ characters", () => {
+      const result = ResetPasswordSchema.safeParse({
+        password: "newSecurePassword123",
+        confirmPassword: "newSecurePassword123",
+      });
+      expect(result.success).toBe(true);
+    });
+
+    it("rejects passwords shorter than 6 characters", () => {
+      const result = ResetPasswordSchema.safeParse({
+        password: "12345",
+        confirmPassword: "12345",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toContain("at least 6 characters");
+      }
+    });
+
+    it("rejects when confirmPassword does not match password", () => {
+      const result = ResetPasswordSchema.safeParse({
+        password: "secretPassword123",
+        confirmPassword: "differentPassword456",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toBe("Passwords do not match");
+        expect(result.error.issues[0]?.path).toContain("confirmPassword");
+      }
+    });
+  });
 });
+
