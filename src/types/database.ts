@@ -45,8 +45,24 @@ export interface Community {
   category: EventCategory;
   description?: string;
   logo_url?: string;
+  banner_url?: string;
+  website?: string;
+  instagram?: string;
   status?: "pending" | "approved" | "rejected";
+  applicant_name?: string;
+  applicant_email?: string;
+  rejection_reason?: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
   created_at?: string;
+}
+
+export interface AdminCommunityRow extends Community {
+  lead_id?: string | null;
+  lead_name?: string | null;
+  lead_email?: string | null;
+  member_count: number;
+  event_count: number;
 }
 
 export interface CommunityMember {

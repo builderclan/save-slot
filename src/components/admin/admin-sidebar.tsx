@@ -7,6 +7,7 @@ import {
   Users,
   Building,
   ShieldCheck,
+  Compass,
 } from "lucide-react";
 import { AdminTab } from "./admin-metrics-row";
 
@@ -18,6 +19,7 @@ interface AdminSidebarProps {
   archivedCount?: number;
   usersCount: number;
   venuesCount: number;
+  communitiesCount?: number;
   currentUserName?: string;
   currentUserEmail?: string;
 }
@@ -30,6 +32,7 @@ export function AdminSidebar({
   archivedCount = 0,
   usersCount,
   venuesCount,
+  communitiesCount = 0,
   currentUserName = "Campus Dean of Affairs",
 }: AdminSidebarProps) {
   const navItems = [
@@ -73,6 +76,14 @@ export function AdminSidebar({
       count: venuesCount,
       highlight: false,
     },
+    {
+      id: "communities" as AdminTab,
+      label: "Clubs & Societies",
+      shortLabel: "Clubs",
+      icon: Compass,
+      count: communitiesCount,
+      highlight: false,
+    },
   ];
 
   return (
@@ -92,7 +103,7 @@ export function AdminSidebar({
           )}
         </div>
 
-        <nav className="grid grid-cols-5 lg:flex lg:flex-col gap-1 p-1 lg:bg-transparent rounded-xl lg:rounded-none w-full">
+        <nav className="flex overflow-x-auto lg:flex-col gap-1 p-1 lg:bg-transparent rounded-xl lg:rounded-none w-full scrollbar-none">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -102,7 +113,7 @@ export function AdminSidebar({
                 key={item.id}
                 type="button"
                 onClick={() => onTabChange(item.id)}
-                className={`px-2 py-1.5 sm:px-3 sm:py-2 lg:py-2.5 rounded-lg lg:rounded-xl text-xs font-medium transition-all flex items-center justify-center lg:justify-between gap-1.5 sm:gap-2 cursor-pointer ${
+                className={`shrink-0 lg:shrink px-2.5 py-1.5 sm:px-3 sm:py-2 lg:py-2.5 rounded-lg lg:rounded-xl text-xs font-medium transition-all flex items-center justify-between gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap ${
                   isActive
                     ? "bg-white text-slate-900 shadow-2xs font-semibold border border-slate-200/80 lg:border-slate-200/90"
                     : "text-slate-600 hover:text-slate-900 hover:bg-white/50 lg:hover:bg-slate-100/70 border border-transparent"

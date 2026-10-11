@@ -116,4 +116,55 @@ export const ResetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
+const SafeUrlSchema = z
+  .string()
+  .trim()
+  .url("Invalid URL format")
+  .refine((url) => /^https?:\/\//i.test(url), {
+    message: "URL must start with http:// or https://",
+  });
+
+export const CreateCommunitySchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Community name must be at least 2 characters")
+    .max(100, "Community name cannot exceed 100 characters"),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9-]+$/, "Slug must only contain lowercase letters, numbers, and hyphens")
+    .optional()
+    .or(z.literal("")),
+  category: EventCategoryEnum,
+  description: z.string().trim().optional().nullable().or(z.literal("")),
+  logoUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  website: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  instagram: z.string().trim().optional().nullable().or(z.literal("")),
+  leadUserId: z.string().uuid("Invalid community lead ID").optional().nullable().or(z.literal("")),
+});
+
+export const UpdateCommunityFullSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Community name must be at least 2 characters")
+    .max(100, "Community name cannot exceed 100 characters")
+    .optional(),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .regex(/^[a-z0-9-]+$/, "Slug must only contain lowercase letters, numbers, and hyphens")
+    .optional(),
+  category: EventCategoryEnum.optional(),
+  description: z.string().trim().optional().nullable(),
+  logoUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  website: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  instagram: z.string().trim().optional().nullable(),
+  leadUserId: z.string().uuid("Invalid community lead ID").optional().nullable().or(z.literal("")),
+  status: z.enum(["approved", "pending", "rejected"]).optional(),
+});
+
 

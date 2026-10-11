@@ -45,7 +45,11 @@ export function AdminUsersView({
   const [roleFilter, setRoleFilter] = useState<string>("all");
 
   const filteredUsers = useMemo(() => {
+    const seen = new Set<string>();
     return users.filter((u) => {
+      if (seen.has(u.id)) return false;
+      seen.add(u.id);
+
       if (roleFilter !== "all" && u.role !== roleFilter) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();

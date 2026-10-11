@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import { CampusEvent, Venue } from "@/types/database";
@@ -14,12 +14,16 @@ import {
   AdminUserRow,
 } from "@/components/admin/admin-users-view";
 import { AdminVenuesView } from "@/components/admin/admin-venues-view";
+import { AdminCommunitiesView } from "@/components/admin/admin-communities-view";
 import { AdminAddUserModal } from "@/components/admin/admin-add-user-modal";
 import { AdminEditUserModal } from "@/components/admin/admin-edit-user-modal";
 import { AdminAddVenueModal } from "@/components/admin/admin-add-venue-modal";
 import { AdminEditVenueModal } from "@/components/admin/admin-edit-venue-modal";
+import { AdminAddCommunityModal } from "@/components/admin/admin-add-community-modal";
+import { AdminEditCommunityModal } from "@/components/admin/admin-edit-community-modal";
 import { AdminRejectionModal } from "@/components/admin/admin-rejection-modal";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
+import { AdminCommunityRow, EventCategory } from "@/types/database";
 
 export default function AdminConsolePage() {
   const router = useRouter();
@@ -33,6 +37,35 @@ export default function AdminConsolePage() {
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [communities, setCommunities] = useState<Array<{ id: string; name: string }>>([]);
+  const [adminCommunities, setAdminCommunities] = useState<AdminCommunityRow[]>([]);
+
+  // Add Community Modal State
+  const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
+  const [newCommName, setNewCommName] = useState("");
+  const [newCommSlug, setNewCommSlug] = useState("");
+  const [newCommCategory, setNewCommCategory] = useState<EventCategory>("Tech");
+  const [newCommDesc, setNewCommDesc] = useState("");
+  const [newCommLogo, setNewCommLogo] = useState("");
+  const [newCommWebsite, setNewCommWebsite] = useState("");
+  const [newCommInstagram, setNewCommInstagram] = useState("");
+  const [newCommLeadId, setNewCommLeadId] = useState("");
+  const [commModalError, setCommModalError] = useState<string | null>(null);
+  const [isSubmittingComm, setIsSubmittingComm] = useState(false);
+
+  // Edit Community Modal State
+  const [isEditCommunityOpen, setIsEditCommunityOpen] = useState(false);
+  const [editingCommunity, setEditingCommunity] = useState<AdminCommunityRow | null>(null);
+  const [editCommName, setEditCommName] = useState("");
+  const [editCommSlug, setEditCommSlug] = useState("");
+  const [editCommCategory, setEditCommCategory] = useState<EventCategory>("Tech");
+  const [editCommDesc, setEditCommDesc] = useState("");
+  const [editCommLogo, setEditCommLogo] = useState("");
+  const [editCommWebsite, setEditCommWebsite] = useState("");
+  const [editCommInstagram, setEditCommInstagram] = useState("");
+  const [editCommLeadId, setEditCommLeadId] = useState("");
+  const [editCommStatus, setEditCommStatus] = useState<"approved" | "pending" | "rejected">("approved");
+  const [editCommError, setEditCommError] = useState<string | null>(null);
+  const [isSubmittingEditComm, setIsSubmittingEditComm] = useState(false);
 
   // Action status
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
@@ -114,10 +147,16 @@ export default function AdminConsolePage() {
       const venuesData = await venuesRes.json();
       setVenues(venuesData.venues || []);
 
-      // 5. Fetch all recognized communities directly from API
-      const commsRes = await fetch("/api/communities");
-      const commsData = await commsRes.json();
-      setCommunities(commsData.communities || []);
+      // 5. Fetch all recognized communities with full admin metadata
+      const commsRes = await fetch("/api/admin/communities");
+      if (commsRes.ok) {
+        const commsData = await commsRes.json();
+        const commList: AdminCommunityRow[] = commsData.communities || [];
+        setAdminCommunities(commList);
+        setCommunities(commList.map((c) => ({ id: c.id, name: c.name })));
+      } else {
+        console.error("Failed to load communities: HTTP", commsRes.status);
+      }
 
     } catch (err) {
       console.error("Admin data load error:", err);
@@ -473,6 +512,164 @@ export default function AdminConsolePage() {
     }
   };
 
+  const eligibleUsers = useMemo(() => {
+    const seen = new Set<string>();
+    const result: Array<{ id: string; fullName: string; email: string; role: string }> = [];
+    for (const u of users) {
+      if (u.role !== "organizer") {
+        continue;
+      }
+      if (!seen.has(u.id)) {
+        seen.add(u.id);
+        result.push({
+          id: u.id,
+          fullName: u.full_name,
+          email: u.email,
+          role: u.role,
+        });
+      }
+    }
+    return result;
+  }, [users]);
+
+  // Create Community
+  const handleCreateCommunity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCommModalError(null);
+    setIsSubmittingComm(true);
+    try {
+      const res = await fetch("/api/admin/communities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newCommName,
+          slug: newCommSlug,
+          category: newCommCategory,
+          description: newCommDesc,
+          logoUrl: newCommLogo,
+          website: newCommWebsite,
+          instagram: newCommInstagram,
+          leadUserId: newCommLeadId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setCommModalError(data.error || "Failed to create community");
+        return;
+      }
+      setIsAddCommunityOpen(false);
+      setNewCommName("");
+      setNewCommSlug("");
+      setNewCommCategory("Tech");
+      setNewCommDesc("");
+      setNewCommLogo("");
+      setNewCommWebsite("");
+      setNewCommInstagram("");
+      setNewCommLeadId("");
+      setAdminNotice({
+        message: `Community "${data.community?.name || newCommName}" registered successfully.`,
+        type: "success",
+      });
+      setTimeout(() => setAdminNotice(null), 5000);
+      loadAllData();
+    } catch {
+      setCommModalError("Network error while creating community");
+    } finally {
+      setIsSubmittingComm(false);
+    }
+  };
+
+  // Open Edit Community
+  const handleOpenEditCommunity = (comm: AdminCommunityRow) => {
+    setEditingCommunity(comm);
+    setEditCommName(comm.name);
+    setEditCommSlug(comm.slug);
+    setEditCommCategory(comm.category);
+    setEditCommDesc(comm.description || "");
+    setEditCommLogo(comm.logo_url || "");
+    setEditCommWebsite(comm.website || "");
+    setEditCommInstagram(comm.instagram || "");
+    setEditCommLeadId(comm.lead_id || "");
+    setEditCommStatus(comm.status || "approved");
+    setEditCommError(null);
+    setIsEditCommunityOpen(true);
+  };
+
+  // Save Edit Community
+  const handleSaveEditCommunity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCommunity) return;
+    setEditCommError(null);
+    setIsSubmittingEditComm(true);
+    try {
+      const res = await fetch(`/api/admin/communities/${editingCommunity.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editCommName,
+          slug: editCommSlug,
+          category: editCommCategory,
+          description: editCommDesc,
+          logoUrl: editCommLogo,
+          website: editCommWebsite,
+          instagram: editCommInstagram,
+          leadUserId: editCommLeadId,
+          status: editCommStatus,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEditCommError(data.error || "Failed to update community");
+        return;
+      }
+      setIsEditCommunityOpen(false);
+      setEditingCommunity(null);
+      setAdminNotice({
+        message: `Community "${editCommName}" updated successfully.`,
+        type: "success",
+      });
+      setTimeout(() => setAdminNotice(null), 5000);
+      loadAllData();
+    } catch {
+      setEditCommError("Network error while updating community");
+    } finally {
+      setIsSubmittingEditComm(false);
+    }
+  };
+
+  // Delete Community
+  const handleDeleteCommunity = async (comm: AdminCommunityRow) => {
+    if (comm.event_count > 0) {
+      setAdminNotice({
+        message: `Cannot delete "${comm.name}": ${comm.event_count} active or pending event(s) exist.`,
+        type: "error",
+      });
+      setTimeout(() => setAdminNotice(null), 5000);
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete community: "${comm.name}"?`)) return;
+
+    setActionInProgress(comm.id);
+    try {
+      const res = await fetch(`/api/admin/communities/${comm.id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAdminNotice({ message: data.error || "Failed to delete community", type: "error" });
+        setTimeout(() => setAdminNotice(null), 7000);
+      } else {
+        setAdminNotice({ message: `Community "${comm.name}" deleted.`, type: "success" });
+        setTimeout(() => setAdminNotice(null), 4000);
+        loadAllData();
+      }
+    } catch {
+      setAdminNotice({ message: "Network error while deleting community", type: "error" });
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
   const [nowTimestamp, setNowTimestamp] = useState<number>(0);
 
   useEffect(() => {
@@ -538,6 +735,7 @@ export default function AdminConsolePage() {
         archivedCount={archivedEvents.length}
         usersCount={users.length}
         venuesCount={venues.length}
+        communitiesCount={adminCommunities.length}
         currentUserName={currentUserName}
         currentUserEmail={currentUserEmail}
       />
@@ -596,6 +794,19 @@ export default function AdminConsolePage() {
             onAddVenueClick={() => setIsAddVenueOpen(true)}
             onEditVenueClick={handleOpenEditVenue}
             onDeleteVenueClick={handleDeleteVenue}
+            actionInProgress={actionInProgress}
+          />
+        )}
+
+        {activeTab === "communities" && (
+          <AdminCommunitiesView
+            communities={adminCommunities}
+            onAddCommunityClick={() => {
+              setCommModalError(null);
+              setIsAddCommunityOpen(true);
+            }}
+            onEditCommunityClick={handleOpenEditCommunity}
+            onDeleteCommunityClick={handleDeleteCommunity}
             actionInProgress={actionInProgress}
           />
         )}
@@ -690,6 +901,61 @@ export default function AdminConsolePage() {
         onIsActiveChange={setEditVenueIsActive}
         error={editVenueError}
         isSubmitting={actionInProgress === editingVenue?.id}
+      />
+
+      {/* ADD COMMUNITY MODAL */}
+      <AdminAddCommunityModal
+        isOpen={isAddCommunityOpen}
+        onClose={() => setIsAddCommunityOpen(false)}
+        onSubmit={handleCreateCommunity}
+        name={newCommName}
+        onNameChange={setNewCommName}
+        slug={newCommSlug}
+        onSlugChange={setNewCommSlug}
+        category={newCommCategory}
+        onCategoryChange={setNewCommCategory}
+        description={newCommDesc}
+        onDescriptionChange={setNewCommDesc}
+        logoUrl={newCommLogo}
+        onLogoUrlChange={setNewCommLogo}
+        website={newCommWebsite}
+        onWebsiteChange={setNewCommWebsite}
+        instagram={newCommInstagram}
+        onInstagramChange={setNewCommInstagram}
+        leadUserId={newCommLeadId}
+        onLeadUserIdChange={setNewCommLeadId}
+        eligibleUsers={eligibleUsers}
+        error={commModalError}
+        isSubmitting={isSubmittingComm}
+      />
+
+      {/* EDIT COMMUNITY MODAL */}
+      <AdminEditCommunityModal
+        isOpen={isEditCommunityOpen}
+        onClose={() => setIsEditCommunityOpen(false)}
+        onSubmit={handleSaveEditCommunity}
+        community={editingCommunity}
+        name={editCommName}
+        onNameChange={setEditCommName}
+        slug={editCommSlug}
+        onSlugChange={setEditCommSlug}
+        category={editCommCategory}
+        onCategoryChange={setEditCommCategory}
+        description={editCommDesc}
+        onDescriptionChange={setEditCommDesc}
+        logoUrl={editCommLogo}
+        onLogoUrlChange={setEditCommLogo}
+        website={editCommWebsite}
+        onWebsiteChange={setEditCommWebsite}
+        instagram={editCommInstagram}
+        onInstagramChange={setEditCommInstagram}
+        leadUserId={editCommLeadId}
+        onLeadUserIdChange={setEditCommLeadId}
+        status={editCommStatus}
+        onStatusChange={setEditCommStatus}
+        eligibleUsers={eligibleUsers}
+        error={editCommError}
+        isSubmitting={isSubmittingEditComm}
       />
     </div>
   );
