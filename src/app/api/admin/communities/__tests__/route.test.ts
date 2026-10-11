@@ -134,9 +134,50 @@ describe("Admin Communities API (/api/admin/communities)", () => {
       expect(data.error).toContain("already exists");
     });
 
+    it("returns 400 if admin profile is missing campus_id", async () => {
+      mockGetCurrentUser.mockResolvedValueOnce({
+        ...adminSession,
+        profile: { ...adminSession.profile, campus_id: "" },
+      });
+
+      const req = new Request("http://localhost/api/admin/communities", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Robotics Club",
+          category: "Tech",
+        }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain("Admin profile is not associated with any campus");
+    });
+
+    it("returns 400 if assigned lead user does not exist or is ineligible", async () => {
+      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
+      mockQuery
+        .mockResolvedValueOnce(mockDbResult([])) // No collision
+        .mockResolvedValueOnce(mockDbResult([])); // Lead user not found in campus
+
+      const req = new Request("http://localhost/api/admin/communities", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Robotics Club",
+          category: "Tech",
+          leadUserId: "a0000000-0000-4000-8000-000000000001",
+        }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain("Assigned lead user does not exist in this campus or is not eligible");
+    });
+
     it("creates community and returns 201 on success", async () => {
       mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockQuery.mockResolvedValueOnce(mockDbResult([])); // No collision
+      mockQuery
+        .mockResolvedValueOnce(mockDbResult([])) // No collision
+        .mockResolvedValueOnce(mockDbResult([{ id: "a0000000-0000-4000-8000-000000000001" }])); // Lead user found & eligible
 
       const createdComm = {
         id: "new-comm-uuid",

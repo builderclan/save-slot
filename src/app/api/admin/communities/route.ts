@@ -29,7 +29,7 @@ export async function GET() {
         u.full_name AS lead_name,
         u.email AS lead_email,
         COALESCE((SELECT COUNT(*)::int FROM public.community_members cm WHERE cm.community_id = c.id), 0) AS member_count,
-        COALESCE((SELECT COUNT(*)::int FROM public.events e WHERE e.community_id = c.id), 0) AS event_count
+        COALESCE((SELECT COUNT(*)::int FROM public.events e WHERE e.community_id = c.id AND e.status IN ('pending', 'published')), 0) AS event_count
       FROM public.communities c
       LEFT JOIN (
         SELECT DISTINCT ON (community_id) community_id, user_id 
@@ -45,8 +45,8 @@ export async function GET() {
     const res = await query<AdminCommunityRow>(sql, [campusId || null]);
     return NextResponse.json({ communities: res.rows });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load communities";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[GET /api/admin/communities] Error:", err);
+    return NextResponse.json({ error: "Failed to load communities" }, { status: 500 });
   }
 }
 
@@ -55,6 +55,14 @@ export async function POST(request: Request) {
     const session = await getCurrentUser();
     if (!session || !session.isAdmin) {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
+    }
+
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json(
+        { error: "Admin profile is not associated with any campus." },
+        { status: 400 }
+      );
     }
 
     const rawBody = await request.json().catch(() => null);
@@ -66,7 +74,6 @@ export async function POST(request: Request) {
     }
 
     const { name, category, description, logoUrl, website, instagram, leadUserId } = parsed.data;
-    const campusId = session.profile.campus_id;
     const rawSlug = parsed.data.slug?.trim();
     const slug = rawSlug && rawSlug.length > 0 ? rawSlug.toLowerCase() : generateSlug(name);
 
@@ -84,6 +91,21 @@ export async function POST(request: Request) {
         { error: `A community with slug '${slug}' already exists on this campus.` },
         { status: 400 }
       );
+    }
+
+    // If leadUserId is provided, verify they exist in this campus and hold an eligible role
+    if (leadUserId && leadUserId.trim().length > 0) {
+      const leadUserCheck = await query<{ id: string }>(
+        `SELECT id FROM public.users 
+         WHERE id = $1 AND campus_id = $2 AND role IN ('student', 'organizer');`,
+        [leadUserId, campusId]
+      );
+      if (leadUserCheck.rows.length === 0) {
+        return NextResponse.json(
+          { error: "Assigned lead user does not exist in this campus or is not eligible." },
+          { status: 400 }
+        );
+      }
     }
 
     const createdCommunity = await withTransaction(async (client) => {
@@ -130,7 +152,18 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, community: createdCommunity }, { status: 201 });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to create community";
-    return NextResponse.json({ error: message }, { status: 500 });
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: string }).code === "23505"
+    ) {
+      return NextResponse.json(
+        { error: "A community with this slug already exists." },
+        { status: 400 }
+      );
+    }
+    console.error("[POST /api/admin/communities] Error:", err);
+    return NextResponse.json({ error: "Failed to create community" }, { status: 500 });
   }
 }

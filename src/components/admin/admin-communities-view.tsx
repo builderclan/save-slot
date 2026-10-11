@@ -248,6 +248,17 @@ export function AdminCommunitiesView({
               >
                 Pending
               </button>
+              <button
+                type="button"
+                onClick={() => setSelectedStatus("rejected")}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${
+                  selectedStatus === "rejected"
+                    ? "bg-indigo-100 text-indigo-800 font-bold"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                Rejected
+              </button>
             </div>
           </div>
         </div>
@@ -401,7 +412,7 @@ export function AdminCommunitiesView({
                           disabled={isOperating || comm.event_count > 0}
                           title={
                             comm.event_count > 0
-                              ? "Cannot delete community with existing events"
+                              ? "Cannot delete community with active or pending events"
                               : "Archive or remove community"
                           }
                           className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-400 text-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"

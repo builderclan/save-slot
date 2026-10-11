@@ -149,10 +149,14 @@ export default function AdminConsolePage() {
 
       // 5. Fetch all recognized communities with full admin metadata
       const commsRes = await fetch("/api/admin/communities");
-      const commsData = await commsRes.json();
-      const commList: AdminCommunityRow[] = commsData.communities || [];
-      setAdminCommunities(commList);
-      setCommunities(commList.map((c) => ({ id: c.id, name: c.name })));
+      if (commsRes.ok) {
+        const commsData = await commsRes.json();
+        const commList: AdminCommunityRow[] = commsData.communities || [];
+        setAdminCommunities(commList);
+        setCommunities(commList.map((c) => ({ id: c.id, name: c.name })));
+      } else {
+        console.error("Failed to load communities: HTTP", commsRes.status);
+      }
 
     } catch (err) {
       console.error("Admin data load error:", err);
@@ -512,7 +516,7 @@ export default function AdminConsolePage() {
     const seen = new Set<string>();
     const result: Array<{ id: string; fullName: string; email: string; role: string }> = [];
     for (const u of users) {
-      if (u.role === "admin" || u.role === "principal" || u.role === "vice_principal") {
+      if (u.role !== "student" && u.role !== "organizer") {
         continue;
       }
       if (!seen.has(u.id)) {
@@ -637,7 +641,7 @@ export default function AdminConsolePage() {
   const handleDeleteCommunity = async (comm: AdminCommunityRow) => {
     if (comm.event_count > 0) {
       setAdminNotice({
-        message: `Cannot delete "${comm.name}": ${comm.event_count} scheduled event(s) exist.`,
+        message: `Cannot delete "${comm.name}": ${comm.event_count} active or pending event(s) exist.`,
         type: "error",
       });
       setTimeout(() => setAdminNotice(null), 5000);

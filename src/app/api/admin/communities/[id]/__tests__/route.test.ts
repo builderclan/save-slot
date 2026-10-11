@@ -173,9 +173,11 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
             .fn()
             .mockResolvedValueOnce(mockDbResult([{ id: "comm-1" }])) // community found
             .mockResolvedValueOnce(mockDbResult([{ count: "0", titles: "" }])) // 0 active events
+            .mockResolvedValueOnce(mockDbResult([{ user_id: "lead-user-1" }])) // capture outgoing leads
             .mockResolvedValueOnce(mockDbResult([])) // detach events
             .mockResolvedValueOnce(mockDbResult([])) // delete memberships
-            .mockResolvedValueOnce(mockDbResult([{ id: "comm-1" }])), // delete community
+            .mockResolvedValueOnce(mockDbResult([{ id: "comm-1" }])) // delete community
+            .mockResolvedValueOnce(mockDbResult([])), // downgrade former leads
         } as unknown as PoolClient;
         return cb(fakeClient);
       });

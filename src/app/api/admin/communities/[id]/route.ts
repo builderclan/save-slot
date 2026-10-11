@@ -54,6 +54,21 @@ export async function PATCH(
       }
     }
 
+    // If leadUserId is provided and not empty, verify user exists in campus and is eligible
+    if (leadUserId && leadUserId.trim().length > 0) {
+      const leadUserCheck = await query<{ id: string }>(
+        `SELECT id FROM public.users 
+         WHERE id = $1 AND ($2::uuid IS NULL OR campus_id = $2) AND role IN ('student', 'organizer');`,
+        [leadUserId, campusId || null]
+      );
+      if (leadUserCheck.rows.length === 0) {
+        return NextResponse.json(
+          { error: "Assigned lead user does not exist in this campus or is not eligible." },
+          { status: 400 }
+        );
+      }
+    }
+
     const updatedCommunity = await withTransaction(async (client) => {
       const updates: string[] = [];
       const values: unknown[] = [];
@@ -171,8 +186,8 @@ export async function PATCH(
         { status: 400 }
       );
     }
-    const message = err instanceof Error ? err.message : "Failed to update community";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[PATCH /api/admin/communities/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to update community" }, { status: 500 });
   }
 }
 
@@ -215,14 +230,36 @@ export async function DELETE(
         } as const;
       }
 
-      // 3. Detach any rejected or archived events before deletion
+      // 3. Capture outgoing leads before deleting memberships
+      const priorLeadsRes = await client.query<{ user_id: string }>(
+        "SELECT user_id FROM public.community_members WHERE community_id = $1 AND role = 'lead';",
+        [id]
+      );
+      const outgoingLeadIds = priorLeadsRes.rows.map((r) => r.user_id);
+
+      // 4. Detach any rejected or archived events before deletion
       await client.query("UPDATE public.events SET community_id = NULL WHERE community_id = $1;", [id]);
-      // 4. Remove memberships
+      // 5. Remove memberships
       await client.query("DELETE FROM public.community_members WHERE community_id = $1;", [id]);
-      // 5. Delete community
+      // 6. Delete community
       const res = await client.query("DELETE FROM public.communities WHERE id = $1 RETURNING id;", [id]);
       if (res.rows.length === 0) {
         return { status: 404, error: "Community not found" } as const;
+      }
+
+      // 7. Downgrade former leads if they have no remaining active club leads
+      if (outgoingLeadIds.length > 0) {
+        await client.query(
+          `UPDATE public.users u
+           SET role = 'student'
+           WHERE u.id = ANY($1::uuid[])
+             AND u.role = 'organizer'
+             AND NOT EXISTS (
+               SELECT 1 FROM public.community_members cm
+               WHERE cm.user_id = u.id AND cm.role = 'lead'
+             );`,
+          [outgoingLeadIds]
+        );
       }
       return { status: 200, success: true } as const;
     });
@@ -233,7 +270,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to delete community";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[DELETE /api/admin/communities/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to delete community" }, { status: 500 });
   }
 }
