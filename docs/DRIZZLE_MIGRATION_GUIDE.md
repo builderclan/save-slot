@@ -137,10 +137,10 @@ vi.mock("@/lib/db", () => ({
 
 ### Phase 2: Organizer / Lead Workspace Endpoints
 
-- [ ] `GET /api/lead/events`
-- [ ] `GET /api/lead/events/[id]`
-- [ ] `POST /api/lead/events`
-- [ ] `PATCH /api/lead/events/[id]`
+- [x] `GET /api/lead/events`
+- [x] `POST /api/lead/events`
+- [x] `PUT /api/lead/events/[id]`
+- [x] `DELETE /api/lead/events/[id]`
 
 ### Phase 3: Administration & Governance Endpoints
 
