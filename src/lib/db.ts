@@ -26,7 +26,7 @@ export function getDbPool(): Pool {
 
     const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
     const connectionTimeoutMillis = parseInt(
-      process.env.DB_CONNECTION_TIMEOUT_MS || "20000",
+      process.env.DB_CONNECTION_TIMEOUT_MS || "5000",
       10
     );
 
@@ -43,8 +43,9 @@ export function getDbPool(): Pool {
       database,
       ssl: { rejectUnauthorized },
       max,
-      idleTimeoutMillis: 30000,
+      idleTimeoutMillis: process.env.VERCEL ? 10000 : 30000,
       connectionTimeoutMillis,
+      statement_timeout: 10000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
     });
@@ -102,10 +103,10 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
       lastError = err;
       if (isTransientConnectionError(err) && attempt < maxAttempts) {
         console.warn(
-          `Database connection issue encountered (attempt ${attempt}/${maxAttempts}); refreshing connection pool and retrying in ${attempt * 300}ms...`
+          `Database connection issue encountered (attempt ${attempt}/${maxAttempts}); refreshing connection pool and retrying in ${attempt * 150}ms...`
         );
         resetDbPool();
-        await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+        await new Promise((resolve) => setTimeout(resolve, attempt * 150));
         continue;
       }
       throw err;
