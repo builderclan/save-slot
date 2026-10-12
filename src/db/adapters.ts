@@ -1,4 +1,4 @@
-import { CampusEvent, Community, Venue, EventCategory, EventStatus } from "@/types/database";
+import { CampusEvent, Community, Venue, EventCategory, EventStatus, UserRole } from "@/types/database";
 
 export interface DrizzleEventRow {
   id: string;
@@ -30,7 +30,7 @@ export interface DrizzleEventRow {
     campusId?: string;
     name: string;
     slug: string;
-    category: string;
+    category?: string;
     logoUrl?: string | null;
     bannerUrl?: string | null;
     website?: string | null;
@@ -42,12 +42,18 @@ export interface DrizzleEventRow {
     id: string;
     campusId?: string;
     name: string;
-    building: string;
+    building?: string;
     capacity?: number | null;
     address?: string | null;
     notes?: string | null;
     isActive?: boolean | null;
     createdAt?: Date | string | null;
+  } | null;
+  reviewer?: {
+    id: string;
+    fullName?: string | null;
+    email?: string | null;
+    role?: string | null;
   } | null;
 }
 
@@ -63,7 +69,7 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
       campus_id: row.community.campusId || "",
       name: row.community.name,
       slug: row.community.slug,
-      category: row.community.category as EventCategory,
+      category: (row.community.category as EventCategory) || "Social",
       logo_url: row.community.logoUrl || undefined,
       banner_url: row.community.bannerUrl || undefined,
       website: row.community.website || undefined,
@@ -85,6 +91,21 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
       notes: row.venue.notes || undefined,
       is_active: row.venue.isActive ?? true,
       created_at: row.venue.createdAt instanceof Date ? row.venue.createdAt.toISOString() : (row.venue.createdAt || undefined),
+    };
+  }
+
+  let reviewer: CampusEvent["reviewer"] = undefined;
+  if (row.reviewer && row.reviewer.id) {
+    const validRoles: UserRole[] = ["admin", "principal", "vice_principal", "organizer", "student"];
+    const parsedRole = row.reviewer.role && validRoles.includes(row.reviewer.role as UserRole)
+      ? (row.reviewer.role as UserRole)
+      : "student";
+
+    reviewer = {
+      id: row.reviewer.id,
+      full_name: row.reviewer.fullName || "",
+      email: row.reviewer.email || "",
+      role: parsedRole,
     };
   }
 
@@ -115,5 +136,6 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
     updated_at: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : (row.updatedAt ? String(row.updatedAt) : undefined),
     community,
     venue,
+    reviewer,
   };
 }
