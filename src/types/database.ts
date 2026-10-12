@@ -30,7 +30,7 @@ export interface Venue {
   campus_id: string;
   name: string;
   building?: string;
-  capacity: number;
+  capacity?: number | null;
   address?: string;
   notes?: string;
   is_active: boolean;

@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "db:migrate": "node scripts/migrate.js",
     "db:migrate:status": "node scripts/migrate.js --status",
+    "db:generate": "drizzle-kit generate",
     "validate": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
   },
   "dependencies": {
@@ -19,13 +20,14 @@
     "@supabase/supabase-js": "^2.116.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "drizzle-orm": "^0.45.4",
     "lucide-react": "^1.45.0",
     "next": "16.3.5",
+    "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "tailwind-merge": "^3.7.0",
-    "zod": "^4.6.4",
-    "pg": "^8.23.0"
+    "zod": "^4.6.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -33,6 +35,7 @@
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
