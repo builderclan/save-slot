@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query } from "@/lib/db";
-import { CampusEvent } from "@/types/database";
+import { withDbRetry } from "@/lib/db";
+import { events, venues } from "@/db/schema";
+import { eq, and, ne } from "drizzle-orm";
+import { formatCampusEvent } from "@/db/adapters";
 import { ProposeEventSchema } from "@/lib/validations";
 
 export async function PUT(
@@ -17,21 +19,22 @@ export async function PUT(
     const { id } = await params;
 
     // Check if event exists and lead is authorized
-    const existingRes = await query<CampusEvent>(
-      "SELECT * FROM public.events WHERE id = $1;",
-      [id]
+    const [existingEvent] = await withDbRetry((client) =>
+      client
+        .select()
+        .from(events)
+        .where(eq(events.id, id))
+        .limit(1)
     );
 
-    if (existingRes.rows.length === 0) {
+    if (!existingEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
-
-    const existingEvent = existingRes.rows[0];
 
     // Authorize lead for this event's community
     if (
       !session.isAdmin &&
-      !session.leadCommunities.some((c) => c.id === existingEvent.community_id)
+      !session.leadCommunities.some((c) => c.id === existingEvent.communityId)
     ) {
       return NextResponse.json(
         { error: "Forbidden: You are not authorized to edit events for this community." },
@@ -67,52 +70,46 @@ export async function PUT(
     } = parsed.data;
 
     // Retrieve venue information
-    const venueRes = await query<{ name: string; campus_id: string }>(
-      "SELECT name, campus_id FROM public.venues WHERE id = $1;",
-      [venueId]
+    const [venue] = await withDbRetry((client) =>
+      client
+        .select({ name: venues.name })
+        .from(venues)
+        .where(eq(venues.id, venueId))
+        .limit(1)
     );
 
-    if (venueRes.rows.length === 0) {
+    if (!venue) {
       return NextResponse.json({ error: "Selected venue not found." }, { status: 404 });
     }
 
-    const { name: venueName } = venueRes.rows[0];
-
     // Resubmitting a rejected event resets status to 'pending' and clears rejection_reason
-    const updateSql = `
-      UPDATE public.events
-      SET
-        title = $1,
-        description = $2,
-        category = $3,
-        venue_id = $4,
-        start_time = $5,
-        end_time = $6,
-        location_name = $7,
-        cover_image_url = $8,
-        external_registration_url = $9,
-        status = 'pending',
-        rejection_reason = NULL,
-        reviewed_by = NULL,
-        updated_at = NOW()
-      WHERE id = $10
-      RETURNING *;
-    `;
+    const [updated] = await withDbRetry((client) =>
+      client
+        .update(events)
+        .set({
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          venueId,
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+          locationName: venue.name,
+          coverImageUrl: coverImageUrl || null,
+          externalRegistrationUrl: externalRegistrationUrl || null,
+          status: "pending",
+          rejectionReason: null,
+          reviewedBy: null,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(events.id, id), ne(events.status, "published")))
+        .returning()
+    );
 
-    const updateRes = await query<CampusEvent>(updateSql, [
-      title.trim(),
-      description.trim(),
-      category,
-      venueId,
-      new Date(startTime).toISOString(),
-      new Date(endTime).toISOString(),
-      venueName,
-      coverImageUrl || null,
-      externalRegistrationUrl || null,
-      id,
-    ]);
+    if (!updated) {
+      return NextResponse.json({ error: "Event not found" }, { status: 404 });
+    }
 
-    return NextResponse.json({ success: true, event: updateRes.rows[0] });
+    return NextResponse.json({ success: true, event: formatCampusEvent(updated) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to update event proposal";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -132,21 +129,26 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if event exists and lead is authorized
-    const existingRes = await query<CampusEvent>(
-      "SELECT id, community_id, status FROM public.events WHERE id = $1;",
-      [id]
+    const [existingEvent] = await withDbRetry((client) =>
+      client
+        .select({
+          id: events.id,
+          communityId: events.communityId,
+          status: events.status,
+        })
+        .from(events)
+        .where(eq(events.id, id))
+        .limit(1)
     );
 
-    if (existingRes.rows.length === 0) {
+    if (!existingEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
-
-    const existingEvent = existingRes.rows[0];
 
     // Authorize lead for this event's community
     if (
       !session.isAdmin &&
-      !session.leadCommunities.some((c) => c.id === existingEvent.community_id)
+      !session.leadCommunities.some((c) => c.id === existingEvent.communityId)
     ) {
       return NextResponse.json(
         { error: "Forbidden: You are not authorized to withdraw events for this community." },
@@ -162,13 +164,18 @@ export async function DELETE(
       );
     }
 
-    const delRes = await query(
-      "DELETE FROM public.events WHERE id = $1 RETURNING id;",
-      [id]
+    const [deleted] = await withDbRetry((client) =>
+      client
+        .delete(events)
+        .where(and(eq(events.id, id), ne(events.status, "published")))
+        .returning({ id: events.id })
     );
 
-    if (delRes.rows.length === 0) {
-      return NextResponse.json({ error: "Failed to withdraw event proposal" }, { status: 500 });
+    if (!deleted) {
+      return NextResponse.json(
+        { error: "Event not found or no longer withdrawable" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ success: true, deletedId: id });
