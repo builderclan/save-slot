@@ -131,9 +131,9 @@ vi.mock("@/lib/db", () => ({
 ### Phase 1: Core Read Endpoints
 
 - [x] `GET /api/events` *(Reference Implementation)*
-- [ ] `GET /api/venues`
-- [ ] `GET /api/communities`
-- [ ] `GET /api/auth/me`
+- [x] `GET /api/venues`
+- [x] `GET /api/communities`
+- [x] `GET /api/auth/me`
 
 ### Phase 2: Organizer / Lead Workspace Endpoints
 

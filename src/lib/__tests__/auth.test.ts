@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getCurrentUser } from "../auth";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { query } from "@/lib/db";
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn(),
@@ -12,19 +11,45 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),
 }));
 
+let currentUserResult: unknown[] = [];
+let currentCommsResult: unknown[] = [];
+
+function mockDbUserAndComms(profileRow: unknown | null, commRows: unknown[] = []) {
+  currentUserResult = profileRow ? [profileRow] : [];
+  currentCommsResult = commRows;
+}
+
+const mockSelect = vi.fn().mockImplementation(() => ({
+  from: vi.fn().mockReturnValue({
+    where: vi.fn().mockReturnValue({
+      limit: vi.fn().mockImplementation(() => Promise.resolve(currentUserResult)),
+    }),
+    innerJoin: vi.fn().mockReturnValue({
+      where: vi.fn().mockImplementation(() => Promise.resolve(currentCommsResult)),
+    }),
+  }),
+}));
+
 vi.mock("@/lib/db", () => ({
-  query: vi.fn(),
+  db: {
+    select: (...args: unknown[]) => mockSelect(...args),
+  },
+  withDbRetry: (op: (client: { select: typeof mockSelect }) => Promise<unknown>) =>
+    op({
+      select: mockSelect,
+    }),
 }));
 
 describe("Strict Role Isolation - getCurrentUser (src/lib/auth.ts)", () => {
   const mockCookies = vi.mocked(cookies);
   const mockCreateClient = vi.mocked(createClient);
-  const mockQuery = vi.mocked(query);
 
   const mockGetUser = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    currentUserResult = [];
+    currentCommsResult = [];
     mockCookies.mockResolvedValue({
       getAll: () => [{ name: "sb-auth-token", value: "test-token" }],
     } as unknown as Awaited<ReturnType<typeof cookies>>);
@@ -51,28 +76,24 @@ describe("Strict Role Isolation - getCurrentUser (src/lib/auth.ts)", () => {
       error: null,
     });
 
-    mockQuery
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "admin-uuid",
-            email: "admin@campus.edu",
-            full_name: "Campus Admin",
-            role: "admin",
-            campus_id: "campus-1",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>)
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "comm-1",
-            name: "Coding Club",
-            slug: "coding",
-            category: "tech",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>);
+    mockDbUserAndComms(
+      {
+        id: "admin-uuid",
+        email: "admin@campus.edu",
+        full_name: "Campus Admin",
+        role: "admin",
+        campus_id: "campus-1",
+      },
+      [
+        {
+          id: "comm-1",
+          campus_id: "campus-1",
+          name: "Coding Club",
+          slug: "coding",
+          category: "Tech",
+        },
+      ]
+    );
 
     const session = await getCurrentUser();
     expect(session).not.toBeNull();
@@ -88,28 +109,24 @@ describe("Strict Role Isolation - getCurrentUser (src/lib/auth.ts)", () => {
       error: null,
     });
 
-    mockQuery
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "principal-uuid",
-            email: "principal@campus.edu",
-            full_name: "College Principal",
-            role: "principal",
-            campus_id: "campus-1",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>)
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "comm-1",
-            name: "Robotics Club",
-            slug: "robotics",
-            category: "tech",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>);
+    mockDbUserAndComms(
+      {
+        id: "principal-uuid",
+        email: "principal@campus.edu",
+        full_name: "College Principal",
+        role: "principal",
+        campus_id: "campus-1",
+      },
+      [
+        {
+          id: "comm-1",
+          campus_id: "campus-1",
+          name: "Robotics Club",
+          slug: "robotics",
+          category: "Tech",
+        },
+      ]
+    );
 
     const session = await getCurrentUser();
     expect(session).not.toBeNull();
@@ -125,21 +142,16 @@ describe("Strict Role Isolation - getCurrentUser (src/lib/auth.ts)", () => {
       error: null,
     });
 
-    mockQuery
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "vp-uuid",
-            email: "viceprincipal@campus.edu",
-            full_name: "Vice Principal",
-            role: "vice_principal",
-            campus_id: "campus-1",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>)
-      .mockResolvedValueOnce({
-        rows: [],
-      } as unknown as Awaited<ReturnType<typeof query>>);
+    mockDbUserAndComms(
+      {
+        id: "vp-uuid",
+        email: "viceprincipal@campus.edu",
+        full_name: "Vice Principal",
+        role: "vice_principal",
+        campus_id: "campus-1",
+      },
+      []
+    );
 
     const session = await getCurrentUser();
     expect(session).not.toBeNull();
@@ -155,28 +167,24 @@ describe("Strict Role Isolation - getCurrentUser (src/lib/auth.ts)", () => {
       error: null,
     });
 
-    mockQuery
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "lead-uuid",
-            email: "lead.coding@campus.edu",
-            full_name: "Coding Club Lead",
-            role: "organizer",
-            campus_id: "campus-1",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>)
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "comm-1",
-            name: "Coding Club",
-            slug: "coding",
-            category: "tech",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>);
+    mockDbUserAndComms(
+      {
+        id: "lead-uuid",
+        email: "lead.coding@campus.edu",
+        full_name: "Coding Club Lead",
+        role: "organizer",
+        campus_id: "campus-1",
+      },
+      [
+        {
+          id: "comm-1",
+          campus_id: "campus-1",
+          name: "Coding Club",
+          slug: "coding",
+          category: "Tech",
+        },
+      ]
+    );
 
     const session = await getCurrentUser();
     expect(session).not.toBeNull();
@@ -192,28 +200,24 @@ describe("Strict Role Isolation - getCurrentUser (src/lib/auth.ts)", () => {
       error: null,
     });
 
-    mockQuery
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "student-lead-uuid",
-            email: "student.lead@campus.edu",
-            full_name: "Student Lead",
-            role: "student",
-            campus_id: "campus-1",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>)
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "comm-2",
-            name: "Design Society",
-            slug: "design",
-            category: "arts",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>);
+    mockDbUserAndComms(
+      {
+        id: "student-lead-uuid",
+        email: "student.lead@campus.edu",
+        full_name: "Student Lead",
+        role: "student",
+        campus_id: "campus-1",
+      },
+      [
+        {
+          id: "comm-2",
+          campus_id: "campus-1",
+          name: "Design Society",
+          slug: "design",
+          category: "Arts",
+        },
+      ]
+    );
 
     const session = await getCurrentUser();
     expect(session).not.toBeNull();
@@ -229,21 +233,16 @@ describe("Strict Role Isolation - getCurrentUser (src/lib/auth.ts)", () => {
       error: null,
     });
 
-    mockQuery
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "regular-student-uuid",
-            email: "student@campus.edu",
-            full_name: "Regular Student",
-            role: "student",
-            campus_id: "campus-1",
-          },
-        ],
-      } as unknown as Awaited<ReturnType<typeof query>>)
-      .mockResolvedValueOnce({
-        rows: [],
-      } as unknown as Awaited<ReturnType<typeof query>>);
+    mockDbUserAndComms(
+      {
+        id: "regular-student-uuid",
+        email: "student@campus.edu",
+        full_name: "Regular Student",
+        role: "student",
+        campus_id: "campus-1",
+      },
+      []
+    );
 
     const session = await getCurrentUser();
     expect(session).not.toBeNull();
