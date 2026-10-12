@@ -64,8 +64,8 @@ export const getCurrentUser = cache(async (): Promise<AuthSession | null> => {
 
     const isAdmin = profile.role === "admin";
     const isVicePrincipal = profile.role === "vice_principal";
-    const isPrincipal = profile.role === "principal" || isVicePrincipal;
-    const isLead = profile.role === "organizer" || commsRes.rows.length > 0;
+    const isPrincipal = (profile.role === "principal" || isVicePrincipal) && !isAdmin;
+    const isLead = !isAdmin && !isPrincipal && (profile.role === "organizer" || commsRes.rows.length > 0);
 
     return {
       userId: user.id,

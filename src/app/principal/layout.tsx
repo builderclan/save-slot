@@ -9,7 +9,7 @@ export default async function PrincipalLayout({
   children: React.ReactNode;
 }) {
   const session = await getCurrentUser();
-  if (!session || (!session.isPrincipal && !session.isVicePrincipal && !session.isAdmin)) {
+  if (!session || (!session.isPrincipal && !session.isVicePrincipal)) {
     redirect("/login?error=principal_required");
   }
 

@@ -143,6 +143,16 @@ function LoginParamsHandler({
         "Administrative privileges required to access the Admin Console. Please sign in with an Administrator account."
       );
     }
+    if (searchParams.get("error") === "principal_required") {
+      onSetError(
+        "Executive privileges required to access the Principal Desk. Please sign in with an authorized Principal or Vice-Principal account."
+      );
+    }
+    if (searchParams.get("error") === "lead_required") {
+      onSetError(
+        "Community Lead privileges required to access the Lead Workspace. Please sign in with an authorized Lead account."
+      );
+    }
     const redirectParam = searchParams.get("redirect") || searchParams.get("returnTo");
     if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
       onSetRedirect(redirectParam);
@@ -310,11 +320,13 @@ export default function LoginPage() {
                   </button>
                   <Link
                     href={
-                      currentSession.isPrincipal
-                        ? "/principal"
-                        : currentSession.isAdmin
+                      currentSession.isAdmin
                         ? "/admin"
-                        : "/lead"
+                        : currentSession.isPrincipal || currentSession.isVicePrincipal
+                        ? "/principal"
+                        : currentSession.isLead
+                        ? "/lead"
+                        : "/"
                     }
                     className="px-2.5 py-1 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-medium transition-colors"
                   >

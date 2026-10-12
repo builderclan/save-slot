@@ -9,7 +9,7 @@ export default async function LeadLayout({
   children: React.ReactNode;
 }) {
   const session = await getCurrentUser();
-  if (!session || (!session.isLead && !session.isAdmin && !session.isPrincipal)) {
+  if (!session || !session.isLead) {
     redirect("/login?error=lead_required");
   }
 

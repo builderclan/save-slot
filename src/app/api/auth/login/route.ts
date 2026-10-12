@@ -55,8 +55,13 @@ export async function POST(request: Request) {
 
     let role = profile?.role || "student";
 
-    // If not flagged as admin/organizer directly, check community_members
-    if (role !== "admin" && role !== "organizer") {
+    // If not flagged as admin/principal/vice_principal/organizer directly, check community_members
+    if (
+      role !== "admin" &&
+      role !== "principal" &&
+      role !== "vice_principal" &&
+      role !== "organizer"
+    ) {
       const commCheck = await query(
         "SELECT 1 FROM public.community_members WHERE user_id = $1 AND role = 'lead' AND status = 'active' LIMIT 1;",
         [authData.user.id]
