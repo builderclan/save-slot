@@ -1,14 +1,73 @@
 import { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
+import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
+import * as schema from "@/db/schema";
 
-const globalForDb = globalThis as unknown as { pgPool?: Pool };
+const globalForDb = globalThis as unknown as {
+  pgPool?: Pool;
+  drizzleDb?: NodePgDatabase<typeof schema>;
+};
 
 export function resetDbPool(): void {
   if (globalForDb.pgPool) {
     const oldPool = globalForDb.pgPool;
     globalForDb.pgPool = undefined;
+    globalForDb.drizzleDb = undefined;
     oldPool.end().catch(() => {});
   }
 }
+
+export function getDrizzleDb(): NodePgDatabase<typeof schema> {
+  if (!globalForDb.drizzleDb) {
+    globalForDb.drizzleDb = drizzle(getDbPool(), { schema });
+  }
+  return globalForDb.drizzleDb;
+}
+
+/**
+ * Type-safe Drizzle ORM client wrapping the shared connection pool.
+ * Uses lazy proxying to ensure safe module evaluation and connection reuse.
+ */
+export const db = new Proxy({} as NodePgDatabase<typeof schema>, {
+  get(_target, prop, receiver) {
+    const instance = getDrizzleDb();
+    const value = Reflect.get(instance, prop, receiver);
+    if (typeof value === "function") {
+      return value.bind(instance);
+    }
+    return value;
+  },
+});
+
+/**
+ * Executes an idempotent Drizzle database query with automatic retries on transient connection errors.
+ * Passes the dynamic proxy `db` client so retries automatically acquire a fresh pool if reset.
+ */
+export async function withDbRetry<T>(
+  operation: (client: NodePgDatabase<typeof schema>) => Promise<T>
+): Promise<T> {
+  const maxAttempts = 3;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation(db);
+    } catch (err: unknown) {
+      lastError = err;
+      if (isTransientConnectionError(err) && attempt < maxAttempts) {
+        console.warn(
+          `Database connection issue encountered during Drizzle query (attempt ${attempt}/${maxAttempts}); refreshing connection pool and retrying in ${attempt * 150}ms...`
+        );
+        resetDbPool();
+        await new Promise((resolve) => setTimeout(resolve, attempt * 150));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError;
+}
+
 
 export function getDbPool(): Pool {
   if (!globalForDb.pgPool) {
@@ -77,6 +136,9 @@ export function isTransientConnectionError(err: unknown): boolean {
     errorMsg.includes("etimedout") ||
     errorMsg.includes("enotfound") ||
     errorMsg.includes("eai_again") ||
+    errorMsg.includes("after calling end") ||
+    errorMsg.includes("pool has ended") ||
+    errorMsg.includes("closed pool") ||
     errorCode === "ECONNRESET" ||
     errorCode === "ETIMEDOUT" ||
     errorCode === "ENOTFOUND" ||
