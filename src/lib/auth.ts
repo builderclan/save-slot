@@ -1,8 +1,10 @@
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { query } from "@/lib/db";
-import { UserProfile, Community } from "@/types/database";
+import { withDbRetry } from "@/lib/db";
+import { users, communities, communityMembers } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
+import { UserProfile, Community, UserRole, EventCategory } from "@/types/database";
 
 export interface AuthSession {
   userId: string;
@@ -41,37 +43,85 @@ export const getCurrentUser = cache(async (): Promise<AuthSession | null> => {
       return null;
     }
 
-    // Run user profile and community memberships concurrently for lowest latency
-    const [profileRes, commsRes] = await Promise.all([
-      query<UserProfile>(
-        "SELECT id, email, full_name, role, avatar_url, campus_id FROM public.users WHERE id = $1;",
-        [user.id]
-      ),
-      query<Community>(
-        `SELECT c.id, c.name, c.slug, c.category, c.description, c.logo_url
-         FROM public.communities c
-         JOIN public.community_members cm ON cm.community_id = c.id
-         WHERE cm.user_id = $1 AND cm.role = 'lead' AND cm.status = 'active';`,
-        [user.id]
-      ),
-    ]);
+    // Run user profile and community memberships concurrently for lowest latency via Drizzle
+    const [userProfiles, leadComms] = await withDbRetry((client) =>
+      Promise.all([
+        client
+          .select({
+            id: users.id,
+            email: users.email,
+            full_name: users.fullName,
+            role: users.role,
+            avatar_url: users.avatarUrl,
+            campus_id: users.campusId,
+            created_at: users.createdAt,
+          })
+          .from(users)
+          .where(eq(users.id, user.id))
+          .limit(1),
+        client
+          .select({
+            id: communities.id,
+            campus_id: communities.campusId,
+            name: communities.name,
+            slug: communities.slug,
+            category: communities.category,
+            description: communities.description,
+            logo_url: communities.logoUrl,
+          })
+          .from(communities)
+          .innerJoin(
+            communityMembers,
+            eq(communityMembers.communityId, communities.id)
+          )
+          .where(
+            and(
+              eq(communityMembers.userId, user.id),
+              eq(communityMembers.role, "lead"),
+              eq(communityMembers.status, "active")
+            )
+          ),
+      ])
+    );
 
-    if (profileRes.rows.length === 0) {
+    if (userProfiles.length === 0) {
       return null;
     }
 
-    const profile = profileRes.rows[0];
+    const row = userProfiles[0];
+    const profile: UserProfile = {
+      id: row.id,
+      email: row.email,
+      full_name: row.full_name,
+      role: row.role as UserRole,
+      avatar_url: row.avatar_url || undefined,
+      campus_id: row.campus_id || undefined,
+      created_at:
+        row.created_at instanceof Date
+          ? row.created_at.toISOString()
+          : (row.created_at || undefined),
+    };
+
+    const leadCommunities: Community[] = leadComms.map((c) => ({
+      id: c.id,
+      campus_id: c.campus_id,
+      name: c.name,
+      slug: c.slug,
+      category: c.category as EventCategory,
+      description: c.description || undefined,
+      logo_url: c.logo_url || undefined,
+    }));
 
     const isAdmin = profile.role === "admin";
     const isVicePrincipal = profile.role === "vice_principal";
     const isPrincipal = (profile.role === "principal" || isVicePrincipal) && !isAdmin;
-    const isLead = !isAdmin && !isPrincipal && (profile.role === "organizer" || commsRes.rows.length > 0);
+    const isLead = !isAdmin && !isPrincipal && (profile.role === "organizer" || leadCommunities.length > 0);
 
     return {
       userId: user.id,
       email: user.email || profile.email,
       profile,
-      leadCommunities: commsRes.rows,
+      leadCommunities,
       isAdmin,
       isPrincipal,
       isVicePrincipal,
