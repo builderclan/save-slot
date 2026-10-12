@@ -1,14 +1,27 @@
 import { NextResponse } from "next/server";
-import { query } from "@/lib/db";
-import { Community } from "@/types/database";
+import { withDbRetry } from "@/lib/db";
+import { communities } from "@/db/schema";
+import { asc } from "drizzle-orm";
 
 export async function GET() {
   try {
-    const res = await query<Community>(
-      "SELECT id, campus_id, name, slug, category, description, logo_url FROM public.communities ORDER BY name ASC;"
+    const rows = await withDbRetry((client) =>
+      client
+        .select({
+          id: communities.id,
+          campus_id: communities.campusId,
+          name: communities.name,
+          slug: communities.slug,
+          category: communities.category,
+          description: communities.description,
+          logo_url: communities.logoUrl,
+        })
+        .from(communities)
+        .orderBy(asc(communities.name))
     );
+
     return NextResponse.json(
-      { communities: res.rows },
+      { communities: rows },
       {
         headers: {
           "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
