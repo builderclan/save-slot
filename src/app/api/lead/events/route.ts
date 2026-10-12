@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query } from "@/lib/db";
-import { CampusEvent } from "@/types/database";
+import { withDbRetry } from "@/lib/db";
+import { events, venues } from "@/db/schema";
+import { eq, desc, inArray } from "drizzle-orm";
+import { formatCampusEvent } from "@/db/adapters";
 import { ProposeEventSchema } from "@/lib/validations";
 
 function slugify(text: string): string {
@@ -22,46 +24,46 @@ export async function GET() {
 
     const communityIds = session.leadCommunities.map((c) => c.id);
 
-    let sql = `
-      SELECT 
-        e.id, e.campus_id, e.community_id, e.venue_id, e.created_by, e.reviewed_by,
-        e.title, e.slug, e.description, e.category, e.tags,
-        e.start_time, e.end_time, e.timezone, e.location_name,
-        e.is_virtual, e.virtual_link, e.external_registration_url, e.cover_image_url,
-        e.status, e.rejection_reason, e.cancellation_reason, e.created_at, e.updated_at,
-        json_build_object('id', c.id, 'name', c.name, 'slug', c.slug) as community,
-        CASE 
-          WHEN v.id IS NULL THEN NULL 
-          ELSE json_build_object('id', v.id, 'name', v.name, 'building', v.building, 'capacity', v.capacity) 
-        END as venue,
-        CASE
-          WHEN reviewer.id IS NULL THEN NULL
-          ELSE json_build_object(
-            'id', reviewer.id,
-            'full_name', reviewer.full_name,
-            'email', reviewer.email,
-            'role', reviewer.role
-          )
-        END as reviewer
-      FROM public.events e
-      JOIN public.communities c ON c.id = e.community_id
-      LEFT JOIN public.venues v ON v.id = e.venue_id
-      LEFT JOIN public.users reviewer ON reviewer.id = e.reviewed_by
-    `;
-
-    const params: unknown[] = [];
-    if (!session.isAdmin && !session.isPrincipal) {
-      if (communityIds.length === 0) {
-        return NextResponse.json({ events: [] });
-      }
-      sql += ` WHERE e.community_id = ANY($1)`;
-      params.push(communityIds);
+    if (!session.isAdmin && !session.isPrincipal && communityIds.length === 0) {
+      return NextResponse.json({ events: [] });
     }
 
-    sql += ` ORDER BY e.start_time DESC;`;
+    const rows = await withDbRetry((client) =>
+      client.query.events.findMany({
+        where:
+          !session.isAdmin && !session.isPrincipal
+            ? inArray(events.communityId, communityIds)
+            : undefined,
+        orderBy: [desc(events.startTime)],
+        with: {
+          community: {
+            columns: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          venue: {
+            columns: {
+              id: true,
+              name: true,
+              building: true,
+              capacity: true,
+            },
+          },
+          reviewer: {
+            columns: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
+            },
+          },
+        },
+      })
+    );
 
-    const res = await query<CampusEvent>(sql, params);
-    return NextResponse.json({ events: res.rows });
+    return NextResponse.json({ events: rows.map(formatCampusEvent) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to load lead events";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -116,50 +118,49 @@ export async function POST(request: Request) {
     }
 
     // Query venue info for location_name and campus_id
-    const venueRes = await query<{ name: string; campus_id: string }>(
-      "SELECT name, campus_id FROM public.venues WHERE id = $1;",
-      [venueId]
+    const [venue] = await withDbRetry((client) =>
+      client
+        .select({
+          name: venues.name,
+          campusId: venues.campusId,
+        })
+        .from(venues)
+        .where(eq(venues.id, venueId))
+        .limit(1)
     );
 
-    if (venueRes.rows.length === 0) {
+    if (!venue) {
       return NextResponse.json({ error: "Selected venue not found." }, { status: 404 });
     }
-
-    const { name: venueName, campus_id: campusId } = venueRes.rows[0];
 
     // Generate unique slug
     let baseSlug = slugify(title);
     if (!baseSlug) baseSlug = "campus-event";
     const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
 
-    const insertSql = `
-      INSERT INTO public.events (
-        campus_id, community_id, venue_id, created_by,
-        title, slug, description, category,
-        start_time, end_time, location_name,
-        status, cover_image_url, external_registration_url
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', $12, $13)
-      RETURNING *;
-    `;
+    const [inserted] = await withDbRetry((client) =>
+      client
+        .insert(events)
+        .values({
+          campusId: venue.campusId,
+          communityId: targetCommunityId,
+          venueId,
+          createdBy: session.userId,
+          title: title.trim(),
+          slug: uniqueSlug,
+          description: description.trim(),
+          category,
+          startTime: new Date(startTime),
+          endTime: new Date(endTime),
+          locationName: venue.name,
+          status: "pending",
+          coverImageUrl: coverImageUrl || null,
+          externalRegistrationUrl: externalRegistrationUrl || null,
+        })
+        .returning()
+    );
 
-    const insRes = await query<CampusEvent>(insertSql, [
-      campusId,
-      targetCommunityId,
-      venueId,
-      session.userId,
-      title.trim(),
-      uniqueSlug,
-      description.trim(),
-      category,
-      new Date(startTime).toISOString(),
-      new Date(endTime).toISOString(),
-      venueName,
-      coverImageUrl || null,
-      externalRegistrationUrl || null,
-    ]);
-
-    return NextResponse.json({ success: true, event: insRes.rows[0] });
+    return NextResponse.json({ success: true, event: formatCampusEvent(inserted) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to submit event proposal";
     return NextResponse.json({ error: message }, { status: 500 });
