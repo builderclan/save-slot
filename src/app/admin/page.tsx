@@ -121,41 +121,51 @@ export default function AdminConsolePage() {
     try {
       setLoading(true);
 
-      // 1. Auth check
-      const meRes = await fetch("/api/auth/me");
-      const meData = await meRes.json();
-      if (!meData.authenticated || !meData.user.isAdmin) {
+      // Concurrently fetch auth verification and all admin data streams independently
+      const [meRes, evRes, usersRes, venuesRes, commsRes] = await Promise.allSettled([
+        fetch("/api/auth/me"),
+        fetch("/api/lead/events"),
+        fetch("/api/admin/users"),
+        fetch("/api/admin/venues"),
+        fetch("/api/admin/communities"),
+      ]);
+
+      if (meRes.status === "fulfilled" && meRes.value.ok) {
+        const meData = await meRes.value.json();
+        if (!meData.authenticated || !meData.user?.isAdmin) {
+          router.push("/login?error=admin_required");
+          return;
+        }
+        setCurrentUserId(meData.user.id);
+        if (meData.user.fullName) setCurrentUserName(meData.user.fullName);
+        if (meData.user.email) setCurrentUserEmail(meData.user.email);
+      } else {
         router.push("/login?error=admin_required");
         return;
       }
-      setCurrentUserId(meData.user.id);
-      if (meData.user.fullName) setCurrentUserName(meData.user.fullName);
-      if (meData.user.email) setCurrentUserEmail(meData.user.email);
 
-      // 2. Fetch all events (including pending and rejected)
-      const evRes = await fetch("/api/lead/events");
-      const evData = await evRes.json();
-      setAllEvents(evData.events || []);
+      if (evRes.status === "fulfilled" && evRes.value.ok) {
+        const evData = await evRes.value.json();
+        setAllEvents(evData.events || []);
+      }
 
-      // 3. Fetch users
-      const usersRes = await fetch("/api/admin/users");
-      const usersData = await usersRes.json();
-      setUsers(usersData.users || []);
+      if (usersRes.status === "fulfilled" && usersRes.value.ok) {
+        const usersData = await usersRes.value.json();
+        setUsers(usersData.users || []);
+      }
 
-      // 4. Fetch venues
-      const venuesRes = await fetch("/api/admin/venues");
-      const venuesData = await venuesRes.json();
-      setVenues(venuesData.venues || []);
+      if (venuesRes.status === "fulfilled" && venuesRes.value.ok) {
+        const venuesData = await venuesRes.value.json();
+        setVenues(venuesData.venues || []);
+      }
 
-      // 5. Fetch all recognized communities with full admin metadata
-      const commsRes = await fetch("/api/admin/communities");
-      if (commsRes.ok) {
-        const commsData = await commsRes.json();
+      if (commsRes.status === "fulfilled" && commsRes.value.ok) {
+        const commsData = await commsRes.value.json();
         const commList: AdminCommunityRow[] = commsData.communities || [];
         setAdminCommunities(commList);
         setCommunities(commList.map((c) => ({ id: c.id, name: c.name })));
       } else {
-        console.error("Failed to load communities: HTTP", commsRes.status);
+        console.error("Failed to load communities stream");
       }
 
     } catch (err) {

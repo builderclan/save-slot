@@ -99,28 +99,38 @@ export default function LeadWorkspacePage() {
     try {
       setLoading(true);
 
-      // 1. Verify user session
-      const meRes = await fetch("/api/auth/me");
-      const meData = await meRes.json();
-      if (!meData.authenticated || (!meData.user.isLead && !meData.user.isAdmin)) {
+      // Concurrently verify user session and fetch lead data independently
+      const [meRes, eventsRes, venuesRes] = await Promise.allSettled([
+        fetch("/api/auth/me"),
+        fetch("/api/lead/events"),
+        fetch("/api/venues"),
+      ]);
+
+      if (meRes.status === "fulfilled" && meRes.value.ok) {
+        const meData = await meRes.value.json();
+        if (!meData.authenticated || (!meData.user?.isLead && !meData.user?.isAdmin)) {
+          router.push("/login");
+          return;
+        }
+        setSession(meData.user);
+
+        if (meData.user.leadCommunities && meData.user.leadCommunities.length > 0) {
+          setSelectedCommunityId((prev) => prev || meData.user.leadCommunities[0].id);
+        }
+      } else {
         router.push("/login");
         return;
       }
-      setSession(meData.user);
 
-      if (meData.user.leadCommunities && meData.user.leadCommunities.length > 0) {
-        setSelectedCommunityId((prev) => prev || meData.user.leadCommunities[0].id);
+      if (eventsRes.status === "fulfilled" && eventsRes.value.ok) {
+        const eventsData = await eventsRes.value.json();
+        setEvents(eventsData.events || []);
       }
 
-      // 2. Load lead's events
-      const eventsRes = await fetch("/api/lead/events");
-      const eventsData = await eventsRes.json();
-      setEvents(eventsData.events || []);
-
-      // 3. Load active venues
-      const venuesRes = await fetch("/api/venues");
-      const venuesData = await venuesRes.json();
-      setVenues(venuesData.venues || []);
+      if (venuesRes.status === "fulfilled" && venuesRes.value.ok) {
+        const venuesData = await venuesRes.value.json();
+        setVenues(venuesData.venues || []);
+      }
     } catch (err) {
       console.error("Lead workspace error:", err);
       showNotice("Failed to load workspace data. Please refresh.", "error");

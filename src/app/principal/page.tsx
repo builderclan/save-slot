@@ -66,17 +66,25 @@ export default function PrincipalDeskPage() {
     try {
       setLoading(true);
 
-      const meRes = await fetch("/api/auth/me");
-      const meData = await meRes.json();
-      if (!meData.authenticated || (!meData.user.isPrincipal && !meData.user.isAdmin)) {
+      const [meRes, evRes] = await Promise.allSettled([
+        fetch("/api/auth/me"),
+        fetch("/api/lead/events"),
+      ]);
+
+      if (meRes.status === "fulfilled" && meRes.value.ok) {
+        const meData = await meRes.value.json();
+        if (!meData.authenticated || (!meData.user?.isPrincipal && !meData.user?.isAdmin)) {
+          router.push("/login?error=principal_required");
+          return;
+        }
+        setSession(meData.user);
+      } else {
         router.push("/login?error=principal_required");
         return;
       }
-      setSession(meData.user);
 
-      const evRes = await fetch("/api/lead/events");
-      if (evRes.ok) {
-        const evData = await evRes.json();
+      if (evRes.status === "fulfilled" && evRes.value.ok) {
+        const evData = await evRes.value.json();
         const evList: CampusEvent[] = evData.events || [];
         setEvents(evList);
 

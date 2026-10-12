@@ -81,7 +81,14 @@ export async function GET(request: Request) {
 
     const res = await query<CampusEvent>(sql, params);
 
-    return NextResponse.json({ events: res.rows });
+    const headers: Record<string, string> = {};
+    if (requestedStatus === "published") {
+      headers["Cache-Control"] = "public, s-maxage=10, stale-while-revalidate=59";
+    } else {
+      headers["Cache-Control"] = "private, no-cache, no-store, must-revalidate";
+    }
+
+    return NextResponse.json({ events: res.rows }, { headers });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to fetch events";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -62,6 +62,8 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isCalendarHome = pathname === "/";
+  const lastAuthCheckRef = useRef<number>(0);
+  const prevPathRef = useRef<string | null>(null);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -71,6 +73,16 @@ export function Navbar() {
   useEffect(() => {
     let isMounted = true;
     async function checkAuth() {
+      // Throttle rapid route transitions unless visiting or exiting /login
+      const now = Date.now();
+      const leavingLogin = prevPathRef.current === "/login";
+      prevPathRef.current = pathname;
+
+      if (now - lastAuthCheckRef.current < 5000 && pathname !== "/login" && !leavingLogin) {
+        return;
+      }
+      lastAuthCheckRef.current = now;
+
       try {
         const res = await fetch("/api/auth/me");
         const data = await res.json();
