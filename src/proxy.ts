@@ -6,6 +6,25 @@ export async function proxy(request: NextRequest) {
     request,
   });
 
+  const pathname = request.nextUrl.pathname;
+  const isProtectedPath =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/principal") ||
+    pathname.startsWith("/lead");
+
+  const hasAuthCookie = request.cookies
+    .getAll()
+    .some(
+      (c) =>
+        c.name.startsWith("sb-") &&
+        (c.name.includes("-auth-token") || c.name.includes("token"))
+    );
+
+  // Fast path: Unauthenticated visitors accessing public routes skip remote Supabase Auth network call
+  if (!isProtectedPath && !hasAuthCookie) {
+    return supabaseResponse;
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
@@ -30,13 +49,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  // Edge route protection for portal workspaces
-  const pathname = request.nextUrl.pathname;
-  const isProtectedPath =
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/principal") ||
-    pathname.startsWith("/lead");
 
   if (isProtectedPath && !user) {
     const url = request.nextUrl.clone();
