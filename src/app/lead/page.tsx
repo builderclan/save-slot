@@ -108,8 +108,8 @@ export default function LeadWorkspacePage() {
 
       if (meRes.status === "fulfilled" && meRes.value.ok) {
         const meData = await meRes.value.json();
-        if (!meData.authenticated || (!meData.user?.isLead && !meData.user?.isAdmin)) {
-          router.push("/login");
+        if (!meData.authenticated || !meData.user?.isLead) {
+          router.push("/login?error=lead_required");
           return;
         }
         setSession(meData.user);
@@ -118,7 +118,7 @@ export default function LeadWorkspacePage() {
           setSelectedCommunityId((prev) => prev || meData.user.leadCommunities[0].id);
         }
       } else {
-        router.push("/login");
+        router.push("/login?error=lead_required");
         return;
       }
 

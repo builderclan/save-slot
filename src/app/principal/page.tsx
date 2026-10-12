@@ -73,7 +73,7 @@ export default function PrincipalDeskPage() {
 
       if (meRes.status === "fulfilled" && meRes.value.ok) {
         const meData = await meRes.value.json();
-        if (!meData.authenticated || (!meData.user?.isPrincipal && !meData.user?.isAdmin)) {
+        if (!meData.authenticated || (!meData.user?.isPrincipal && !meData.user?.isVicePrincipal)) {
           router.push("/login?error=principal_required");
           return;
         }
