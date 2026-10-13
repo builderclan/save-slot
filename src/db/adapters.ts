@@ -1,4 +1,14 @@
-import { CampusEvent, Community, AdminCommunityRow, Venue, EventCategory, EventStatus, UserRole } from "@/types/database";
+import {
+  CampusEvent,
+  Community,
+  AdminCommunityRow,
+  Venue,
+  EventCategory,
+  EventStatus,
+  UserRole,
+  UserProfile,
+  AdminUserRow,
+} from "@/types/database";
 
 export interface DrizzleEventRow {
   id: string;
@@ -239,5 +249,53 @@ export function formatAdminCommunity(row: DrizzleAdminCommunityRow): AdminCommun
     lead_email: row.leadEmail ?? null,
     member_count: Number(row.memberCount || 0),
     event_count: Number(row.eventCount || 0),
+  };
+}
+
+export interface DrizzleUserRow {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  avatarUrl?: string | null;
+  campusId?: string | null;
+  createdAt?: Date | string | null;
+}
+
+export interface DrizzleAdminUserRow extends DrizzleUserRow {
+  communityId?: string | null;
+  communityName?: string | null;
+}
+
+/**
+ * Adapter utility that maps Drizzle ORM user records (camelCase) to
+ * UserProfile domain types (snake_case) expected by the frontend.
+ */
+export function formatUser(row: DrizzleUserRow): UserProfile {
+  return {
+    id: row.id,
+    email: row.email,
+    full_name: row.fullName,
+    role: row.role as UserRole,
+    avatar_url: row.avatarUrl ?? undefined,
+    campus_id: row.campusId ?? undefined,
+    created_at:
+      row.createdAt instanceof Date
+        ? row.createdAt.toISOString()
+        : row.createdAt
+        ? String(row.createdAt)
+        : undefined,
+  };
+}
+
+/**
+ * Adapter utility that maps Drizzle ORM admin user records with associated
+ * lead community info to AdminUserRow domain types (snake_case) expected by the frontend.
+ */
+export function formatAdminUser(row: DrizzleAdminUserRow): AdminUserRow {
+  return {
+    ...formatUser(row),
+    community_id: row.communityId ?? null,
+    community_name: row.communityName ?? null,
   };
 }

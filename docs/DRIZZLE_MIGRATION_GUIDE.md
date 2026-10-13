@@ -149,8 +149,8 @@ vi.mock("@/lib/db", () => ({
 - [x] `GET /api/admin/venues`, `POST /api/admin/venues` & `PATCH /api/admin/venues`
 - [x] `GET /api/admin/communities` & `POST /api/admin/communities`
 - [x] `GET /api/admin/communities/[id]`, `PATCH /api/admin/communities/[id]`, `DELETE /api/admin/communities/[id]`
-- [ ] `GET /api/admin/users` & `POST /api/admin/users`
-- [ ] `GET /api/admin/users/[id]`, `PATCH /api/admin/users/[id]`, `DELETE /api/admin/users/[id]`
+- [x] `GET /api/admin/users` & `POST /api/admin/users`
+- [x] `GET /api/admin/users/[id]`, `PATCH /api/admin/users/[id]`, `DELETE /api/admin/users/[id]`
 
 ### Phase 4: Core Domain Engines
 
