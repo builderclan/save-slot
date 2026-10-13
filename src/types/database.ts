@@ -31,8 +31,8 @@ export interface Venue {
   name: string;
   building?: string;
   capacity?: number | null;
-  address?: string;
-  notes?: string;
+  address?: string | null;
+  notes?: string | null;
   is_active: boolean;
   created_at?: string;
 }

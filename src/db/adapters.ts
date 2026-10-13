@@ -57,6 +57,41 @@ export interface DrizzleEventRow {
   } | null;
 }
 
+export interface DrizzleVenueRow {
+  id: string;
+  campusId?: string | null;
+  name: string;
+  building?: string | null;
+  capacity?: number | null;
+  address?: string | null;
+  notes?: string | null;
+  isActive?: boolean | null;
+  createdAt?: Date | string | null;
+}
+
+/**
+ * Adapter utility that maps Drizzle ORM venue records (camelCase) to
+ * Venue domain types (snake_case) expected by the frontend.
+ */
+export function formatVenue(row: DrizzleVenueRow): Venue {
+  return {
+    id: row.id,
+    campus_id: row.campusId || "",
+    name: row.name,
+    building: row.building || "",
+    capacity: row.capacity ?? null,
+    address: row.address ?? null,
+    notes: row.notes ?? null,
+    is_active: row.isActive ?? true,
+    created_at:
+      row.createdAt instanceof Date
+        ? row.createdAt.toISOString()
+        : row.createdAt
+        ? String(row.createdAt)
+        : undefined,
+  };
+}
+
 /**
  * Adapter utility that maps Drizzle ORM query results (camelCase) to
  * CampusEvent and database domain types (snake_case) expected by the frontend.
@@ -81,17 +116,7 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
 
   let venue: Venue | undefined = undefined;
   if (row.venue && row.venue.id) {
-    venue = {
-      id: row.venue.id,
-      campus_id: row.venue.campusId || "",
-      name: row.venue.name,
-      building: row.venue.building,
-      capacity: row.venue.capacity ?? null,
-      address: row.venue.address || undefined,
-      notes: row.venue.notes || undefined,
-      is_active: row.venue.isActive ?? true,
-      created_at: row.venue.createdAt instanceof Date ? row.venue.createdAt.toISOString() : (row.venue.createdAt || undefined),
-    };
+    venue = formatVenue(row.venue);
   }
 
   let reviewer: CampusEvent["reviewer"] = undefined;
