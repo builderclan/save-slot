@@ -147,9 +147,8 @@ vi.mock("@/lib/db", () => ({
 - [x] `DELETE /api/admin/events/[id]`
 - [x] `POST /api/admin/events/[id]/status`
 - [x] `GET /api/admin/venues`, `POST /api/admin/venues` & `PATCH /api/admin/venues`
-- [x] `PATCH /api/admin/venues/[id]`, `DELETE /api/admin/venues/[id]`
-- [ ] `GET /api/admin/communities` & `POST /api/admin/communities`
-- [ ] `GET /api/admin/communities/[id]`, `PATCH /api/admin/communities/[id]`
+- [x] `GET /api/admin/communities` & `POST /api/admin/communities`
+- [x] `GET /api/admin/communities/[id]`, `PATCH /api/admin/communities/[id]`, `DELETE /api/admin/communities/[id]`
 - [ ] `GET /api/admin/users` & `POST /api/admin/users`
 - [ ] `GET /api/admin/users/[id]`, `PATCH /api/admin/users/[id]`, `DELETE /api/admin/users/[id]`
 
