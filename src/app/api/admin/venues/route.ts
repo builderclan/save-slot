@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query } from "@/lib/db";
+import { withDbRetry } from "@/lib/db";
+import { venues } from "@/db/schema";
+import { formatVenue } from "@/db/adapters";
 import { getPrimaryCampusId } from "@/lib/campus";
-import { Venue } from "@/types/database";
 import { CreateVenueSchema, UpdateVenueSchema } from "@/lib/validations";
+import { asc, eq } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -12,10 +14,14 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
-    const res = await query<Venue>(
-      "SELECT id, campus_id, name, building, capacity, address, notes, is_active FROM public.venues ORDER BY name ASC;"
+    const rows = await withDbRetry((client) =>
+      client
+        .select()
+        .from(venues)
+        .orderBy(asc(venues.name))
     );
-    return NextResponse.json({ venues: res.rows });
+
+    return NextResponse.json({ venues: rows.map(formatVenue) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to load venues";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -46,14 +52,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const res = await query<Venue>(
-      `INSERT INTO public.venues (campus_id, name, building, capacity, address, notes, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, true)
-       RETURNING *;`,
-      [campusId, name.trim(), building, capacity, address || null, notes || null]
+    const [newVenue] = await withDbRetry((client) =>
+      client
+        .insert(venues)
+        .values({
+          campusId,
+          name: name.trim(),
+          building: building.trim(),
+          capacity: capacity ?? null,
+          address: address ? address.trim() : null,
+          notes: notes ? notes.trim() : null,
+          isActive: true,
+        })
+        .returning()
     );
 
-    return NextResponse.json({ success: true, venue: res.rows[0] });
+    return NextResponse.json({ success: true, venue: formatVenue(newVenue) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to create venue";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -77,16 +91,21 @@ export async function PATCH(request: Request) {
 
     const { id, is_active } = parsed.data;
 
-    const res = await query<Venue>(
-      "UPDATE public.venues SET is_active = $1 WHERE id = $2 RETURNING *;",
-      [is_active, id]
+    const [updatedVenue] = await withDbRetry((client) =>
+      client
+        .update(venues)
+        .set({
+          isActive: is_active,
+        })
+        .where(eq(venues.id, id))
+        .returning()
     );
 
-    if (res.rows.length === 0) {
+    if (!updatedVenue) {
       return NextResponse.json({ error: "Venue not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, venue: res.rows[0] });
+    return NextResponse.json({ success: true, venue: formatVenue(updatedVenue) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to update venue";
     return NextResponse.json({ error: message }, { status: 500 });

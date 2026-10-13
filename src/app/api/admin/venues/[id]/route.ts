@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, withTransaction } from "@/lib/db";
+import { withDbRetry } from "@/lib/db";
+import { venues, events } from "@/db/schema";
+import { formatVenue } from "@/db/adapters";
 import { UpdateVenueFullSchema } from "@/lib/validations";
-import { Venue } from "@/types/database";
+import { eq, and, inArray } from "drizzle-orm";
 
 export async function PATCH(
   request: Request,
@@ -25,50 +27,46 @@ export async function PATCH(
       );
     }
 
-    const updates: string[] = [];
-    const values: unknown[] = [];
-    let idx = 1;
-
     const { name, building, capacity, address, notes, is_active } = parsed.data;
 
+    const updateData: Partial<typeof venues.$inferInsert> = {};
+
     if (name !== undefined) {
-      updates.push(`name = $${idx++}`);
-      values.push(name.trim());
+      updateData.name = name.trim();
     }
     if (building !== undefined) {
-      updates.push(`building = $${idx++}`);
-      values.push(building.trim());
+      updateData.building = building.trim();
     }
     if (capacity !== undefined) {
-      updates.push(`capacity = $${idx++}`);
-      values.push(capacity);
+      updateData.capacity = capacity;
     }
     if (address !== undefined) {
-      updates.push(`address = $${idx++}`);
-      values.push(address?.trim() || null);
+      updateData.address = address?.trim() || null;
     }
     if (notes !== undefined) {
-      updates.push(`notes = $${idx++}`);
-      values.push(notes?.trim() || null);
+      updateData.notes = notes?.trim() || null;
     }
     if (is_active !== undefined) {
-      updates.push(`is_active = $${idx++}`);
-      values.push(is_active);
+      updateData.isActive = is_active;
     }
 
-    if (updates.length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
-    values.push(id);
-    const sql = `UPDATE public.venues SET ${updates.join(", ")} WHERE id = $${idx} RETURNING *;`;
-    const res = await query<Venue>(sql, values);
+    const [updatedVenue] = await withDbRetry((client) =>
+      client
+        .update(venues)
+        .set(updateData)
+        .where(eq(venues.id, id))
+        .returning()
+    );
 
-    if (res.rows.length === 0) {
+    if (!updatedVenue) {
       return NextResponse.json({ error: "Venue not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, venue: res.rows[0] });
+    return NextResponse.json({ success: true, venue: formatVenue(updatedVenue) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to update venue";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -88,29 +86,45 @@ export async function DELETE(
     const { id } = await params;
 
     // Safety guard: Check for active or pending events scheduled in this venue
-    const activeEventsRes = await query<{ count: string; titles: string }>(
-      `SELECT count(*)::text as count, string_agg(title, ', ') as titles
-       FROM public.events 
-       WHERE venue_id = $1 AND status IN ('pending', 'published');`,
-      [id]
+    const activeEvents = await withDbRetry((client) =>
+      client
+        .select({
+          id: events.id,
+          title: events.title,
+        })
+        .from(events)
+        .where(
+          and(
+            eq(events.venueId, id),
+            inArray(events.status, ["pending", "published"])
+          )
+        )
     );
 
-    const activeCount = parseInt(activeEventsRes.rows[0]?.count || "0", 10);
-    if (activeCount > 0) {
+    if (activeEvents.length > 0) {
       return NextResponse.json(
         {
-          error: `Cannot delete facility: ${activeCount} upcoming or pending event(s) are scheduled here. Please reassign those events or set the facility status to 'Under Maintenance' instead.`,
+          error: `Cannot delete facility: ${activeEvents.length} upcoming or pending event(s) are scheduled here. Please reassign those events or set the facility status to 'Under Maintenance' instead.`,
         },
         { status: 400 }
       );
     }
 
-    const deleted = await withTransaction(async (client) => {
-      // Detach any rejected or historical events before deletion
-      await client.query("UPDATE public.events SET venue_id = NULL WHERE venue_id = $1;", [id]);
+    const deleted = await withDbRetry(async (client) => {
+      return await client.transaction(async (tx) => {
+        // Detach any rejected or historical events before deletion
+        await tx
+          .update(events)
+          .set({ venueId: null })
+          .where(eq(events.venueId, id));
 
-      const res = await client.query("DELETE FROM public.venues WHERE id = $1 RETURNING id;", [id]);
-      return res.rows.length > 0;
+        const res = await tx
+          .delete(venues)
+          .where(eq(venues.id, id))
+          .returning({ id: venues.id });
+
+        return res.length > 0;
+      });
     });
 
     if (!deleted) {

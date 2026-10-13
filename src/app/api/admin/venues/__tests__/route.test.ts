@@ -1,30 +1,75 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST, PATCH } from "../route";
-import type { QueryResult, QueryResultRow } from "pg";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentUser: vi.fn(),
 }));
 
-vi.mock("@/lib/db", () => ({
-  query: vi.fn(),
-}));
+const {
+  mockSelect,
+  mockSelectFrom,
+  mockSelectOrderBy,
+  mockInsert,
+  mockInsertValues,
+  mockInsertReturning,
+  mockUpdate,
+  mockUpdateSet,
+  mockUpdateWhere,
+  mockUpdateReturning,
+} = vi.hoisted(() => {
+  const mockSelectOrderBy = vi.fn();
+  const mockSelectFrom = vi.fn();
+  const mockSelect = vi.fn();
+
+  const mockInsertReturning = vi.fn();
+  const mockInsertValues = vi.fn();
+  const mockInsert = vi.fn();
+
+  const mockUpdateReturning = vi.fn();
+  const mockUpdateWhere = vi.fn();
+  const mockUpdateSet = vi.fn();
+  const mockUpdate = vi.fn();
+
+  mockSelectFrom.mockReturnValue({ orderBy: mockSelectOrderBy });
+  mockSelect.mockReturnValue({ from: mockSelectFrom });
+
+  mockInsertValues.mockReturnValue({ returning: mockInsertReturning });
+  mockInsert.mockReturnValue({ values: mockInsertValues });
+
+  mockUpdateWhere.mockReturnValue({ returning: mockUpdateReturning });
+  mockUpdateSet.mockReturnValue({ where: mockUpdateWhere });
+  mockUpdate.mockReturnValue({ set: mockUpdateSet });
+
+  return {
+    mockSelect,
+    mockSelectFrom,
+    mockSelectOrderBy,
+    mockInsert,
+    mockInsertValues,
+    mockInsertReturning,
+    mockUpdate,
+    mockUpdateSet,
+    mockUpdateWhere,
+    mockUpdateReturning,
+  };
+});
+
+vi.mock("@/lib/db", () => {
+  const mockDbClient = {
+    select: mockSelect,
+    insert: mockInsert,
+    update: mockUpdate,
+  };
+
+  return {
+    db: mockDbClient,
+    withDbRetry: (op: (client: typeof mockDbClient) => Promise<unknown>) => op(mockDbClient),
+  };
+});
 
 import { getCurrentUser, type AuthSession } from "@/lib/auth";
-import { query } from "@/lib/db";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
-const mockQuery = vi.mocked(query);
-
-function mockDbResult<T extends QueryResultRow>(rows: T[]): QueryResult<T> {
-  return {
-    rows,
-    command: "SELECT",
-    rowCount: rows.length,
-    oid: 0,
-    fields: [],
-  };
-}
 
 describe("Admin Venues API (/api/admin/venues)", () => {
   const adminSession: AuthSession = {
@@ -63,6 +108,13 @@ describe("Admin Venues API (/api/admin/venues)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSelectFrom.mockReturnValue({ orderBy: mockSelectOrderBy });
+    mockSelect.mockReturnValue({ from: mockSelectFrom });
+    mockInsertValues.mockReturnValue({ returning: mockInsertReturning });
+    mockInsert.mockReturnValue({ values: mockInsertValues });
+    mockUpdateWhere.mockReturnValue({ returning: mockUpdateReturning });
+    mockUpdateSet.mockReturnValue({ where: mockUpdateWhere });
+    mockUpdate.mockReturnValue({ set: mockUpdateSet });
   });
 
   describe("GET /api/admin/venues", () => {
@@ -77,24 +129,23 @@ describe("Admin Venues API (/api/admin/venues)", () => {
 
     it("returns venues list for admin", async () => {
       mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockQuery.mockResolvedValueOnce(
-        mockDbResult([
-          {
-            id: "v-1",
-            campus_id: "campus-uuid-1",
-            name: "Turing Auditorium",
-            building: "CS",
-            capacity: 250,
-            is_active: true,
-          },
-        ])
-      );
+      mockSelectOrderBy.mockResolvedValueOnce([
+        {
+          id: "v-1",
+          campusId: "campus-uuid-1",
+          name: "Turing Auditorium",
+          building: "CS",
+          capacity: 250,
+          isActive: true,
+        },
+      ]);
 
       const res = await GET();
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.venues).toHaveLength(1);
       expect(data.venues[0].name).toBe("Turing Auditorium");
+      expect(data.venues[0].is_active).toBe(true);
     });
   });
 
@@ -119,16 +170,16 @@ describe("Admin Venues API (/api/admin/venues)", () => {
 
       const newVenue = {
         id: "new-venue-uuid",
-        campus_id: "campus-uuid-1",
+        campusId: "campus-uuid-1",
         name: "Seminar Hall B",
         building: "Academic Block 2",
         capacity: 150,
         address: "Block 2, 1st Floor",
         notes: null,
-        is_active: true,
+        isActive: true,
       };
 
-      mockQuery.mockResolvedValueOnce(mockDbResult([newVenue]));
+      mockInsertReturning.mockResolvedValueOnce([newVenue]);
 
       const req = new Request("http://localhost/api/admin/venues", {
         method: "POST",
@@ -147,6 +198,7 @@ describe("Admin Venues API (/api/admin/venues)", () => {
       expect(data.success).toBe(true);
       expect(data.venue.name).toBe("Seminar Hall B");
       expect(data.venue.capacity).toBe(150);
+      expect(data.venue.is_active).toBe(true);
     });
   });
 
@@ -168,7 +220,7 @@ describe("Admin Venues API (/api/admin/venues)", () => {
 
     it("returns 404 when venue does not exist", async () => {
       mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockQuery.mockResolvedValueOnce(mockDbResult([]));
+      mockUpdateReturning.mockResolvedValueOnce([]);
 
       const req = new Request("http://localhost/api/admin/venues", {
         method: "PATCH",
@@ -190,11 +242,14 @@ describe("Admin Venues API (/api/admin/venues)", () => {
 
       const updatedVenue = {
         id: "a1b2c3d4-e5f6-4890-a123-ef1234567890",
+        campusId: "campus-uuid-1",
         name: "Turing Auditorium",
-        is_active: false,
+        building: "CS",
+        capacity: 250,
+        isActive: false,
       };
 
-      mockQuery.mockResolvedValueOnce(mockDbResult([updatedVenue]));
+      mockUpdateReturning.mockResolvedValueOnce([updatedVenue]);
 
       const req = new Request("http://localhost/api/admin/venues", {
         method: "PATCH",
@@ -211,6 +266,5 @@ describe("Admin Venues API (/api/admin/venues)", () => {
       expect(data.success).toBe(true);
       expect(data.venue.is_active).toBe(false);
     });
-
   });
 });
