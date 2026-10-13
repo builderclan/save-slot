@@ -1,4 +1,4 @@
-import { CampusEvent, Community, Venue, EventCategory, EventStatus, UserRole } from "@/types/database";
+import { CampusEvent, Community, AdminCommunityRow, Venue, EventCategory, EventStatus, UserRole } from "@/types/database";
 
 export interface DrizzleEventRow {
   id: string;
@@ -162,5 +162,82 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
     community,
     venue,
     reviewer,
+  };
+}
+
+export interface DrizzleCommunityRow {
+  id: string;
+  campusId: string;
+  name: string;
+  slug: string;
+  category: string;
+  description?: string | null;
+  logoUrl?: string | null;
+  bannerUrl?: string | null;
+  website?: string | null;
+  instagram?: string | null;
+  status?: string | null;
+  applicantName?: string | null;
+  applicantEmail?: string | null;
+  rejectionReason?: string | null;
+  reviewedAt?: Date | string | null;
+  reviewedBy?: string | null;
+  createdAt?: Date | string | null;
+}
+
+export interface DrizzleAdminCommunityRow extends DrizzleCommunityRow {
+  leadId?: string | null;
+  leadName?: string | null;
+  leadEmail?: string | null;
+  memberCount: number | string;
+  eventCount: number | string;
+}
+
+/**
+ * Adapter utility that maps Drizzle ORM community records (camelCase) to
+ * Community domain types (snake_case) expected by the frontend.
+ */
+export function formatCommunity(row: DrizzleCommunityRow): Community {
+  return {
+    id: row.id,
+    campus_id: row.campusId,
+    name: row.name,
+    slug: row.slug,
+    category: row.category as EventCategory,
+    description: row.description ?? undefined,
+    logo_url: row.logoUrl ?? undefined,
+    banner_url: row.bannerUrl ?? undefined,
+    website: row.website ?? undefined,
+    instagram: row.instagram ?? undefined,
+    status: (row.status as "pending" | "approved" | "rejected") ?? undefined,
+    applicant_name: row.applicantName ?? undefined,
+    applicant_email: row.applicantEmail ?? undefined,
+    rejection_reason: row.rejectionReason ?? undefined,
+    reviewed_at:
+      row.reviewedAt instanceof Date
+        ? row.reviewedAt.toISOString()
+        : row.reviewedAt ?? undefined,
+    reviewed_by: row.reviewedBy ?? undefined,
+    created_at:
+      row.createdAt instanceof Date
+        ? row.createdAt.toISOString()
+        : row.createdAt
+        ? String(row.createdAt)
+        : undefined,
+  };
+}
+
+/**
+ * Adapter utility that maps Drizzle ORM admin community records with aggregated metrics
+ * to AdminCommunityRow domain types (snake_case) expected by the frontend.
+ */
+export function formatAdminCommunity(row: DrizzleAdminCommunityRow): AdminCommunityRow {
+  return {
+    ...formatCommunity(row),
+    lead_id: row.leadId ?? null,
+    lead_name: row.leadName ?? null,
+    lead_email: row.leadEmail ?? null,
+    member_count: Number(row.memberCount || 0),
+    event_count: Number(row.eventCount || 0),
   };
 }
