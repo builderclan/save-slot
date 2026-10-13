@@ -158,8 +158,10 @@ vi.mock("@/lib/db", () => ({
 - [x] `src/lib/campus.ts`
 - [x] `src/lib/auth.ts`
 
-### Phase 5: Final Cleanup
+### Phase 5: Final Cleanup & Full Unification
 
-- [ ] Verify 100% of endpoints have moved off legacy `query()` helper.
-- [ ] Prune legacy raw SQL helper if no longer required.
-- [ ] Run full test suite: `pnpm validate`.
+- [x] `POST /api/auth/login` (Login profile & campus self-heal)
+- [x] `src/app/page.tsx` (Student notice board SSR queries)
+- [x] Verify 100% of application routes and domain engines have moved off legacy `query()` helper.
+- [x] Deprecate legacy raw SQL helpers (`query` and `withTransaction`) with backward-compatibility markers in `src/lib/db.ts`.
+- [x] Run full test suite and production build verification.

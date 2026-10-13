@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { query } from "@/lib/db";
+import { withDbRetry } from "@/lib/db";
+import { users, communityMembers } from "@/db/schema";
+import { eq, and, isNull, sql } from "drizzle-orm";
+import { formatUser } from "@/db/adapters";
 import { getPrimaryCampusId } from "@/lib/campus";
-import { UserProfile } from "@/types/database";
 import { LoginSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
@@ -30,22 +32,33 @@ export async function POST(request: Request) {
       );
     }
 
-    // Fetch user profile from public.users
-    const userRes = await query<UserProfile>(
-      "SELECT id, email, full_name, role, campus_id FROM public.users WHERE id = $1;",
-      [authData.user.id]
+    // Fetch user profile from public.users via Drizzle
+    const userRows = await withDbRetry((client) =>
+      client
+        .select({
+          id: users.id,
+          email: users.email,
+          fullName: users.fullName,
+          role: users.role,
+          campusId: users.campusId,
+        })
+        .from(users)
+        .where(eq(users.id, authData.user.id))
+        .limit(1)
     );
 
-    const profile = userRes.rows[0];
+    const profile = userRows[0] ? formatUser(userRows[0]) : null;
 
     // Self-heal: ensure user is bound to the primary campus (AISAT) upon login
     if (profile && !profile.campus_id) {
       try {
         const primaryCampusId = await getPrimaryCampusId();
         if (primaryCampusId) {
-          await query(
-            "UPDATE public.users SET campus_id = $1 WHERE id = $2 AND campus_id IS NULL;",
-            [primaryCampusId, profile.id]
+          await withDbRetry((client) =>
+            client
+              .update(users)
+              .set({ campusId: primaryCampusId })
+              .where(and(eq(users.id, profile.id), isNull(users.campusId)))
           );
         }
       } catch (healErr) {
@@ -62,11 +75,21 @@ export async function POST(request: Request) {
       role !== "vice_principal" &&
       role !== "organizer"
     ) {
-      const commCheck = await query(
-        "SELECT 1 FROM public.community_members WHERE user_id = $1 AND role = 'lead' AND status = 'active' LIMIT 1;",
-        [authData.user.id]
+      const commCheck = await withDbRetry((client) =>
+        client
+          .select({ one: sql`1` })
+          .from(communityMembers)
+          .where(
+            and(
+              eq(communityMembers.userId, authData.user.id),
+              eq(communityMembers.role, "lead"),
+              eq(communityMembers.status, "active")
+            )
+          )
+          .limit(1)
       );
-      if (commCheck.rows.length > 0) {
+
+      if (commCheck.length > 0) {
         role = "organizer";
       }
     }

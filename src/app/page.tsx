@@ -1,4 +1,7 @@
-import { query } from "@/lib/db";
+import { withDbRetry } from "@/lib/db";
+import { events, communities, venues, users } from "@/db/schema";
+import { eq, asc, getTableColumns } from "drizzle-orm";
+import { formatCampusEvent, formatVenue } from "@/db/adapters";
 import { getCurrentUser } from "@/lib/auth";
 import { CampusEvent, Venue } from "@/types/database";
 import {
@@ -14,59 +17,66 @@ export default async function StudentNoticeBoardPage() {
   let initialUserSession: UserSessionState | null = null;
 
   try {
-    const [eventsRes, venuesRes, session] = await Promise.all([
-      query<CampusEvent>(`
-        SELECT 
-          e.id, e.campus_id, e.community_id, e.venue_id, e.created_by,
-          e.title, e.slug, e.description, e.category, e.tags,
-          e.start_time, e.end_time, e.timezone, e.location_name,
-          e.is_virtual, e.virtual_link, e.external_registration_url, e.cover_image_url,
-          e.status, e.rejection_reason, e.cancellation_reason, e.created_at, e.updated_at,
-          json_build_object(
-            'id', c.id,
-            'name', c.name,
-            'slug', c.slug,
-            'category', c.category,
-            'logo_url', c.logo_url
-          ) as community,
-          CASE 
-            WHEN v.id IS NULL THEN NULL 
-            ELSE json_build_object(
-              'id', v.id,
-              'name', v.name,
-              'building', v.building,
-              'capacity', v.capacity,
-              'address', v.address,
-              'notes', v.notes
-            )
-          END as venue,
-          CASE 
-            WHEN reviewer.id IS NULL THEN NULL 
-            ELSE json_build_object(
-              'id', reviewer.id,
-              'full_name', reviewer.full_name,
-              'email', reviewer.email,
-              'role', reviewer.role
-            )
-          END as reviewer
-        FROM public.events e
-        JOIN public.communities c ON c.id = e.community_id
-        LEFT JOIN public.venues v ON v.id = e.venue_id
-        LEFT JOIN public.users reviewer ON reviewer.id = e.reviewed_by
-        WHERE e.status = 'published'
-        ORDER BY e.start_time ASC
-        LIMIT 200;
-      `),
-      query<Venue>(
-        "SELECT id, campus_id, name, building, capacity, address, notes, is_active FROM public.venues WHERE is_active = true ORDER BY name ASC;"
+    const [eventsRows, venuesRows, session] = await Promise.all([
+      withDbRetry((client) =>
+        client
+          .select({
+            ...getTableColumns(events),
+            community: {
+              id: communities.id,
+              campusId: communities.campusId,
+              name: communities.name,
+              slug: communities.slug,
+              category: communities.category,
+              logoUrl: communities.logoUrl,
+            },
+            venue: {
+              id: venues.id,
+              campusId: venues.campusId,
+              name: venues.name,
+              building: venues.building,
+              capacity: venues.capacity,
+              address: venues.address,
+              notes: venues.notes,
+              isActive: venues.isActive,
+            },
+            reviewer: {
+              id: users.id,
+              fullName: users.fullName,
+              email: users.email,
+              role: users.role,
+            },
+          })
+          .from(events)
+          .innerJoin(communities, eq(communities.id, events.communityId))
+          .leftJoin(venues, eq(venues.id, events.venueId))
+          .leftJoin(users, eq(users.id, events.reviewedBy))
+          .where(eq(events.status, "published"))
+          .orderBy(asc(events.startTime))
+          .limit(200)
+      ),
+      withDbRetry((client) =>
+        client
+          .select({
+            id: venues.id,
+            campusId: venues.campusId,
+            name: venues.name,
+            building: venues.building,
+            capacity: venues.capacity,
+            address: venues.address,
+            notes: venues.notes,
+            isActive: venues.isActive,
+            createdAt: venues.createdAt,
+          })
+          .from(venues)
+          .where(eq(venues.isActive, true))
+          .orderBy(asc(venues.name))
       ),
       getCurrentUser(),
     ]);
 
-    // Serialize PostgreSQL Date objects to ISO 8601 strings to maintain parity with API responses
-    initialEvents = JSON.parse(JSON.stringify(eventsRes.rows));
-    initialVenues = JSON.parse(JSON.stringify(venuesRes.rows));
-
+    initialEvents = eventsRows.map(formatCampusEvent);
+    initialVenues = venuesRows.map(formatVenue);
 
     if (session) {
       initialUserSession = {
