@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "../route";
-import type { QueryResult, QueryResultRow } from "pg";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentUser: vi.fn(),
+}));
+
+vi.mock("@/lib/campus", () => ({
+  getPrimaryCampusId: vi.fn(),
+  resetCampusCache: vi.fn(),
 }));
 
 const {
@@ -23,7 +27,6 @@ const {
   mockUpdateWhere,
   mockUpdateReturning,
   mockTransaction,
-  mockQuery,
 } = vi.hoisted(() => {
   const mockSelectLimit = vi.fn();
   const mockSelectOrderBy = vi.fn();
@@ -44,7 +47,6 @@ const {
   const mockUpdate = vi.fn();
 
   const mockTransaction = vi.fn();
-  const mockQuery = vi.fn();
 
   return {
     mockSelect,
@@ -63,7 +65,6 @@ const {
     mockUpdateWhere,
     mockUpdateReturning,
     mockTransaction,
-    mockQuery,
   };
 });
 
@@ -77,26 +78,15 @@ vi.mock("@/lib/db", () => {
   };
 
   return {
-    db: mockDbClient,
-    query: mockQuery,
     withDbRetry: (op: (client: typeof mockDbClient) => Promise<unknown>) => op(mockDbClient),
   };
 });
 
 import { getCurrentUser, type AuthSession } from "@/lib/auth";
-import { resetCampusCache } from "@/lib/campus";
+import { getPrimaryCampusId, resetCampusCache } from "@/lib/campus";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
-
-function mockDbResult<T extends QueryResultRow>(rows: T[]): QueryResult<T> {
-  return {
-    rows,
-    command: "SELECT",
-    rowCount: rows.length,
-    oid: 0,
-    fields: [],
-  };
-}
+const mockGetPrimaryCampusId = vi.mocked(getPrimaryCampusId);
 
 describe("Admin Communities API (/api/admin/communities)", () => {
   const adminSession: AuthSession = {
@@ -274,9 +264,7 @@ describe("Admin Communities API (/api/admin/communities)", () => {
         ...adminSession,
         profile: { ...adminSession.profile, campus_id: "" },
       });
-      mockQuery
-        .mockResolvedValueOnce(mockDbResult([])) // No campus in database
-        .mockResolvedValueOnce(mockDbResult([])); // Seed attempt returns empty
+      mockGetPrimaryCampusId.mockResolvedValueOnce("");
 
       const req = new Request("http://localhost/api/admin/communities", {
         method: "POST",
@@ -296,7 +284,7 @@ describe("Admin Communities API (/api/admin/communities)", () => {
         ...adminSession,
         profile: { ...adminSession.profile, campus_id: "" },
       });
-      mockQuery.mockResolvedValueOnce(mockDbResult([{ id: "campus-uuid-1" }])); // Fallback primary campus
+      mockGetPrimaryCampusId.mockResolvedValueOnce("campus-uuid-1");
       mockSelectLimit.mockResolvedValueOnce([]); // No slug collision
 
       const createdComm = {

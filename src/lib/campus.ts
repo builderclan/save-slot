@@ -1,4 +1,6 @@
-import { query } from "@/lib/db";
+import { withDbRetry } from "@/lib/db";
+import { campuses } from "@/db/schema";
+import { sql } from "drizzle-orm";
 
 let cachedPrimaryCampusId: string | null = null;
 
@@ -12,23 +14,38 @@ export async function getPrimaryCampusId(): Promise<string> {
   }
 
   try {
-    const res = await query<{ id: string }>(
-      "SELECT id FROM public.campuses ORDER BY CASE WHEN slug = 'aisat' THEN 0 ELSE 1 END LIMIT 1;"
+    const rows = await withDbRetry((client) =>
+      client
+        .select({ id: campuses.id })
+        .from(campuses)
+        .orderBy(sql`CASE WHEN ${campuses.slug} = 'aisat' THEN 0 ELSE 1 END`)
+        .limit(1)
     );
-    if (res && res.rows && res.rows.length > 0) {
-      cachedPrimaryCampusId = res.rows[0].id;
+
+    if (rows && rows.length > 0) {
+      cachedPrimaryCampusId = rows[0].id;
       return cachedPrimaryCampusId;
     }
 
     // Self-seed AISAT campus if campuses table is completely empty in the database
-    const seedRes = await query<{ id: string }>(
-      `INSERT INTO public.campuses (name, slug, domain, timezone)
-       VALUES ('Albertian Institute of Science & Technology', 'aisat', 'aisat.ac.in', 'Asia/Kolkata')
-       ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
-       RETURNING id;`
+    const seedRes = await withDbRetry((client) =>
+      client
+        .insert(campuses)
+        .values({
+          name: "Albertian Institute of Science & Technology",
+          slug: "aisat",
+          domain: "aisat.ac.in",
+          timezone: "Asia/Kolkata",
+        })
+        .onConflictDoUpdate({
+          target: campuses.slug,
+          set: { name: sql`EXCLUDED.name` },
+        })
+        .returning({ id: campuses.id })
     );
-    if (seedRes && seedRes.rows && seedRes.rows.length > 0) {
-      cachedPrimaryCampusId = seedRes.rows[0].id;
+
+    if (seedRes && seedRes.length > 0) {
+      cachedPrimaryCampusId = seedRes[0].id;
       return cachedPrimaryCampusId;
     }
   } catch (err) {
