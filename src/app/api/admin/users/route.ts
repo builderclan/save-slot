@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, withTransaction } from "@/lib/db";
+import { withDbRetry } from "@/lib/db";
+import { users, communityMembers, communities } from "@/db/schema";
+import { formatUser, formatAdminUser } from "@/db/adapters";
 import { getPrimaryCampusId } from "@/lib/campus";
-import { UserProfile } from "@/types/database";
 import { CreateUserSchema } from "@/lib/validations";
+import { eq, desc, sql } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -12,28 +14,35 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
-    const sql = `
-      SELECT 
-        u.id, u.email, u.full_name, u.role, u.campus_id, u.created_at,
-        (
-          SELECT cm.community_id 
-          FROM public.community_members cm 
-          WHERE cm.user_id = u.id AND cm.role = 'lead' 
-          ORDER BY cm.created_at ASC 
-          LIMIT 1
-        ) as community_id,
-        (
-          SELECT string_agg(c.name, ', ' ORDER BY c.name)
-          FROM public.community_members cm
-          JOIN public.communities c ON c.id = cm.community_id
-          WHERE cm.user_id = u.id AND cm.role = 'lead'
-        ) as community_name
-      FROM public.users u
-      ORDER BY u.created_at DESC;
-    `;
+    const rows = await withDbRetry((client) =>
+      client
+        .select({
+          id: users.id,
+          email: users.email,
+          fullName: users.fullName,
+          role: users.role,
+          avatarUrl: users.avatarUrl,
+          campusId: users.campusId,
+          createdAt: users.createdAt,
+          communityId: sql<string | null>`(
+            SELECT ${communityMembers.communityId} 
+            FROM ${communityMembers} 
+            WHERE ${communityMembers.userId} = ${users.id} AND ${communityMembers.role} = 'lead' 
+            ORDER BY ${communityMembers.createdAt} ASC 
+            LIMIT 1
+          )`,
+          communityName: sql<string | null>`(
+            SELECT string_agg(${communities.name}, ', ' ORDER BY ${communities.name})
+            FROM ${communityMembers}
+            JOIN ${communities} ON ${communities.id} = ${communityMembers.communityId}
+            WHERE ${communityMembers.userId} = ${users.id} AND ${communityMembers.role} = 'lead'
+          )`,
+        })
+        .from(users)
+        .orderBy(desc(users.createdAt))
+    );
 
-    const res = await query(sql);
-    return NextResponse.json({ users: res.rows });
+    return NextResponse.json({ users: rows.map(formatAdminUser) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to load users";
     return NextResponse.json({ error: message }, { status: 500 });
@@ -68,70 +77,99 @@ export async function POST(request: Request) {
     }
 
     // Check if user already exists
-    const existing = await query("SELECT id FROM public.users WHERE email = $1;", [normalizedEmail]);
-    if (existing.rows.length > 0) {
+    const [existing] = await withDbRetry((client) =>
+      client
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, normalizedEmail))
+        .limit(1)
+    );
+    if (existing) {
       return NextResponse.json({ error: "A user with this email already exists." }, { status: 400 });
     }
 
-    const createdUser = await withTransaction(async (client) => {
-      // 1. Insert into auth.users with empty string tokens for GoTrue scanner compatibility
-      const insAuth = await client.query<{ id: string }>(
-        `INSERT INTO auth.users (
-          id, instance_id, aud, role, email, encrypted_password,
-          email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-          is_super_admin, is_sso_user, is_anonymous, created_at, updated_at,
-          confirmation_token, recovery_token, email_change_token_new, email_change,
-          email_change_token_current, phone_change, phone_change_token
-        )
-        VALUES (
-          gen_random_uuid(), '00000000-0000-0000-0000-000000000000',
-          'authenticated', 'authenticated', $1, crypt($2, gen_salt('bf')),
-          NOW(), '{"provider":"email","providers":["email"]}',
-          jsonb_build_object('full_name', $3::text, 'role', $4::text),
-          false, false, false, NOW(), NOW(),
-          '', '', '', '', '', '', ''
-        )
-        RETURNING id;`,
-        [normalizedEmail, password, fullName.trim(), role]
-      );
+    const createdUser = await withDbRetry(async (client) => {
+      return client.transaction(async (tx) => {
+        const newUserId = crypto.randomUUID();
 
-      const newUserId = insAuth.rows[0].id;
-
-      // 2. Insert into auth.identities
-      await client.query(
-        `INSERT INTO auth.identities (
-          id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at
-        )
-        VALUES (
-          gen_random_uuid(), $1::uuid, jsonb_build_object('sub', $2::text, 'email', $3::text),
-          'email', $2::text, NOW(), NOW(), NOW()
-        );`,
-        [newUserId, newUserId, normalizedEmail]
-      );
-
-      // 3. Insert into public.users
-      const insUser = await client.query<UserProfile>(
-        `INSERT INTO public.users (id, email, full_name, role, campus_id)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING *;`,
-        [newUserId, normalizedEmail, fullName.trim(), role, campusId]
-      );
-
-      // 4. Assign community lead membership if provided
-      if (communityId && role === "organizer") {
-        await client.query(
-          `INSERT INTO public.community_members (id, community_id, user_id, role, status)
-           VALUES (gen_random_uuid(), $1, $2, 'lead', 'active')
-           ON CONFLICT (community_id, user_id) DO UPDATE SET role = 'lead', status = 'active';`,
-          [communityId, newUserId]
+        // 1. Insert into auth.users with empty string tokens for GoTrue scanner compatibility
+        await tx.execute(
+          sql`INSERT INTO auth.users (
+            id, instance_id, aud, role, email, encrypted_password,
+            email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
+            is_super_admin, is_sso_user, is_anonymous, created_at, updated_at,
+            confirmation_token, recovery_token, email_change_token_new, email_change,
+            email_change_token_current, phone_change, phone_change_token
+          )
+          VALUES (
+            ${newUserId}::uuid, '00000000-0000-0000-0000-000000000000',
+            'authenticated', 'authenticated', ${normalizedEmail}, crypt(${password}, gen_salt('bf')),
+            NOW(), '{"provider":"email","providers":["email"]}',
+            jsonb_build_object('full_name', ${fullName.trim()}::text, 'role', ${role}::text),
+            false, false, false, NOW(), NOW(),
+            '', '', '', '', '', '', ''
+          )`
         );
-      }
 
-      return insUser.rows[0];
+        // 2. Insert into auth.identities
+        await tx.execute(
+          sql`INSERT INTO auth.identities (
+            id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at
+          )
+          VALUES (
+            gen_random_uuid(), ${newUserId}::uuid, jsonb_build_object('sub', ${newUserId}::text, 'email', ${normalizedEmail}::text),
+            'email', ${newUserId}::text, NOW(), NOW(), NOW()
+          )`
+        );
+
+        // 3. Insert into public.users
+        const [insertedUser] = await tx
+          .insert(users)
+          .values({
+            id: newUserId,
+            email: normalizedEmail,
+            fullName: fullName.trim(),
+            role,
+            campusId,
+          })
+          .returning();
+
+        // 4. Assign community lead membership if provided
+        if (communityId && role === "organizer") {
+          await tx
+            .insert(communityMembers)
+            .values({
+              communityId,
+              userId: newUserId,
+              role: "lead",
+              status: "active",
+            })
+            .onConflictDoUpdate({
+              target: [communityMembers.communityId, communityMembers.userId],
+              set: {
+                role: "lead",
+                status: "active",
+              },
+            });
+        }
+
+        return insertedUser;
+      });
     });
 
-    return NextResponse.json({ success: true, user: createdUser });
+    return NextResponse.json({ success: true, user: formatUser(createdUser) });
   } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: string }).code === "23505"
+    ) {
+      return NextResponse.json(
+        { error: "A user with this email already exists." },
+        { status: 400 }
+      );
+    }
     const message = err instanceof Error ? err.message : "Failed to create user";
     return NextResponse.json({ error: message }, { status: 500 });
   }

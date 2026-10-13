@@ -84,6 +84,11 @@ export interface UserProfile {
   created_at?: string;
 }
 
+export interface AdminUserRow extends UserProfile {
+  community_id?: string | null;
+  community_name?: string | null;
+}
+
 export interface CampusEvent {
   id: string;
   campus_id: string;
