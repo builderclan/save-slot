@@ -24,7 +24,20 @@ const {
   const mockSelect = vi.fn().mockImplementation(() => {
     const createChain = () => {
       const getNext = () => queryQueue.shift() ?? [];
-      const chain: any = {
+      interface MockSelectChain {
+        from: (table: unknown) => MockSelectChain;
+        innerJoin: (...args: unknown[]) => MockSelectChain;
+        leftJoin: (...args: unknown[]) => MockSelectChain;
+        where: (...args: unknown[]) => MockSelectChain;
+        orderBy: (...args: unknown[]) => MockSelectChain;
+        limit: (...args: unknown[]) => Promise<unknown[]>;
+        then: (
+          resolve: (v: unknown[]) => unknown,
+          reject?: (e: unknown) => unknown
+        ) => Promise<unknown>;
+      }
+
+      const chain: MockSelectChain = {
         from: vi.fn().mockImplementation(() => chain),
         innerJoin: vi.fn().mockImplementation(() => chain),
         leftJoin: vi.fn().mockImplementation(() => chain),
@@ -34,7 +47,7 @@ const {
         }),
         orderBy: vi.fn().mockImplementation(() => chain),
         limit: vi.fn().mockImplementation(() => Promise.resolve(getNext())),
-        then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
+        then: (resolve, reject) =>
           Promise.resolve(getNext()).then(resolve, reject),
       };
       return chain;

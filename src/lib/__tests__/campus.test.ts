@@ -3,12 +3,8 @@ import { getPrimaryCampusId, resetCampusCache } from "../campus";
 
 const {
   mockSelect,
-  mockSelectFrom,
-  mockSelectOrderBy,
   mockSelectLimit,
   mockInsert,
-  mockInsertValues,
-  mockInsertOnConflictDoUpdate,
   mockInsertReturning,
 } = vi.hoisted(() => {
   const mockSelectLimit = vi.fn();
@@ -31,12 +27,8 @@ const {
 
   return {
     mockSelect,
-    mockSelectFrom,
-    mockSelectOrderBy,
     mockSelectLimit,
     mockInsert,
-    mockInsertValues,
-    mockInsertOnConflictDoUpdate,
     mockInsertReturning,
   };
 });
