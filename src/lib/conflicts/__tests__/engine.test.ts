@@ -1,26 +1,78 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { checkEventConflicts } from "../engine";
 import { addDays } from "date-fns";
-import type { QueryResult, QueryResultRow } from "pg";
+import util from "util";
 
-// Mock the database query function
-vi.mock("@/lib/db", () => ({
-  query: vi.fn(),
-}));
+const {
+  mockSelect,
+  mockSelectWhereCalls,
+  queueQueryResults,
+  resetQueryQueue,
+} = vi.hoisted(() => {
+  let queryQueue: unknown[][] = [];
+  const mockSelectWhereCalls: unknown[] = [];
 
-import { query } from "@/lib/db";
-
-const mockQuery = vi.mocked(query);
-
-function mockDbResult<T extends QueryResultRow>(rows: T[]): QueryResult<T> {
-  return {
-    rows,
-    command: "SELECT",
-    rowCount: rows.length,
-    oid: 0,
-    fields: [],
+  const queueQueryResults = (...results: unknown[][]) => {
+    queryQueue.push(...results);
   };
-}
+
+  const resetQueryQueue = () => {
+    queryQueue = [];
+    mockSelectWhereCalls.length = 0;
+  };
+
+  const mockSelect = vi.fn().mockImplementation(() => {
+    const createChain = () => {
+      const getNext = () => queryQueue.shift() ?? [];
+      interface MockSelectChain {
+        from: (table: unknown) => MockSelectChain;
+        innerJoin: (...args: unknown[]) => MockSelectChain;
+        leftJoin: (...args: unknown[]) => MockSelectChain;
+        where: (...args: unknown[]) => MockSelectChain;
+        orderBy: (...args: unknown[]) => MockSelectChain;
+        limit: (...args: unknown[]) => Promise<unknown[]>;
+        then: (
+          resolve: (v: unknown[]) => unknown,
+          reject?: (e: unknown) => unknown
+        ) => Promise<unknown>;
+      }
+
+      const chain: MockSelectChain = {
+        from: vi.fn().mockImplementation(() => chain),
+        innerJoin: vi.fn().mockImplementation(() => chain),
+        leftJoin: vi.fn().mockImplementation(() => chain),
+        where: vi.fn().mockImplementation((...args: unknown[]) => {
+          mockSelectWhereCalls.push(args[0]);
+          return chain;
+        }),
+        orderBy: vi.fn().mockImplementation(() => chain),
+        limit: vi.fn().mockImplementation(() => Promise.resolve(getNext())),
+        then: (resolve, reject) =>
+          Promise.resolve(getNext()).then(resolve, reject),
+      };
+      return chain;
+    };
+    return createChain();
+  });
+
+  return {
+    mockSelect,
+    mockSelectWhereCalls,
+    queueQueryResults,
+    resetQueryQueue,
+  };
+});
+
+vi.mock("@/lib/db", () => {
+  const mockDbClient = {
+    select: mockSelect,
+  };
+
+  return {
+    db: mockDbClient,
+    withDbRetry: (op: (client: typeof mockDbClient) => Promise<unknown>) => op(mockDbClient),
+  };
+});
 
 describe("Conflict Detection Engine (checkEventConflicts)", () => {
   const venueId = "11111111-2222-3333-4444-555555555555";
@@ -35,6 +87,7 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetQueryQueue();
   });
 
   it("verifies a completely clean slot (no clashes and >= 7 days notice)", async () => {
@@ -44,9 +97,7 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
 
     // 1st query: target venue lookup
     // 2nd query: clash search (empty rows = no collision)
-    mockQuery
-      .mockResolvedValueOnce(mockDbResult([mockVenue]))
-      .mockResolvedValueOnce(mockDbResult([]));
+    queueQueryResults([mockVenue], []);
 
     const result = await checkEventConflicts({
       venueId,
@@ -66,12 +117,13 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
     const startTime = new Date(nearDate.setHours(10, 0, 0, 0)).toISOString();
     const endTime = new Date(nearDate.setHours(12, 0, 0, 0)).toISOString();
 
-    mockQuery
-      .mockResolvedValueOnce(mockDbResult([mockVenue])) // venue
-      .mockResolvedValueOnce(mockDbResult([])) // no venue collision
-      .mockResolvedValueOnce(mockDbResult([])) // earliest safe date check
-      .mockResolvedValueOnce(mockDbResult([])) // alt venues query
-      .mockResolvedValueOnce(mockDbResult([])); // following day check
+    queueQueryResults(
+      [mockVenue], // venue
+      [], // no venue collision
+      [], // earliest safe date check
+      [], // alt venues query
+      [] // following day check
+    );
 
     const result = await checkEventConflicts({
       venueId,
@@ -94,9 +146,7 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
     const nextDay = addDays(futureDate, 1);
     const endTime = new Date(nextDay.setHours(2, 0, 0, 0)).toISOString();
 
-    mockQuery
-      .mockResolvedValueOnce(mockDbResult([mockVenue]))
-      .mockResolvedValueOnce(mockDbResult([]));
+    queueQueryResults([mockVenue], []);
 
     const result = await checkEventConflicts({
       venueId,
@@ -131,12 +181,13 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
       venue: mockVenue,
     };
 
-    mockQuery
-      .mockResolvedValueOnce(mockDbResult([mockVenue])) // venue lookup
-      .mockResolvedValueOnce(mockDbResult([conflictingEvent])) // collision found
-      .mockResolvedValueOnce(mockDbResult([])) // slot1 later same day check (clean)
-      .mockResolvedValueOnce(mockDbResult([])) // alt venues query
-      .mockResolvedValueOnce(mockDbResult([])); // next day check
+    queueQueryResults(
+      [mockVenue], // venue lookup
+      [conflictingEvent], // collision found
+      [], // slot1 later same day check (clean)
+      [], // alt venues query
+      [] // next day check
+    );
 
     const result = await checkEventConflicts({
       venueId,
@@ -160,9 +211,7 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
     const endTime = new Date(futureDate.setHours(17, 0, 0, 0)).toISOString();
     const currentEventId = "my-current-event-uuid";
 
-    mockQuery
-      .mockResolvedValueOnce(mockDbResult([mockVenue]))
-      .mockResolvedValueOnce(mockDbResult([])); // query filtered by e.id != excludeEventId
+    queueQueryResults([mockVenue], []);
 
     const result = await checkEventConflicts({
       venueId,
@@ -174,9 +223,8 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
     expect(result.hasConflict).toBe(false);
     expect(result.hasLeadTimeViolation).toBe(false);
 
-    // Verify SQL parameter was passed
-    const clashCall = mockQuery.mock.calls[1];
-    expect(clashCall[0]).toContain("e.id != $4");
-    expect(clashCall[1]).toContain(currentEventId);
+    // Verify Drizzle condition included excludeEventId
+    const clashWhereCall = mockSelectWhereCalls[1];
+    expect(util.inspect(clashWhereCall, { depth: null })).toContain(currentEventId);
   });
 });

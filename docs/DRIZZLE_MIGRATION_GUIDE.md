@@ -154,9 +154,9 @@ vi.mock("@/lib/db", () => ({
 
 ### Phase 4: Core Domain Engines
 
-- [ ] `src/lib/conflicts/engine.ts` (SafeSlot conflict check engine)
-- [ ] `src/lib/campus.ts`
-- [ ] `src/lib/auth.ts`
+- [x] `src/lib/conflicts/engine.ts` (SafeSlot conflict check engine)
+- [x] `src/lib/campus.ts`
+- [x] `src/lib/auth.ts`
 
 ### Phase 5: Final Cleanup
 

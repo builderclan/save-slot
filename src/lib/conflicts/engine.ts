@@ -1,4 +1,17 @@
-import { query } from "@/lib/db";
+import { withDbRetry } from "@/lib/db";
+import { events, venues, communities } from "@/db/schema";
+import {
+  eq,
+  ne,
+  and,
+  notInArray,
+  lt,
+  gt,
+  desc,
+  notExists,
+  getTableColumns,
+} from "drizzle-orm";
+import { formatCampusEvent, formatVenue } from "@/db/adapters";
 import {
   CampusEvent,
   ConflictCheckResult,
@@ -31,36 +44,72 @@ export async function checkEventConflicts(params: {
   const hasLeadTimeViolation = diffDays < minRequiredDays;
 
   // 2. Query target venue info
-  const targetVenueRes = await query<Venue>(
-    "SELECT id, campus_id, name, building, capacity, is_active FROM public.venues WHERE id = $1;",
-    [venueId]
+  const targetVenueRows = await withDbRetry((client) =>
+    client
+      .select({
+        id: venues.id,
+        campusId: venues.campusId,
+        name: venues.name,
+        building: venues.building,
+        capacity: venues.capacity,
+        address: venues.address,
+        notes: venues.notes,
+        isActive: venues.isActive,
+        createdAt: venues.createdAt,
+      })
+      .from(venues)
+      .where(eq(venues.id, venueId))
+      .limit(1)
   );
-  const targetVenue = targetVenueRes.rows[0];
+  const targetVenue: Venue | null = targetVenueRows[0]
+    ? formatVenue(targetVenueRows[0])
+    : null;
 
   // 3. Query Colliding Events in the Same Venue
-  let clashSql = `
-    SELECT 
-      e.id, e.title, e.start_time, e.end_time, e.category, e.status, e.venue_id,
-      json_build_object('id', c.id, 'name', c.name, 'slug', c.slug) as community,
-      json_build_object('id', v.id, 'name', v.name, 'building', v.building) as venue
-    FROM public.events e
-    JOIN public.communities c ON c.id = e.community_id
-    JOIN public.venues v ON v.id = e.venue_id
-    WHERE e.venue_id = $1
-      AND e.status NOT IN ('rejected', 'cancelled')
-      AND e.start_time < $3
-      AND e.end_time > $2
-  `;
-
-  const clashParams: unknown[] = [venueId, start.toISOString(), end.toISOString()];
+  const clashConditions = [
+    eq(events.venueId, venueId),
+    notInArray(events.status, ["rejected", "cancelled"]),
+    lt(events.startTime, end),
+    gt(events.endTime, start),
+  ];
   if (excludeEventId) {
-    clashSql += ` AND e.id != $4`;
-    clashParams.push(excludeEventId);
+    clashConditions.push(ne(events.id, excludeEventId));
   }
 
-  const clashRes = await query<CampusEvent>(clashSql, clashParams);
-  const conflictingEvent = clashRes.rows[0] || null;
-  const hasConflict = clashRes.rows.length > 0;
+  const clashRows = await withDbRetry((client) =>
+    client
+      .select({
+        ...getTableColumns(events),
+        community: {
+          id: communities.id,
+          campusId: communities.campusId,
+          name: communities.name,
+          slug: communities.slug,
+          category: communities.category,
+          logoUrl: communities.logoUrl,
+        },
+        venue: {
+          id: venues.id,
+          campusId: venues.campusId,
+          name: venues.name,
+          building: venues.building,
+          capacity: venues.capacity,
+          address: venues.address,
+          notes: venues.notes,
+          isActive: venues.isActive,
+        },
+      })
+      .from(events)
+      .innerJoin(communities, eq(communities.id, events.communityId))
+      .leftJoin(venues, eq(venues.id, events.venueId))
+      .where(and(...clashConditions))
+      .limit(1)
+  );
+
+  const conflictingEvent: CampusEvent | null = clashRows[0]
+    ? formatCampusEvent(clashRows[0])
+    : null;
+  const hasConflict = clashRows.length > 0;
 
   // 4. Generate Safe Slot Suggestions if conflict or violation exists
   const safeSlots: SafeSlotSuggestion[] = [];
@@ -82,17 +131,25 @@ export async function checkEventConflicts(params: {
       safeStart1.setHours(start.getHours(), start.getMinutes(), 0, 0);
       const safeEnd1 = addMinutes(safeStart1, durationMinutes);
 
-      let slot1Sql = `SELECT id FROM public.events 
-       WHERE venue_id = $1 AND status NOT IN ('rejected', 'cancelled')
-         AND start_time < $3 AND end_time > $2`;
-      const slot1Params: unknown[] = [venueId, safeStart1.toISOString(), safeEnd1.toISOString()];
+      const slot1Conditions = [
+        eq(events.venueId, venueId),
+        notInArray(events.status, ["rejected", "cancelled"]),
+        lt(events.startTime, safeEnd1),
+        gt(events.endTime, safeStart1),
+      ];
       if (excludeEventId) {
-        slot1Sql += ` AND id != $4`;
-        slot1Params.push(excludeEventId);
+        slot1Conditions.push(ne(events.id, excludeEventId));
       }
-      const slot1Clash = await query(slot1Sql, slot1Params);
 
-      if (slot1Clash.rows.length === 0) {
+      const slot1Clash = await withDbRetry((client) =>
+        client
+          .select({ id: events.id })
+          .from(events)
+          .where(and(...slot1Conditions))
+          .limit(1)
+      );
+
+      if (slot1Clash.length === 0) {
         safeSlots.push({
           type: "next_day",
           label: `Earliest Safe Date (${format(safeStart1, "EEE, MMM d")})`,
@@ -106,25 +163,47 @@ export async function checkEventConflicts(params: {
 
       // Option 2: Alternative Active Campus Venue on the Earliest Safe Date
       if (campusId) {
-        const altSql = `SELECT v.id, v.name, v.building, v.capacity
-           FROM public.venues v
-           WHERE v.campus_id = $1 
-             AND v.id != $2 
-             AND v.is_active = true
-             AND NOT EXISTS (
-               SELECT 1 FROM public.events e
-               WHERE e.venue_id = v.id 
-                 AND e.status NOT IN ('rejected', 'cancelled')
-                 AND e.start_time < $4 AND e.end_time > $3
-                 ${excludeEventId ? "AND e.id != $5" : ""}
-             )
-           ORDER BY v.capacity DESC
-           LIMIT 1;`;
-        const altParams: unknown[] = [campusId, venueId, safeStart1.toISOString(), safeEnd1.toISOString()];
-        if (excludeEventId) altParams.push(excludeEventId);
+        const altEventConditions = [
+          eq(events.venueId, venues.id),
+          notInArray(events.status, ["rejected", "cancelled"]),
+          lt(events.startTime, safeEnd1),
+          gt(events.endTime, safeStart1),
+        ];
+        if (excludeEventId) {
+          altEventConditions.push(ne(events.id, excludeEventId));
+        }
 
-        const altVenuesRes = await query<Venue>(altSql, altParams);
-        for (const altV of altVenuesRes.rows) {
+        const altVenuesRes = await withDbRetry((client) =>
+          client
+            .select({
+              id: venues.id,
+              campusId: venues.campusId,
+              name: venues.name,
+              building: venues.building,
+              capacity: venues.capacity,
+              address: venues.address,
+              notes: venues.notes,
+              isActive: venues.isActive,
+            })
+            .from(venues)
+            .where(
+              and(
+                eq(venues.campusId, campusId),
+                ne(venues.id, venueId),
+                eq(venues.isActive, true),
+                notExists(
+                  client
+                    .select({ id: events.id })
+                    .from(events)
+                    .where(and(...altEventConditions))
+                )
+              )
+            )
+            .orderBy(desc(venues.capacity))
+            .limit(1)
+        );
+
+        for (const altV of altVenuesRes) {
           safeSlots.push({
             type: "alternative_venue",
             label: `${altV.name} (${format(safeStart1, "MMM d")})`,
@@ -141,17 +220,25 @@ export async function checkEventConflicts(params: {
       const safeStart3 = addDays(safeStart1, 1);
       const safeEnd3 = addMinutes(safeStart3, durationMinutes);
 
-      let slot3Sql = `SELECT id FROM public.events 
-       WHERE venue_id = $1 AND status NOT IN ('rejected', 'cancelled')
-         AND start_time < $3 AND end_time > $2`;
-      const slot3Params: unknown[] = [venueId, safeStart3.toISOString(), safeEnd3.toISOString()];
+      const slot3Conditions = [
+        eq(events.venueId, venueId),
+        notInArray(events.status, ["rejected", "cancelled"]),
+        lt(events.startTime, safeEnd3),
+        gt(events.endTime, safeStart3),
+      ];
       if (excludeEventId) {
-        slot3Sql += ` AND id != $4`;
-        slot3Params.push(excludeEventId);
+        slot3Conditions.push(ne(events.id, excludeEventId));
       }
-      const slot3Clash = await query(slot3Sql, slot3Params);
 
-      if (slot3Clash.rows.length === 0) {
+      const slot3Clash = await withDbRetry((client) =>
+        client
+          .select({ id: events.id })
+          .from(events)
+          .where(and(...slot3Conditions))
+          .limit(1)
+      );
+
+      if (slot3Clash.length === 0) {
         safeSlots.push({
           type: "next_day",
           label: `Following Day (${format(safeStart3, "EEE, MMM d")})`,
@@ -170,17 +257,25 @@ export async function checkEventConflicts(params: {
         const slot1Start = addMinutes(clashEnd, 30); // 30-min buffer
         const slot1End = addMinutes(slot1Start, durationMinutes);
 
-        let slot1Sql = `SELECT id FROM public.events 
-           WHERE venue_id = $1 AND status NOT IN ('rejected', 'cancelled')
-             AND start_time < $3 AND end_time > $2`;
-        const slot1Params: unknown[] = [venueId, slot1Start.toISOString(), slot1End.toISOString()];
+        const slot1Conditions = [
+          eq(events.venueId, venueId),
+          notInArray(events.status, ["rejected", "cancelled"]),
+          lt(events.startTime, slot1End),
+          gt(events.endTime, slot1Start),
+        ];
         if (excludeEventId) {
-          slot1Sql += ` AND id != $4`;
-          slot1Params.push(excludeEventId);
+          slot1Conditions.push(ne(events.id, excludeEventId));
         }
-        const slot1Clash = await query(slot1Sql, slot1Params);
 
-        if (slot1Clash.rows.length === 0 && slot1Start.getHours() < 22) {
+        const slot1Clash = await withDbRetry((client) =>
+          client
+            .select({ id: events.id })
+            .from(events)
+            .where(and(...slot1Conditions))
+            .limit(1)
+        );
+
+        if (slot1Clash.length === 0 && slot1Start.getHours() < 22) {
           safeSlots.push({
             type: "same_venue_later",
             label: `Same Day Later (${format(slot1Start, "h:mm a")})`,
@@ -188,32 +283,56 @@ export async function checkEventConflicts(params: {
             venue_name: targetVenue ? targetVenue.name : "Target Venue",
             start_time: slot1Start.toISOString(),
             end_time: slot1End.toISOString(),
-            reason: `30-minute buffer after ${conflictingEvent.community?.name || "prior event"} concludes.`,
+            reason: `30-minute buffer after ${
+              conflictingEvent.community?.name || "prior event"
+            } concludes.`,
           });
         }
       }
 
       // Option 2: Alternative Active Campus Venue at the Exact Same Time
       if (campusId) {
-        const altSql = `SELECT v.id, v.name, v.building, v.capacity
-           FROM public.venues v
-           WHERE v.campus_id = $1 
-             AND v.id != $2 
-             AND v.is_active = true
-             AND NOT EXISTS (
-               SELECT 1 FROM public.events e
-               WHERE e.venue_id = v.id 
-                 AND e.status NOT IN ('rejected', 'cancelled')
-                 AND e.start_time < $4 AND e.end_time > $3
-                 ${excludeEventId ? "AND e.id != $5" : ""}
-             )
-           ORDER BY v.capacity DESC
-           LIMIT 2;`;
-        const altParams: unknown[] = [campusId, venueId, start.toISOString(), end.toISOString()];
-        if (excludeEventId) altParams.push(excludeEventId);
+        const altEventConditions = [
+          eq(events.venueId, venues.id),
+          notInArray(events.status, ["rejected", "cancelled"]),
+          lt(events.startTime, end),
+          gt(events.endTime, start),
+        ];
+        if (excludeEventId) {
+          altEventConditions.push(ne(events.id, excludeEventId));
+        }
 
-        const altVenuesRes = await query<Venue>(altSql, altParams);
-        for (const altV of altVenuesRes.rows) {
+        const altVenuesRes = await withDbRetry((client) =>
+          client
+            .select({
+              id: venues.id,
+              campusId: venues.campusId,
+              name: venues.name,
+              building: venues.building,
+              capacity: venues.capacity,
+              address: venues.address,
+              notes: venues.notes,
+              isActive: venues.isActive,
+            })
+            .from(venues)
+            .where(
+              and(
+                eq(venues.campusId, campusId),
+                ne(venues.id, venueId),
+                eq(venues.isActive, true),
+                notExists(
+                  client
+                    .select({ id: events.id })
+                    .from(events)
+                    .where(and(...altEventConditions))
+                )
+              )
+            )
+            .orderBy(desc(venues.capacity))
+            .limit(2)
+        );
+
+        for (const altV of altVenuesRes) {
           safeSlots.push({
             type: "alternative_venue",
             label: `${altV.name} (Same Time)`,
@@ -230,17 +349,25 @@ export async function checkEventConflicts(params: {
       const slot3Start = addDays(start, 1);
       const slot3End = addMinutes(slot3Start, durationMinutes);
 
-      let slot3Sql = `SELECT id FROM public.events 
-         WHERE venue_id = $1 AND status NOT IN ('rejected', 'cancelled')
-           AND start_time < $3 AND end_time > $2`;
-      const slot3Params: unknown[] = [venueId, slot3Start.toISOString(), slot3End.toISOString()];
+      const slot3Conditions = [
+        eq(events.venueId, venueId),
+        notInArray(events.status, ["rejected", "cancelled"]),
+        lt(events.startTime, slot3End),
+        gt(events.endTime, slot3Start),
+      ];
       if (excludeEventId) {
-        slot3Sql += ` AND id != $4`;
-        slot3Params.push(excludeEventId);
+        slot3Conditions.push(ne(events.id, excludeEventId));
       }
-      const slot3Clash = await query(slot3Sql, slot3Params);
 
-      if (slot3Clash.rows.length === 0) {
+      const slot3Clash = await withDbRetry((client) =>
+        client
+          .select({ id: events.id })
+          .from(events)
+          .where(and(...slot3Conditions))
+          .limit(1)
+      );
+
+      if (slot3Clash.length === 0) {
         safeSlots.push({
           type: "next_day",
           label: `Next Day Same Time (${format(slot3Start, "EEE, MMM d")})`,

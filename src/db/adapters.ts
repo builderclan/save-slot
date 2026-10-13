@@ -84,21 +84,22 @@ export interface DrizzleVenueRow {
  * Venue domain types (snake_case) expected by the frontend.
  */
 export function formatVenue(row: DrizzleVenueRow): Venue {
+  const rowAny = row as unknown as Record<string, unknown>;
   return {
     id: row.id,
-    campus_id: row.campusId || "",
+    campus_id: row.campusId || (rowAny.campus_id as string) || "",
     name: row.name,
-    building: row.building || "",
-    capacity: row.capacity ?? null,
-    address: row.address ?? null,
-    notes: row.notes ?? null,
-    is_active: row.isActive ?? true,
+    building: row.building || (rowAny.building as string) || "",
+    capacity: row.capacity ?? (rowAny.capacity as number) ?? null,
+    address: row.address ?? (rowAny.address as string) ?? null,
+    notes: row.notes ?? (rowAny.notes as string) ?? null,
+    is_active: row.isActive ?? (rowAny.is_active as boolean) ?? true,
     created_at:
       row.createdAt instanceof Date
         ? row.createdAt.toISOString()
         : row.createdAt
         ? String(row.createdAt)
-        : undefined,
+        : (rowAny.created_at as string | undefined),
   };
 }
 
@@ -107,26 +108,28 @@ export function formatVenue(row: DrizzleVenueRow): Venue {
  * CampusEvent and database domain types (snake_case) expected by the frontend.
  */
 export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
+  const rowAny = row as unknown as Record<string, unknown>;
   let community: Community | undefined = undefined;
   if (row.community && row.community.id) {
+    const commAny = row.community as unknown as Record<string, unknown>;
     community = {
       id: row.community.id,
-      campus_id: row.community.campusId || "",
+      campus_id: row.community.campusId || (commAny.campus_id as string) || "",
       name: row.community.name,
       slug: row.community.slug,
-      category: (row.community.category as EventCategory) || "Social",
-      logo_url: row.community.logoUrl || undefined,
-      banner_url: row.community.bannerUrl || undefined,
+      category: (row.community.category as EventCategory) || (commAny.category as EventCategory) || "Social",
+      logo_url: row.community.logoUrl || (commAny.logo_url as string) || undefined,
+      banner_url: row.community.bannerUrl || (commAny.banner_url as string) || undefined,
       website: row.community.website || undefined,
       instagram: row.community.instagram || undefined,
       status: (row.community.status as "pending" | "approved" | "rejected") || undefined,
-      created_at: row.community.createdAt instanceof Date ? row.community.createdAt.toISOString() : (row.community.createdAt || undefined),
+      created_at: row.community.createdAt instanceof Date ? row.community.createdAt.toISOString() : (row.community.createdAt || (commAny.created_at as string) || undefined),
     };
   }
 
   let venue: Venue | undefined = undefined;
   if (row.venue && row.venue.id) {
-    venue = formatVenue(row.venue);
+    venue = formatVenue(row.venue as DrizzleVenueRow);
   }
 
   let reviewer: CampusEvent["reviewer"] = undefined;
@@ -144,31 +147,52 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
     };
   }
 
+  const rawStart = row.startTime ?? (rowAny.start_time as Date | string | undefined);
+  const rawEnd = row.endTime ?? (rowAny.end_time as Date | string | undefined);
+  const rawCreatedAt = row.createdAt ?? (rowAny.created_at as Date | string | undefined);
+  const rawUpdatedAt = row.updatedAt ?? (rowAny.updated_at as Date | string | undefined);
+
   return {
     id: row.id,
-    campus_id: row.campusId,
-    community_id: row.communityId,
-    venue_id: row.venueId,
+    campus_id: row.campusId || (rowAny.campus_id as string) || "",
+    community_id: row.communityId || (rowAny.community_id as string) || "",
+    venue_id: row.venueId !== undefined ? row.venueId : (rowAny.venue_id as string | null),
     title: row.title,
     slug: row.slug,
     description: row.description,
-    category: row.category as EventCategory,
-    tags: row.tags || [],
-    start_time: row.startTime instanceof Date ? row.startTime.toISOString() : String(row.startTime),
-    end_time: row.endTime instanceof Date ? row.endTime.toISOString() : String(row.endTime),
-    timezone: row.timezone || undefined,
-    location_name: row.locationName,
-    is_virtual: row.isVirtual ?? false,
-    virtual_link: row.virtualLink || undefined,
-    external_registration_url: row.externalRegistrationUrl || undefined,
-    cover_image_url: row.coverImageUrl || undefined,
-    status: row.status as EventStatus,
-    rejection_reason: row.rejectionReason || undefined,
-    cancellation_reason: row.cancellationReason || undefined,
-    created_by: row.createdBy || undefined,
-    reviewed_by: row.reviewedBy || undefined,
-    created_at: row.createdAt instanceof Date ? row.createdAt.toISOString() : (row.createdAt ? String(row.createdAt) : undefined),
-    updated_at: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : (row.updatedAt ? String(row.updatedAt) : undefined),
+    category: (row.category as EventCategory) || (rowAny.category as EventCategory),
+    tags: row.tags || (rowAny.tags as string[]) || [],
+    start_time:
+      rawStart instanceof Date
+        ? rawStart.toISOString()
+        : String(rawStart ?? ""),
+    end_time:
+      rawEnd instanceof Date
+        ? rawEnd.toISOString()
+        : String(rawEnd ?? ""),
+    timezone: row.timezone || (rowAny.timezone as string) || undefined,
+    location_name: row.locationName || (rowAny.location_name as string) || "",
+    is_virtual: row.isVirtual ?? (rowAny.is_virtual as boolean) ?? false,
+    virtual_link: row.virtualLink || (rowAny.virtual_link as string) || undefined,
+    external_registration_url: row.externalRegistrationUrl || (rowAny.external_registration_url as string) || undefined,
+    cover_image_url: row.coverImageUrl || (rowAny.cover_image_url as string) || undefined,
+    status: (row.status as EventStatus) || (rowAny.status as EventStatus),
+    rejection_reason: row.rejectionReason || (rowAny.rejection_reason as string) || undefined,
+    cancellation_reason: row.cancellationReason || (rowAny.cancellation_reason as string) || undefined,
+    created_by: row.createdBy || (rowAny.created_by as string) || undefined,
+    reviewed_by: row.reviewedBy || (rowAny.reviewed_by as string) || undefined,
+    created_at:
+      rawCreatedAt instanceof Date
+        ? rawCreatedAt.toISOString()
+        : rawCreatedAt
+        ? String(rawCreatedAt)
+        : undefined,
+    updated_at:
+      rawUpdatedAt instanceof Date
+        ? rawUpdatedAt.toISOString()
+        : rawUpdatedAt
+        ? String(rawUpdatedAt)
+        : undefined,
     community,
     venue,
     reviewer,
