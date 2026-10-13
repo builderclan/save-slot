@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query, withTransaction } from "@/lib/db";
+import { withDbRetry } from "@/lib/db";
+import { events, venues } from "@/db/schema";
+import { formatCampusEvent } from "@/db/adapters";
 import { UpdateEventStatusSchema } from "@/lib/validations";
 import { checkEventConflicts } from "@/lib/conflicts/engine";
+import { and, eq, ne, lt, gt } from "drizzle-orm";
 
 export async function POST(
   request: Request,
@@ -11,7 +14,10 @@ export async function POST(
   try {
     const session = await getCurrentUser();
     if (!session || (!session.isAdmin && !session.isPrincipal)) {
-      return NextResponse.json({ error: "Unauthorized access: Principal or Admin approval authority required" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Unauthorized access: Principal or Admin approval authority required" },
+        { status: 403 }
+      );
     }
 
     const { id } = await params;
@@ -26,29 +32,39 @@ export async function POST(
     const { status, rejectionReason } = parsed.data;
 
     // Fetch target event details
-    const targetEventRes = await query<{
-      id: string;
-      venue_id: string | null;
-      start_time: string;
-      end_time: string;
-      title: string;
-    }>(
-      "SELECT id, venue_id, start_time, end_time, title FROM public.events WHERE id = $1;",
-      [id]
+    const [targetEvent] = await withDbRetry((client) =>
+      client
+        .select({
+          id: events.id,
+          venueId: events.venueId,
+          startTime: events.startTime,
+          endTime: events.endTime,
+          title: events.title,
+        })
+        .from(events)
+        .where(eq(events.id, id))
+        .limit(1)
     );
 
-    if (targetEventRes.rows.length === 0) {
+    if (!targetEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    const targetEvent = targetEventRes.rows[0];
+    const startTimeStr =
+      targetEvent.startTime instanceof Date
+        ? targetEvent.startTime.toISOString()
+        : String(targetEvent.startTime);
+    const endTimeStr =
+      targetEvent.endTime instanceof Date
+        ? targetEvent.endTime.toISOString()
+        : String(targetEvent.endTime);
 
     // Concurrency collision check: If publishing, compute safe-slots & check clashes
-    if (status === "published" && targetEvent.venue_id) {
+    if (status === "published" && targetEvent.venueId) {
       const conflictCheck = await checkEventConflicts({
-        venueId: targetEvent.venue_id,
-        startTime: targetEvent.start_time,
-        endTime: targetEvent.end_time,
+        venueId: targetEvent.venueId,
+        startTime: startTimeStr,
+        endTime: endTimeStr,
         excludeEventId: id,
       });
 
@@ -64,41 +80,56 @@ export async function POST(
     }
 
     // Atomic transaction commit with row-level locking
-    const updatedEvent = await withTransaction(async (client) => {
-      // Re-verify venue lock if publishing to protect against concurrent approvals
-      if (status === "published" && targetEvent.venue_id) {
-        const raceCheck = await client.query<{ id: string; title: string }>(
-          `SELECT id, title FROM public.events
-           WHERE venue_id = $1
-             AND status = 'published'
-             AND id != $2
-             AND start_time < $4
-             AND end_time > $3
-           FOR UPDATE;`,
-          [targetEvent.venue_id, id, targetEvent.start_time, targetEvent.end_time]
-        );
+    const updatedEvent = await withDbRetry(async (client) => {
+      return await client.transaction(async (tx) => {
+        // Re-verify venue lock if publishing to protect against concurrent approvals
+        if (status === "published" && targetEvent.venueId) {
+          // Lock venue row to serialize concurrent approvals for this venue
+          await tx
+            .select({ id: venues.id })
+            .from(venues)
+            .where(eq(venues.id, targetEvent.venueId))
+            .for("update");
 
-        if (raceCheck.rows.length > 0) {
-          throw new Error(`CONCURRENCY_COLLISION: ${raceCheck.rows[0].title}`);
+          const raceCheck = await tx
+            .select({ id: events.id, title: events.title })
+            .from(events)
+            .where(
+              and(
+                eq(events.venueId, targetEvent.venueId),
+                eq(events.status, "published"),
+                ne(events.id, id),
+                lt(events.startTime, new Date(targetEvent.endTime)),
+                gt(events.endTime, new Date(targetEvent.startTime))
+              )
+            )
+            .for("update");
+
+          if (raceCheck.length > 0) {
+            throw new Error(`CONCURRENCY_COLLISION: ${raceCheck[0].title}`);
+          }
         }
-      }
 
-      const res = await client.query(
-        `UPDATE public.events
-         SET status = $1, rejection_reason = $2, reviewed_by = $3, updated_at = NOW()
-         WHERE id = $4
-         RETURNING *;`,
-        [status, rejectionReason || null, session.userId, id]
-      );
+        const [res] = await tx
+          .update(events)
+          .set({
+            status,
+            rejectionReason: rejectionReason || null,
+            reviewedBy: session.userId,
+            updatedAt: new Date(),
+          })
+          .where(eq(events.id, id))
+          .returning();
 
-      return res.rows[0];
+        return res;
+      });
     });
 
     if (!updatedEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, event: updatedEvent });
+    return NextResponse.json({ success: true, event: formatCampusEvent(updatedEvent) });
   } catch (err: unknown) {
     if (err instanceof Error && err.message.startsWith("CONCURRENCY_COLLISION:")) {
       return NextResponse.json(

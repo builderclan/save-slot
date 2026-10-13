@@ -1,17 +1,71 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "../route";
-import type { QueryResult, QueryResultRow } from "pg";
 import type { CampusEvent } from "@/types/database";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentUser: vi.fn(),
 }));
 
-vi.mock("@/lib/db", () => {
-  const mockQueryFn = vi.fn();
+const {
+  mockSelect,
+  mockSelectFrom,
+  mockSelectWhere,
+  mockSelectLimit,
+  mockSelectFor,
+  mockUpdate,
+  mockUpdateSet,
+  mockUpdateWhere,
+  mockUpdateReturning,
+  mockTransaction,
+} = vi.hoisted(() => {
+  const mockSelectFor = vi.fn();
+  const mockSelectLimit = vi.fn();
+  const mockSelectWhere = vi.fn();
+  const mockSelectFrom = vi.fn();
+  const mockSelect = vi.fn();
+
+  const mockUpdateReturning = vi.fn();
+  const mockUpdateWhere = vi.fn();
+  const mockUpdateSet = vi.fn();
+  const mockUpdate = vi.fn();
+
+  const mockTransaction = vi.fn();
+
+  mockSelectWhere.mockReturnValue({
+    limit: mockSelectLimit,
+    for: mockSelectFor,
+  });
+  mockSelectFrom.mockReturnValue({ where: mockSelectWhere });
+  mockSelect.mockReturnValue({ from: mockSelectFrom });
+
+  mockUpdateWhere.mockReturnValue({ returning: mockUpdateReturning });
+  mockUpdateSet.mockReturnValue({ where: mockUpdateWhere });
+  mockUpdate.mockReturnValue({ set: mockUpdateSet });
+
   return {
-    query: mockQueryFn,
-    withTransaction: vi.fn(async (cb) => cb({ query: mockQueryFn })),
+    mockSelect,
+    mockSelectFrom,
+    mockSelectWhere,
+    mockSelectLimit,
+    mockSelectFor,
+    mockUpdate,
+    mockUpdateSet,
+    mockUpdateWhere,
+    mockUpdateReturning,
+    mockTransaction,
+  };
+});
+
+vi.mock("@/lib/db", () => {
+  const mockDbClient = {
+    select: mockSelect,
+    update: mockUpdate,
+    transaction: mockTransaction,
+  };
+
+  return {
+    db: mockDbClient,
+    withDbRetry: (op: (client: typeof mockDbClient) => Promise<unknown>) => op(mockDbClient),
   };
 });
 
@@ -20,23 +74,10 @@ vi.mock("@/lib/conflicts/engine", () => ({
 }));
 
 import { getCurrentUser, type AuthSession } from "@/lib/auth";
-import { query } from "@/lib/db";
 import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
-const mockQuery = vi.mocked(query);
 const mockCheckEventConflicts = vi.mocked(checkEventConflicts);
-
-
-function mockDbResult<T extends QueryResultRow>(rows: T[]): QueryResult<T> {
-  return {
-    rows,
-    command: "SELECT",
-    rowCount: rows.length,
-    oid: 0,
-    fields: [],
-  };
-}
 
 describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guard)", () => {
   const eventId = "e1111111-2222-3333-4444-555555555555";
@@ -110,8 +151,53 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     leadCommunities: [],
   };
 
+  const sampleTargetEvent = {
+    id: eventId,
+    venueId: venueId,
+    startTime: new Date("2026-10-25T14:00:00.000Z"),
+    endTime: new Date("2026-10-25T17:00:00.000Z"),
+    title: "Design Summit 2026",
+  };
+
+  const sampleUpdatedEvent = {
+    id: eventId,
+    campusId: "c-1",
+    communityId: "comm-1",
+    venueId: venueId,
+    title: "Design Summit 2026",
+    slug: "design-summit-2026",
+    description: "Annual design summit.",
+    category: "Tech",
+    startTime: new Date("2026-10-25T14:00:00.000Z"),
+    endTime: new Date("2026-10-25T17:00:00.000Z"),
+    locationName: "Main Auditorium",
+    status: "published",
+    rejectionReason: null,
+    reviewedBy: "admin-uuid",
+    createdAt: new Date("2026-10-01T10:00:00.000Z"),
+    updatedAt: new Date("2026-10-25T14:00:00.000Z"),
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSelectFor.mockResolvedValue([]);
+    mockSelectLimit.mockResolvedValue([]);
+    mockSelectWhere.mockReturnValue({
+      limit: mockSelectLimit,
+      for: mockSelectFor,
+    });
+    mockSelectFrom.mockReturnValue({ where: mockSelectWhere });
+    mockSelect.mockReturnValue({ from: mockSelectFrom });
+    mockUpdateWhere.mockReturnValue({ returning: mockUpdateReturning });
+    mockUpdateSet.mockReturnValue({ where: mockUpdateWhere });
+    mockUpdate.mockReturnValue({ set: mockUpdateSet });
+    mockTransaction.mockImplementation(async (cb) => {
+      const tx = {
+        select: mockSelect,
+        update: mockUpdate,
+      };
+      return cb(tx);
+    });
   });
 
   it("returns 403 Forbidden when user is unauthenticated or not an admin/principal", async () => {
@@ -147,8 +233,8 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
   it("returns 404 Not Found when event does not exist", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(principalSession);
 
-    // DB query for target event returns empty rows
-    mockQuery.mockResolvedValueOnce(mockDbResult([]));
+    // Target event lookup returns empty
+    mockSelectLimit.mockResolvedValueOnce([]);
 
     const req = new Request(`http://localhost/api/admin/events/${eventId}/status`, {
       method: "POST",
@@ -165,15 +251,7 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
   it("returns 409 Conflict when publishing an event that collides with another booked event", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(principalSession);
 
-    const targetEvent = {
-      id: eventId,
-      venue_id: venueId,
-      start_time: "2026-10-25T14:00:00.000Z",
-      end_time: "2026-10-25T17:00:00.000Z",
-      title: "Design Summit 2026",
-    };
-
-    mockQuery.mockResolvedValueOnce(mockDbResult([targetEvent]));
+    mockSelectLimit.mockResolvedValueOnce([sampleTargetEvent]);
 
     mockCheckEventConflicts.mockResolvedValueOnce({
       hasConflict: true,
@@ -202,33 +280,14 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     expect(data.conflict.hasConflict).toBe(true);
 
     // Verify UPDATE query was NOT executed
-    expect(mockQuery).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   it("approves event and returns 200 when clash check passes cleanly", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(adminSession);
 
-    const targetEvent = {
-      id: eventId,
-      venue_id: venueId,
-      start_time: "2026-10-25T14:00:00.000Z",
-      end_time: "2026-10-25T17:00:00.000Z",
-      title: "Design Summit 2026",
-    };
-
-    const updatedEvent = {
-      ...targetEvent,
-      status: "published",
-      updated_at: new Date().toISOString(),
-    };
-
-    // 1st query: select event details
-    // 2nd query: transactional race check (empty rows = no concurrent collision)
-    // 3rd query: update event status
-    mockQuery
-      .mockResolvedValueOnce(mockDbResult([targetEvent]))
-      .mockResolvedValueOnce(mockDbResult([]))
-      .mockResolvedValueOnce(mockDbResult([updatedEvent]));
+    mockSelectLimit.mockResolvedValueOnce([sampleTargetEvent]);
+    mockUpdateReturning.mockResolvedValueOnce([sampleUpdatedEvent]);
 
     mockCheckEventConflicts.mockResolvedValueOnce({
       hasConflict: false,
@@ -250,25 +309,20 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.event.status).toBe("published");
-    expect(mockQuery).toHaveBeenCalledTimes(3);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockSelectFor).toHaveBeenCalledTimes(2); // 1. Venue row lock, 2. Overlap clash check
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
   });
 
   it("returns 409 Conflict when a concurrent transaction locks a colliding event right before update", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(adminSession);
 
-    const targetEvent = {
-      id: eventId,
-      venue_id: venueId,
-      start_time: "2026-10-25T14:00:00.000Z",
-      end_time: "2026-10-25T17:00:00.000Z",
-      title: "Design Summit 2026",
-    };
-
-    // 1st query: select event details
-    // 2nd query: transactional race check finds a colliding event approved concurrently!
-    mockQuery
-      .mockResolvedValueOnce(mockDbResult([targetEvent]))
-      .mockResolvedValueOnce(mockDbResult([{ id: "concurrent-event", title: "Concurrent Workshop" }]));
+    mockSelectLimit.mockResolvedValueOnce([sampleTargetEvent]);
+    // 1st .for("update"): Venue mutual-exclusion lock
+    // 2nd .for("update"): Race check discovers concurrent colliding event
+    mockSelectFor
+      .mockResolvedValueOnce([{ id: venueId }])
+      .mockResolvedValueOnce([{ id: "concurrent-event", title: "Concurrent Workshop" }]);
 
     mockCheckEventConflicts.mockResolvedValueOnce({
       hasConflict: false,
@@ -289,30 +343,21 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     expect(res.status).toBe(409);
     const data = await res.json();
     expect(data.error).toContain("Concurrent approval clash detected");
-    expect(mockQuery).toHaveBeenCalledTimes(2);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   it("updates status to rejected with reason without executing conflict check", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(principalSession);
 
-    const targetEvent = {
-      id: eventId,
-      venue_id: venueId,
-      start_time: "2026-10-25T14:00:00.000Z",
-      end_time: "2026-10-25T17:00:00.000Z",
-      title: "Design Summit 2026",
-    };
-
     const rejectedEvent = {
-      ...targetEvent,
+      ...sampleUpdatedEvent,
       status: "rejected",
-      rejection_reason: "Faculty advisor signature missing.",
-      updated_at: new Date().toISOString(),
+      rejectionReason: "Faculty advisor signature missing.",
     };
 
-    mockQuery
-      .mockResolvedValueOnce(mockDbResult([targetEvent]))
-      .mockResolvedValueOnce(mockDbResult([rejectedEvent]));
+    mockSelectLimit.mockResolvedValueOnce([sampleTargetEvent]);
+    mockUpdateReturning.mockResolvedValueOnce([rejectedEvent]);
 
     const req = new Request(`http://localhost/api/admin/events/${eventId}/status`, {
       method: "POST",
@@ -331,30 +376,19 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
 
     // Conflict check is skipped for rejections
     expect(mockCheckEventConflicts).not.toHaveBeenCalled();
-    expect(mockQuery).toHaveBeenCalledTimes(2);
+    expect(mockTransaction).toHaveBeenCalledTimes(1);
   });
 
   it("authorizes Vice Principal to approve events with identical executive authority", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(vicePrincipalSession);
 
-    const targetEvent = {
-      id: eventId,
-      venue_id: venueId,
-      start_time: "2026-10-25T14:00:00.000Z",
-      end_time: "2026-10-25T17:00:00.000Z",
-      title: "Executive Symposium 2026",
-    };
-
-    const updatedEvent = {
-      ...targetEvent,
-      status: "published",
-      updated_at: new Date().toISOString(),
-    };
-
-    mockQuery
-      .mockResolvedValueOnce(mockDbResult([targetEvent]))
-      .mockResolvedValueOnce(mockDbResult([]))
-      .mockResolvedValueOnce(mockDbResult([updatedEvent]));
+    mockSelectLimit.mockResolvedValueOnce([sampleTargetEvent]);
+    mockUpdateReturning.mockResolvedValueOnce([
+      {
+        ...sampleUpdatedEvent,
+        reviewedBy: vicePrincipalSession.userId,
+      },
+    ]);
 
     mockCheckEventConflicts.mockResolvedValueOnce({
       hasConflict: false,
@@ -376,11 +410,8 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.event.status).toBe("published");
-    expect(mockQuery).toHaveBeenCalledTimes(3);
-
-    // Verify that the UPDATE query attributes decision to the Vice Principal
-    const updateCall = mockQuery.mock.calls[2];
-    expect(updateCall[0]).toContain("reviewed_by = $3");
-    expect(updateCall[1]).toEqual(["published", null, vicePrincipalSession.userId, eventId]);
+    expect(mockUpdateSet).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewedBy: vicePrincipalSession.userId })
+    );
   });
 });

@@ -144,8 +144,8 @@ vi.mock("@/lib/db", () => ({
 
 ### Phase 3: Administration & Governance Endpoints
 
-- [ ] `DELETE /api/admin/events/[id]`
-- [ ] `POST /api/admin/events/[id]/status`
+- [x] `DELETE /api/admin/events/[id]`
+- [x] `POST /api/admin/events/[id]/status`
 - [x] `GET /api/admin/venues`, `POST /api/admin/venues` & `PATCH /api/admin/venues`
 - [x] `PATCH /api/admin/venues/[id]`, `DELETE /api/admin/venues/[id]`
 - [ ] `GET /api/admin/communities` & `POST /api/admin/communities`
