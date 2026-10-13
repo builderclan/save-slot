@@ -18,8 +18,20 @@ export async function GET(
 
     const { id } = await params;
 
-    const [userRow] = await withDbRetry((client) =>
-      client
+    const [userRow] = await withDbRetry((client) => {
+      const leadSubquery = client
+        .select({
+          userId: communityMembers.userId,
+          communityId: sql<string>`(ARRAY_AGG(${communityMembers.communityId} ORDER BY ${communityMembers.createdAt} ASC))[1]`.as("community_id"),
+          communityName: sql<string>`string_agg(${communities.name}, ', ' ORDER BY ${communities.name})`.as("community_name"),
+        })
+        .from(communityMembers)
+        .innerJoin(communities, eq(communities.id, communityMembers.communityId))
+        .where(eq(communityMembers.role, "lead"))
+        .groupBy(communityMembers.userId)
+        .as("user_leads");
+
+      return client
         .select({
           id: users.id,
           email: users.email,
@@ -28,24 +40,14 @@ export async function GET(
           avatarUrl: users.avatarUrl,
           campusId: users.campusId,
           createdAt: users.createdAt,
-          communityId: sql<string | null>`(
-            SELECT ${communityMembers.communityId}
-            FROM ${communityMembers}
-            WHERE ${communityMembers.userId} = ${users.id} AND ${communityMembers.role} = 'lead'
-            ORDER BY ${communityMembers.createdAt} ASC
-            LIMIT 1
-          )`,
-          communityName: sql<string | null>`(
-            SELECT string_agg(${communities.name}, ', ' ORDER BY ${communities.name})
-            FROM ${communityMembers}
-            JOIN ${communities} ON ${communities.id} = ${communityMembers.communityId}
-            WHERE ${communityMembers.userId} = ${users.id} AND ${communityMembers.role} = 'lead'
-          )`,
+          communityId: leadSubquery.communityId,
+          communityName: leadSubquery.communityName,
         })
         .from(users)
+        .leftJoin(leadSubquery, eq(leadSubquery.userId, users.id))
         .where(eq(users.id, id))
-        .limit(1)
-    );
+        .limit(1);
+    });
 
     if (!userRow) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
