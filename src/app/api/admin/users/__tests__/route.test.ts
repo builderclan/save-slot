@@ -116,8 +116,25 @@ describe("Admin Users API (/api/admin/users)", () => {
       limit: mockSelectLimit,
       orderBy: mockSelectOrderBy,
     });
+    const mockLeadQueryChain = {
+      where: vi.fn().mockReturnValue({
+        groupBy: vi.fn().mockReturnValue({
+          as: vi.fn().mockReturnValue("user_leads"),
+        }),
+      }),
+    };
+
+    const mockJoinChain = {
+      where: mockSelectWhere,
+      leftJoin: vi.fn(),
+      orderBy: mockSelectOrderBy,
+    };
+    mockJoinChain.leftJoin.mockReturnValue(mockJoinChain);
+
     mockSelectFrom.mockReturnValue({
       where: mockSelectWhere,
+      leftJoin: () => mockJoinChain,
+      innerJoin: () => mockLeadQueryChain,
       orderBy: mockSelectOrderBy,
     });
     mockSelect.mockReturnValue({
