@@ -150,6 +150,10 @@ export function isTransientConnectionError(err: unknown): boolean {
   );
 }
 
+/**
+ * @deprecated - Legacy raw SQL helper preserved for backward compatibility (# BACKWARD COMPATIBILITY).
+ * 100% of application code uses Drizzle ORM (`db` or `withDbRetry`).
+ */
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: unknown[]
@@ -178,6 +182,10 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   throw lastError;
 }
 
+/**
+ * @deprecated - Legacy raw connection transaction helper preserved for backward compatibility (# BACKWARD COMPATIBILITY).
+ * 100% of application code uses Drizzle ORM (`db.transaction` or `withDbRetry`).
+ */
 export async function withTransaction<T>(
   callback: (client: PoolClient) => Promise<T>
 ): Promise<T> {
