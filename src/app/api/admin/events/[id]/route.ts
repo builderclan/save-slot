@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { query } from "@/lib/db";
+import { withDbRetry } from "@/lib/db";
+import { events } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function DELETE(
   request: Request,
@@ -13,8 +15,14 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const res = await query("DELETE FROM public.events WHERE id = $1 RETURNING id;", [id]);
-    if (res.rows.length === 0) {
+    const deleted = await withDbRetry((client) =>
+      client
+        .delete(events)
+        .where(eq(events.id, id))
+        .returning({ id: events.id })
+    );
+
+    if (deleted.length === 0) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
