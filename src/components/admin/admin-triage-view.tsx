@@ -138,47 +138,6 @@ export function AdminTriageView({
     return pendingEvents.find((e) => e.id === selectedEventId) || filteredEvents[0] || null;
   }, [pendingEvents, filteredEvents, selectedEventId]);
 
-  // Keyboard navigation through queue + triage shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.tagName === "SELECT" ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-
-      if (filteredEvents.length > 1) {
-        const currentIndex = filteredEvents.findIndex((ev) => ev.id === activeEvent?.id);
-        if (e.key === "ArrowDown" && currentIndex < filteredEvents.length - 1) {
-          e.preventDefault();
-          setSelectedEventId(filteredEvents[currentIndex + 1].id);
-          return;
-        } else if (e.key === "ArrowUp" && currentIndex > 0) {
-          e.preventDefault();
-          setSelectedEventId(filteredEvents[currentIndex - 1].id);
-          return;
-        }
-      }
-
-      if (activeEvent && actionInProgress !== activeEvent.id) {
-        if (e.key === "a" || e.key === "A") {
-          e.preventDefault();
-          onApprove(activeEvent.id);
-        } else if (e.key === "r" || e.key === "R") {
-          e.preventDefault();
-          onOpenReject(activeEvent);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [filteredEvents, activeEvent, actionInProgress, onApprove, onOpenReject]);
-
   if (pendingEvents.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 bg-slate-50/50">
@@ -382,15 +341,6 @@ export function AdminTriageView({
               );
             })
           )}
-        </div>
-
-        {/* Footer Navigation Helper */}
-        <div className="hidden md:flex p-2.5 border-t border-slate-200 bg-slate-50 text-[10px] text-slate-400 text-center items-center justify-center gap-2 shrink-0">
-          <span className="inline-flex items-center gap-1">
-            <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px]">↑</kbd>
-            <kbd className="px-1 py-0.5 bg-white border border-slate-200 rounded font-mono text-[9px]">↓</kbd>
-            <span>Navigate queue</span>
-          </span>
         </div>
       </div>
 
@@ -597,13 +547,6 @@ export function AdminTriageView({
                   <span className="text-[11px] text-slate-400 hidden sm:inline">
                     ID: <code className="font-mono text-slate-600">{activeEvent.id.slice(0, 8)}</code>
                   </span>
-                  <div className="hidden lg:flex items-center gap-1.5 ml-2 text-[11px] text-slate-400">
-                    <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[10px] text-slate-600 font-semibold">A</kbd>
-                    <span>Approve</span>
-                    <span className="mx-1 text-slate-300">•</span>
-                    <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[10px] text-slate-600 font-semibold">R</kbd>
-                    <span>Reject</span>
-                  </div>
                 </div>
 
                 <div className="flex items-center gap-2.5">
