@@ -19,6 +19,7 @@ export const events = pgTable(
     slug: varchar("slug", { length: 255 }).notNull(),
     description: text("description").notNull(),
     category: varchar("category", { length: 50 }).notNull(),
+    targetAudience: text("target_audience").array().notNull().default(["All Students"]),
     tags: text("tags").array().default([]),
     startTime: timestamp("start_time", { withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { withTimezone: true }).notNull(),
@@ -40,6 +41,7 @@ export const events = pgTable(
     index("idx_events_campus_status").on(table.campusId, table.status),
     index("idx_events_start_time").on(table.startTime),
     index("idx_events_venue_time").on(table.venueId, table.startTime, table.endTime),
+    index("idx_events_target_audience").using("gin", table.targetAudience),
   ]
 );
 

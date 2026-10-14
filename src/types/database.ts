@@ -89,6 +89,15 @@ export interface AdminUserRow extends UserProfile {
   community_name?: string | null;
 }
 
+export type TargetAudience =
+  | "All Students"
+  | "1st Year"
+  | "2nd Year"
+  | "3rd Year"
+  | "Final Year"
+  | "Postgraduate"
+  | "Faculty & Staff";
+
 export interface CampusEvent {
   id: string;
   campus_id: string;
@@ -98,6 +107,7 @@ export interface CampusEvent {
   slug: string;
   description: string;
   category: EventCategory;
+  target_audience?: string[];
   tags?: string[];
   start_time: string;
   end_time: string;
@@ -138,9 +148,13 @@ export interface SafeSlotSuggestion {
 
 export interface ConflictCheckResult {
   hasConflict: boolean;
+  hasVenueConflict?: boolean;
+  hasAudienceConflict?: boolean;
   hasLeadTimeViolation: boolean;
   leadTimeDays: number;
   conflictingEvent?: CampusEvent | null;
+  conflictingAudienceEvent?: CampusEvent | null;
+  overlappingAudience?: string[];
   message: string;
   safeSlots: SafeSlotSuggestion[];
 }
