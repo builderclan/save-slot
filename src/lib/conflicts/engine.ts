@@ -10,6 +10,7 @@ import {
   desc,
   notExists,
   getTableColumns,
+  arrayOverlaps,
 } from "drizzle-orm";
 import { formatCampusEvent, formatVenue } from "@/db/adapters";
 import {
@@ -19,6 +20,17 @@ import {
   Venue,
 } from "@/types/database";
 import { addDays, addMinutes, differenceInDays, format } from "date-fns";
+import {
+  doAudiencesOverlap,
+  getOverlappingAudience,
+  getPotentiallyOverlappingCohorts,
+} from "./audience";
+
+export {
+  doAudiencesOverlap,
+  getOverlappingAudience,
+  getPotentiallyOverlappingCohorts,
+};
 
 export async function checkEventConflicts(params: {
   venueId: string;
@@ -26,8 +38,13 @@ export async function checkEventConflicts(params: {
   endTime: string; // ISO string
   excludeEventId?: string;
   category?: string;
+  targetAudience?: string[];
 }): Promise<ConflictCheckResult> {
   const { venueId, startTime, endTime, excludeEventId } = params;
+  const targetAudience =
+    params.targetAudience && params.targetAudience.length > 0
+      ? params.targetAudience
+      : ["All Students"];
 
   const start = new Date(startTime);
   let end = new Date(endTime);
@@ -65,7 +82,7 @@ export async function checkEventConflicts(params: {
     ? formatVenue(targetVenueRows[0])
     : null;
 
-  // 3. Query Colliding Events in the Same Venue
+  // 3. Query Colliding Events in the Same Venue (Physical Venue Collision)
   const clashConditions = [
     eq(events.venueId, venueId),
     notInArray(events.status, ["rejected", "cancelled"]),
@@ -109,12 +126,84 @@ export async function checkEventConflicts(params: {
   const conflictingEvent: CampusEvent | null = clashRows[0]
     ? formatCampusEvent(clashRows[0])
     : null;
-  const hasConflict = clashRows.length > 0;
+  const hasVenueConflict = clashRows.length > 0;
+  const hasConflict = hasVenueConflict;
 
-  // 4. Generate Safe Slot Suggestions if conflict or violation exists
+  // 4. Query Concurrent Active Events for Audience Overlap Protection
+  const potentiallyOverlappingCohorts = getPotentiallyOverlappingCohorts(targetAudience);
+  const audienceConditions = [
+    notInArray(events.status, ["rejected", "cancelled"]),
+    lt(events.startTime, end),
+    gt(events.endTime, start),
+    arrayOverlaps(events.targetAudience, potentiallyOverlappingCohorts),
+  ];
+  if (excludeEventId) {
+    audienceConditions.push(ne(events.id, excludeEventId));
+  }
+  if (conflictingEvent?.id) {
+    audienceConditions.push(ne(events.id, conflictingEvent.id));
+  }
+  if (targetVenue?.campus_id) {
+    audienceConditions.push(eq(events.campusId, targetVenue.campus_id));
+  }
+
+  const concurrentAudienceRows = await withDbRetry((client) =>
+    client
+      .select({
+        ...getTableColumns(events),
+        community: {
+          id: communities.id,
+          campusId: communities.campusId,
+          name: communities.name,
+          slug: communities.slug,
+          category: communities.category,
+          logoUrl: communities.logoUrl,
+        },
+        venue: {
+          id: venues.id,
+          campusId: venues.campusId,
+          name: venues.name,
+          building: venues.building,
+          capacity: venues.capacity,
+          address: venues.address,
+          notes: venues.notes,
+          isActive: venues.isActive,
+        },
+      })
+      .from(events)
+      .innerJoin(communities, eq(communities.id, events.communityId))
+      .leftJoin(venues, eq(venues.id, events.venueId))
+      .where(and(...audienceConditions))
+      .limit(5)
+  );
+
+  let conflictingAudienceEvent: CampusEvent | null = null;
+  let overlappingAudience: string[] = [];
+
+  // Check if conflictingEvent in the same venue also overlaps audience
+  if (conflictingEvent && doAudiencesOverlap(targetAudience, conflictingEvent.target_audience)) {
+    conflictingAudienceEvent = conflictingEvent;
+    overlappingAudience = getOverlappingAudience(targetAudience, conflictingEvent.target_audience);
+  }
+
+  // Otherwise, inspect concurrent events in other campus venues
+  if (!conflictingAudienceEvent) {
+    for (const row of concurrentAudienceRows) {
+      const candidate = formatCampusEvent(row);
+      if (doAudiencesOverlap(targetAudience, candidate.target_audience)) {
+        conflictingAudienceEvent = candidate;
+        overlappingAudience = getOverlappingAudience(targetAudience, candidate.target_audience);
+        break;
+      }
+    }
+  }
+
+  const hasAudienceConflict = conflictingAudienceEvent !== null;
+
+  // 5. Generate Safe Slot Suggestions if conflict, violation, or audience overlap exists
   const safeSlots: SafeSlotSuggestion[] = [];
 
-  if (hasConflict || hasLeadTimeViolation) {
+  if (hasConflict || hasLeadTimeViolation || hasAudienceConflict) {
     const durationMinutes = Math.max(
       30,
       Math.round((end.getTime() - start.getTime()) / 60000)
@@ -252,8 +341,9 @@ export async function checkEventConflicts(params: {
     } else {
       // SCENARIO B: No lead-time violation (>= 7 days), but venue collision exists
       // Option 1: Same Venue Later in the Day (if conflicting event ends with turnaround buffer)
-      if (conflictingEvent) {
-        const clashEnd = new Date(conflictingEvent.end_time);
+      const eventToClear = conflictingEvent || conflictingAudienceEvent;
+      if (eventToClear) {
+        const clashEnd = new Date(eventToClear.end_time);
         const slot1Start = addMinutes(clashEnd, 30); // 30-min buffer
         const slot1End = addMinutes(slot1Start, durationMinutes);
 
@@ -284,14 +374,14 @@ export async function checkEventConflicts(params: {
             start_time: slot1Start.toISOString(),
             end_time: slot1End.toISOString(),
             reason: `30-minute buffer after ${
-              conflictingEvent.community?.name || "prior event"
+              eventToClear.community?.name || "prior event"
             } concludes.`,
           });
         }
       }
 
-      // Option 2: Alternative Active Campus Venue at the Exact Same Time
-      if (campusId) {
+      // Option 2: Alternative Active Campus Venue at the Exact Same Time (only if free of audience conflict!)
+      if (campusId && !hasAudienceConflict) {
         const altEventConditions = [
           eq(events.venueId, venues.id),
           notInArray(events.status, ["rejected", "cancelled"]),
@@ -382,23 +472,46 @@ export async function checkEventConflicts(params: {
   }
 
   let message = "This slot is verified and completely clash-free.";
-  if (hasConflict && hasLeadTimeViolation) {
-    message = `Venue collision with "${conflictingEvent?.title}" AND notice is less than 7 days in advance. Select a safe slot below.`;
-  } else if (hasConflict) {
-    message = `Venue collision: ${targetVenue?.name || "Venue"} is already booked by ${
-      conflictingEvent?.community?.name || "another organization"
-    } for "${conflictingEvent?.title}".`;
-  } else if (hasLeadTimeViolation) {
-    message = `Campus policy violation: Event must be submitted at least 7 days in advance (currently ${diffDays} day${
-      diffDays === 1 ? "" : "s"
-    } away). Select a recommended safe slot below.`;
+  const messages: string[] = [];
+
+  if (hasConflict) {
+    messages.push(
+      `Venue collision: ${targetVenue?.name || "Venue"} is already booked by ${
+        conflictingEvent?.community?.name || "another organization"
+      } for "${conflictingEvent?.title}".`
+    );
+  }
+
+  if (hasAudienceConflict && conflictingAudienceEvent && conflictingAudienceEvent.id !== conflictingEvent?.id) {
+    const cohortsStr = overlappingAudience.length > 0 ? overlappingAudience.join(", ") : "your target audience";
+    messages.push(
+      `Audience overlap advisory: "${conflictingAudienceEvent.title}" by ${
+        conflictingAudienceEvent.community?.name || "another organization"
+      } is scheduled at this time targeting ${cohortsStr}. Student turnout may be divided.`
+    );
+  }
+
+  if (hasLeadTimeViolation) {
+    messages.push(
+      `Campus policy violation: Event must be submitted at least 7 days in advance (currently ${diffDays} day${
+        diffDays === 1 ? "" : "s"
+      } away).`
+    );
+  }
+
+  if (messages.length > 0) {
+    message = messages.join(" ") + (safeSlots.length > 0 ? " Select a recommended safe slot below." : "");
   }
 
   return {
     hasConflict,
+    hasVenueConflict,
+    hasAudienceConflict,
     hasLeadTimeViolation,
     leadTimeDays: diffDays,
     conflictingEvent,
+    conflictingAudienceEvent,
+    overlappingAudience,
     message,
     safeSlots: safeSlots.slice(0, 3), // Return top 3 policy-cleared options
   };

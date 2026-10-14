@@ -15,6 +15,18 @@ export const EventCategoryEnum = z.enum([
   "Workshop",
 ]);
 
+export const TARGET_AUDIENCE_OPTIONS = [
+  "All Students",
+  "1st Year",
+  "2nd Year",
+  "3rd Year",
+  "Final Year",
+  "Postgraduate",
+  "Faculty & Staff",
+] as const;
+
+export const TargetAudienceEnum = z.enum(TARGET_AUDIENCE_OPTIONS);
+
 export const ProposeEventSchema = z.object({
   title: z
     .string()
@@ -22,6 +34,10 @@ export const ProposeEventSchema = z.object({
     .min(3, "Title must be at least 3 characters")
     .max(150, "Title cannot exceed 150 characters"),
   category: EventCategoryEnum,
+  targetAudience: z
+    .array(TargetAudienceEnum)
+    .min(1, "Select at least one target audience")
+    .default(["All Students"]),
   venueId: z.string().uuid("Invalid venue selection"),
   startTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
     message: "Invalid start time timestamp",
@@ -74,6 +90,7 @@ export const ConflictCheckSchema = z.object({
     message: "Invalid end time ISO format",
   }),
   category: z.string().optional(),
+  targetAudience: z.array(TargetAudienceEnum).optional(),
   excludeEventId: z.string().uuid().optional(),
 });
 
