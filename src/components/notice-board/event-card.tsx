@@ -116,7 +116,7 @@ export function EventCard({ event, onSelect }: EventCardProps) {
           </p>
         </div>
 
-        {/* Location Logistics Box */}
+        {/* Location & Audience Logistics Box */}
         <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs text-slate-600">
           <div className="flex items-center gap-2 truncate">
             <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -125,12 +125,14 @@ export function EventCard({ event, onSelect }: EventCardProps) {
             </span>
           </div>
 
-          {event.venue?.capacity ? (
-            <div className="flex items-center gap-1 text-[11px] text-slate-400 shrink-0 font-medium">
-              <Users className="w-3 h-3 text-slate-400" />
-              <span>{event.venue.capacity}</span>
-            </div>
-          ) : null}
+          <div className="flex items-center gap-1 text-[11px] text-slate-500 shrink-0 font-medium">
+            <Users className="w-3 h-3 text-slate-400" />
+            <span className="truncate max-w-[110px]" title={event.target_audience?.join(", ") || "All Students"}>
+              {event.target_audience && event.target_audience.length > 0 && !event.target_audience.includes("All Students")
+                ? event.target_audience.join(", ")
+                : "All Students"}
+            </span>
+          </div>
         </div>
       </div>
 

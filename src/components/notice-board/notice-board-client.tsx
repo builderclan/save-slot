@@ -189,7 +189,10 @@ export function NoticeBoardClient({
         const matchesDesc = ev.description.toLowerCase().includes(q);
         const matchesClub = ev.community?.name.toLowerCase().includes(q) || false;
         const matchesVenue = ev.venue?.name.toLowerCase().includes(q) || false;
-        if (!matchesTitle && !matchesDesc && !matchesClub && !matchesVenue) {
+        const matchesAudience = (ev.target_audience || []).some((aud) =>
+          aud.toLowerCase().includes(q)
+        );
+        if (!matchesTitle && !matchesDesc && !matchesClub && !matchesVenue && !matchesAudience) {
           return false;
         }
       }

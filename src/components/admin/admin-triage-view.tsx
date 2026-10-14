@@ -14,9 +14,11 @@ import {
   Search,
   Filter,
   ExternalLink,
+  Users,
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
+import { doAudiencesOverlap } from "@/lib/conflicts/audience";
 
 export const CATEGORY_DEFAULT_IMAGES: Record<string, string> = {
   Tech: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
@@ -83,6 +85,31 @@ export function AdminTriageView({
       });
 
       map.set(pending.id, clashingEvent || null);
+    }
+
+    return map;
+  }, [pendingEvents, publishedEvents]);
+
+  // Instant audience overlap detection against live published events
+  const audienceConflictMap = useMemo(() => {
+    const map = new Map<string, CampusEvent | null>();
+
+    for (const pending of pendingEvents) {
+      const pStart = new Date(pending.start_time).getTime();
+      const pEnd = new Date(pending.end_time).getTime();
+      const pAud = pending.target_audience || ["All Students"];
+
+      const clashingAudience = publishedEvents.find((pub) => {
+        if (pub.id === pending.id) return false;
+        const pubStart = new Date(pub.start_time).getTime();
+        const pubEnd = new Date(pub.end_time).getTime();
+        if (pStart >= pubEnd || pEnd <= pubStart) return false;
+
+        const pubAud = pub.target_audience || ["All Students"];
+        return doAudiencesOverlap(pAud, pubAud);
+      });
+
+      map.set(pending.id, clashingAudience || null);
     }
 
     return map;
@@ -168,6 +195,8 @@ export function AdminTriageView({
 
   const clashingEvent = activeEvent ? conflictMap.get(activeEvent.id) : null;
   const hasConflict = !!clashingEvent;
+  const clashingAudienceEvent = activeEvent ? audienceConflictMap.get(activeEvent.id) : null;
+  const hasAudienceConflict = !!clashingAudienceEvent;
 
   return (
     <div className="flex-1 flex flex-col md:flex-row min-w-0 h-full overflow-hidden">
@@ -237,6 +266,8 @@ export function AdminTriageView({
               const leadNotice = differenceInDays(startDate, new Date());
               const eventConflict = conflictMap.get(ev.id);
               const isColliding = !!eventConflict;
+              const audienceConflict = audienceConflictMap.get(ev.id);
+              const isAudienceColliding = !!audienceConflict;
 
               return (
                 <div
@@ -293,10 +324,12 @@ export function AdminTriageView({
                           className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border shrink-0 ${
                             isColliding
                               ? "text-rose-800 bg-rose-50 border-rose-200"
+                              : isAudienceColliding
+                              ? "text-amber-800 bg-amber-50 border-amber-200"
                               : "text-emerald-800 bg-emerald-50 border-emerald-200"
                           }`}
                         >
-                          {isColliding ? "⚠ Clash" : "✓ Safe Slot"}
+                          {isColliding ? "⚠ Clash" : isAudienceColliding ? "👥 Overlap" : "✓ Safe Slot"}
                         </span>
                       </div>
                     </div>
@@ -318,12 +351,20 @@ export function AdminTriageView({
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                           isColliding
                             ? "text-rose-800 bg-rose-50 border-rose-200"
+                            : isAudienceColliding
+                            ? "text-amber-800 bg-amber-50 border-amber-200"
                             : leadNotice < 7
                             ? "text-amber-800 bg-amber-50 border-amber-200"
                             : "text-emerald-800 bg-emerald-50 border-emerald-200"
                         }`}
                       >
-                        {isColliding ? "⚠ Clash" : leadNotice < 7 ? `${leadNotice}d notice` : "✓ Safe Slot"}
+                        {isColliding
+                          ? "⚠ Clash"
+                          : isAudienceColliding
+                          ? "👥 Overlap"
+                          : leadNotice < 7
+                          ? `${leadNotice}d notice`
+                          : "✓ Safe Slot"}
                       </span>
                     </div>
 
@@ -407,7 +448,7 @@ export function AdminTriageView({
 
               {/* Schedule, Venue & Clearance */}
               <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Target Schedule */}
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5 border border-indigo-100/80">
@@ -444,27 +485,68 @@ export function AdminTriageView({
                       </div>
                     </div>
                   </div>
+
+                  {/* Target Audience */}
+                  <div className="flex items-start gap-3 sm:col-span-2 lg:col-span-1">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5 border border-indigo-100/80">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Target Audience
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(activeEvent.target_audience && activeEvent.target_audience.length > 0
+                          ? activeEvent.target_audience
+                          : ["All Students"]
+                        ).map((aud) => (
+                          <span
+                            key={aud}
+                            className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/80"
+                          >
+                            {aud}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Conflict / Clearance Strip */}
-                <div className="pt-3 border-t border-slate-100">
-                  {hasConflict ? (
-                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                  {hasConflict && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <div className="font-semibold text-amber-950">
+                        <div className="font-semibold text-rose-950">
                           Venue Collision Detected
                         </div>
-                        <div className="mt-0.5 text-amber-800 leading-relaxed">
+                        <div className="mt-0.5 text-rose-800 leading-relaxed">
                           Overlaps with live event &quot;{clashingEvent?.title}&quot; at {clashingEvent && format(parseISO(clashingEvent.start_time), "h:mm a")}.
                         </div>
                       </div>
                     </div>
-                  ) : (
+                  )}
+
+                  {hasAudienceConflict && (
+                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                      <Users className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <div className="font-semibold text-amber-950">
+                          Audience Overlap Advisory
+                        </div>
+                        <div className="mt-0.5 text-amber-800 leading-relaxed">
+                          Shares target cohorts with concurrent event &quot;{clashingAudienceEvent?.title}&quot; ({(clashingAudienceEvent?.target_audience || ["All Students"]).join(", ")}).
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!hasConflict && !hasAudienceConflict && (
                     <div className="flex items-center gap-2 text-xs text-emerald-900 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span className="font-medium text-xs">
-                        Deterministic Safe Slot Verified • Zero conflicts detected
+                        Deterministic Safe Slot Verified • Zero venue collisions or audience overlaps detected
                       </span>
                     </div>
                   )}

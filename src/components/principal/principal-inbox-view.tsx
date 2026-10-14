@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Users,
 } from "lucide-react";
 import { CampusEvent, ConflictCheckResult } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
@@ -318,6 +319,31 @@ export function PrincipalInboxView({
                       </div>
                     </div>
                   </div>
+
+                  {/* Target Audience Cohorts */}
+                  <div className="flex items-start gap-3 sm:col-span-2 pt-3 border-t border-slate-100/80">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5 border border-indigo-100/80">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                        Target Audience
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {(activeEvent.target_audience && activeEvent.target_audience.length > 0
+                          ? activeEvent.target_audience
+                          : ["All Students"]
+                        ).map((aud) => (
+                          <span
+                            key={aud}
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200"
+                          >
+                            {aud}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Dynamic Safe Slot Clearance / Conflict Alert */}
@@ -328,11 +354,23 @@ export function PrincipalInboxView({
                       <span>Verifying venue occupancy & campus schedule...</span>
                     </div>
                   ) : activeConflictResult?.hasConflict ? (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2.5">
+                      <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <div className="font-semibold text-rose-950">
+                          Venue Collision Detected
+                        </div>
+                        <div className="mt-0.5 text-rose-800 leading-relaxed">
+                          {activeConflictResult.message}
+                        </div>
+                      </div>
+                    </div>
+                  ) : activeConflictResult?.hasAudienceConflict ? (
                     <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
-                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <Users className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <div className="font-semibold text-amber-950">
-                          Venue Collision Detected
+                          Audience Overlap Advisory
                         </div>
                         <div className="mt-0.5 text-amber-800 leading-relaxed">
                           {activeConflictResult.message}
@@ -353,7 +391,7 @@ export function PrincipalInboxView({
                     <div className="flex items-center gap-2 text-xs text-emerald-900 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span className="font-medium text-xs">
-                        Deterministic Safe Slot Verified • Zero conflicts detected
+                        Deterministic Safe Slot Verified • Zero collisions or audience overlaps detected
                       </span>
                     </div>
                   )}
