@@ -615,7 +615,7 @@ export function ProposeEventModal({
                         <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 text-xs flex items-center gap-2.5 shadow-xs">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                           <span>
-                            <strong>Safe Slot Verified:</strong> No venue collisions, zero audience overlaps, and satisfies the 7-day advance notice rule ({conflictResult.leadTimeDays} days notice).
+                            <strong>Safe Slot Verified:</strong> Venue is available, no audience clash, and meets the 7-day notice rule ({conflictResult.leadTimeDays} days ahead).
                           </span>
                         </div>
                       ) : (
@@ -633,23 +633,22 @@ export function ProposeEventModal({
                           ) : (
                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
                           )}
-                          <div>
-                            <div className="font-semibold">{conflictResult.message}</div>
-                            {conflictResult.hasConflict && conflictResult.conflictingEvent && (
-                              <div className="text-[11px] opacity-80 mt-1">
-                                Venue Collision: {conflictResult.conflictingEvent.title} (
-                                {conflictResult.conflictingEvent.community?.name})
+                          <div className="flex-1 space-y-1">
+                            <div className="font-semibold text-xs sm:text-sm">
+                              {conflictResult.hasConflict
+                                ? "Venue Already Booked"
+                                : conflictResult.hasAudienceConflict
+                                ? "Audience Overlap with Another Event"
+                                : "Short Advance Notice"}
+                            </div>
+                            <div className="text-xs leading-relaxed opacity-90">
+                              {conflictResult.message}
+                            </div>
+                            {conflictResult.hasAudienceConflict && !conflictResult.hasConflict && (
+                              <div className="text-[11px] font-medium text-amber-800 bg-amber-100/70 px-2 py-1 rounded-md inline-block mt-1">
+                                Note: You may still submit, but choosing a recommended slot below avoids splitting student attendance.
                               </div>
                             )}
-                            {conflictResult.hasAudienceConflict &&
-                              conflictResult.conflictingAudienceEvent &&
-                              conflictResult.conflictingAudienceEvent.id !== conflictResult.conflictingEvent?.id && (
-                                <div className="text-[11px] opacity-80 mt-1">
-                                  Concurrent Cohort Event: &ldquo;{conflictResult.conflictingAudienceEvent.title}&rdquo; in{" "}
-                                  {conflictResult.conflictingAudienceEvent.venue?.name || "another venue"} (
-                                  {conflictResult.conflictingAudienceEvent.community?.name})
-                                </div>
-                              )}
                           </div>
                         </div>
                       )}

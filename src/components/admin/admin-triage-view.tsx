@@ -519,10 +519,10 @@ export function AdminTriageView({
                       <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <div className="font-semibold text-rose-950">
-                          Venue Collision Detected
+                          Venue Clash
                         </div>
                         <div className="mt-0.5 text-rose-800 leading-relaxed">
-                          Overlaps with live event &quot;{clashingEvent?.title}&quot; at {clashingEvent && format(parseISO(clashingEvent.start_time), "h:mm a")}.
+                          This venue is already booked for &quot;{clashingEvent?.title}&quot; at {clashingEvent && format(parseISO(clashingEvent.start_time), "h:mm a")}.
                         </div>
                       </div>
                     </div>
@@ -533,10 +533,10 @@ export function AdminTriageView({
                       <Users className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <div className="font-semibold text-amber-950">
-                          Audience Overlap Advisory
+                          Audience Overlap
                         </div>
                         <div className="mt-0.5 text-amber-800 leading-relaxed">
-                          Shares target cohorts with concurrent event &quot;{clashingAudienceEvent?.title}&quot; ({(clashingAudienceEvent?.target_audience || ["All Students"]).join(", ")}).
+                          Overlaps audience cohorts with &quot;{clashingAudienceEvent?.title}&quot; ({(clashingAudienceEvent?.target_audience || ["All Students"]).join(", ")}) scheduled at the same time.
                         </div>
                       </div>
                     </div>
@@ -546,7 +546,7 @@ export function AdminTriageView({
                     <div className="flex items-center gap-2 text-xs text-emerald-900 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span className="font-medium text-xs">
-                        Deterministic Safe Slot Verified • Zero venue collisions or audience overlaps detected
+                        All clear • Venue is open and no audience overlap detected
                       </span>
                     </div>
                   )}

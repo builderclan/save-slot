@@ -476,31 +476,31 @@ export async function checkEventConflicts(params: {
 
   if (hasConflict) {
     messages.push(
-      `Venue collision: ${targetVenue?.name || "Venue"} is already booked by ${
-        conflictingEvent?.community?.name || "another organization"
-      } for "${conflictingEvent?.title}".`
+      `${targetVenue?.name || "This venue"} is already booked for "${conflictingEvent?.title}" by ${
+        conflictingEvent?.community?.name || "another club"
+      }.`
     );
   }
 
   if (hasAudienceConflict && conflictingAudienceEvent && conflictingAudienceEvent.id !== conflictingEvent?.id) {
     const cohortsStr = overlappingAudience.length > 0 ? overlappingAudience.join(", ") : "your target audience";
     messages.push(
-      `Audience overlap advisory: "${conflictingAudienceEvent.title}" by ${
-        conflictingAudienceEvent.community?.name || "another organization"
-      } is scheduled at this time targeting ${cohortsStr}. Student turnout may be divided.`
+      `"${conflictingAudienceEvent.title}" (${
+        conflictingAudienceEvent.community?.name || "another club"
+      }) is scheduled at the same time for ${cohortsStr}. Student turnout may be divided.`
     );
   }
 
   if (hasLeadTimeViolation) {
     messages.push(
-      `Campus policy violation: Event must be submitted at least 7 days in advance (currently ${diffDays} day${
+      `Events must be submitted at least 7 days in advance (this date is in ${diffDays} day${
         diffDays === 1 ? "" : "s"
-      } away).`
+      }).`
     );
   }
 
   if (messages.length > 0) {
-    message = messages.join(" ") + (safeSlots.length > 0 ? " Select a recommended safe slot below." : "");
+    message = messages.join(" ") + (safeSlots.length > 0 ? " Choose a recommended safe slot below." : "");
   }
 
   return {

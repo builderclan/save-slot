@@ -201,7 +201,7 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
 
     expect(result.hasConflict).toBe(true);
     expect(result.conflictingEvent?.id).toBe("event-clash-123");
-    expect(result.message).toContain("Venue collision: Turing Auditorium is already booked by IEEE Student Branch");
+    expect(result.message).toContain('Turing Auditorium is already booked for "Robotics Workshop" by IEEE Student Branch');
     expect(result.safeSlots.length).toBeGreaterThan(0);
     // Should suggest same venue later
     const sameVenueLater = result.safeSlots.find((s) => s.type === "same_venue_later");
@@ -298,7 +298,7 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
       expect(result.hasAudienceConflict).toBe(true);
       expect(result.conflictingAudienceEvent?.id).toBe("competing-event-456");
       expect(result.overlappingAudience).toContain("2nd Year");
-      expect(result.message).toContain("Audience overlap advisory: \"Web Dev Bootcamp\" by Web Dev Society is scheduled at this time targeting 2nd Year");
+      expect(result.message).toContain('"Web Dev Bootcamp" (Web Dev Society) is scheduled at the same time for 2nd Year');
       // Safe slot should suggest same venue later (after competing event concludes) or next day
       expect(result.safeSlots.length).toBeGreaterThan(0);
       // Alternative venue at the SAME TIME should NOT be suggested because audience clash exists at this time window

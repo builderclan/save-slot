@@ -358,7 +358,7 @@ export function PrincipalInboxView({
                       <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <div className="font-semibold text-rose-950">
-                          Venue Collision Detected
+                          Venue Clash
                         </div>
                         <div className="mt-0.5 text-rose-800 leading-relaxed">
                           {activeConflictResult.message}
@@ -370,7 +370,7 @@ export function PrincipalInboxView({
                       <Users className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <div className="font-semibold text-amber-950">
-                          Audience Overlap Advisory
+                          Audience Overlap
                         </div>
                         <div className="mt-0.5 text-amber-800 leading-relaxed">
                           {activeConflictResult.message}
@@ -381,9 +381,9 @@ export function PrincipalInboxView({
                     <div className="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-amber-900 text-xs flex items-start gap-2">
                       <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <span className="font-semibold text-amber-950">Notice Policy Exception: </span>
+                        <span className="font-semibold text-amber-950">Short Notice: </span>
                         <span className="text-amber-800">
-                          Submitted with {activeConflictResult.leadTimeDays}d notice (policy: 7d). Venue is available.
+                          Submitted with {activeConflictResult.leadTimeDays}d notice (policy asks for 7d). Venue is available.
                         </span>
                       </div>
                     </div>
@@ -391,7 +391,7 @@ export function PrincipalInboxView({
                     <div className="flex items-center gap-2 text-xs text-emerald-900 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span className="font-medium text-xs">
-                        Deterministic Safe Slot Verified • Zero collisions or audience overlaps detected
+                        All clear • Venue is open and no audience overlap detected
                       </span>
                     </div>
                   )}
