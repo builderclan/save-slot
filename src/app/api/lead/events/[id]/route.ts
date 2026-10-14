@@ -61,6 +61,7 @@ export async function PUT(
     const {
       title,
       category,
+      targetAudience,
       venueId,
       startTime,
       endTime,
@@ -90,6 +91,7 @@ export async function PUT(
           title: title.trim(),
           description: description.trim(),
           category,
+          targetAudience: targetAudience || ["All Students"],
           venueId,
           startTime: new Date(startTime),
           endTime: new Date(endTime),
