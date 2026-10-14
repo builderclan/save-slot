@@ -88,6 +88,7 @@ export async function POST(request: Request) {
     const {
       title,
       category,
+      targetAudience,
       venueId,
       startTime,
       endTime,
@@ -150,6 +151,7 @@ export async function POST(request: Request) {
           slug: uniqueSlug,
           description: description.trim(),
           category,
+          targetAudience: targetAudience || ["All Students"],
           startTime: new Date(startTime),
           endTime: new Date(endTime),
           locationName: venue.name,

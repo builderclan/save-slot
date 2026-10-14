@@ -79,4 +79,37 @@ describe("Conflict Check API Endpoint (POST /api/conflicts/check)", () => {
       })
     );
   });
+
+  it("passes targetAudience to checkEventConflicts when provided in payload", async () => {
+    mockCheckConflicts.mockResolvedValueOnce({
+      hasConflict: false,
+      hasAudienceConflict: true,
+      hasLeadTimeViolation: false,
+      leadTimeDays: 12,
+      conflictingEvent: null,
+      message: "Audience overlap advisory",
+      safeSlots: [],
+    });
+
+    const payload = {
+      venueId: "a1b2c3d4-e5f6-4a7b-8c9d-ef0123456789",
+      startTime: "2026-10-25T10:00:00.000Z",
+      endTime: "2026-10-25T12:00:00.000Z",
+      targetAudience: ["2nd Year", "3rd Year"],
+    };
+
+    const req = new Request("http://localhost/api/conflicts/check", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    expect(mockCheckConflicts).toHaveBeenCalledWith(
+      expect.objectContaining({
+        venueId: payload.venueId,
+        targetAudience: ["2nd Year", "3rd Year"],
+      })
+    );
+  });
 });

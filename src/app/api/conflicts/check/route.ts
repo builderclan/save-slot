@@ -12,13 +12,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
 
-    const { venueId, startTime, endTime, category, excludeEventId } = parsed.data;
+    const { venueId, startTime, endTime, category, targetAudience, excludeEventId } = parsed.data;
 
     const result = await checkEventConflicts({
       venueId,
       startTime,
       endTime,
       category,
+      targetAudience,
       excludeEventId,
     });
 

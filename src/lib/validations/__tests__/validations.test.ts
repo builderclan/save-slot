@@ -105,6 +105,41 @@ describe("Zod Validation Schemas", () => {
       });
       expect(result.success).toBe(false);
     });
+
+    it("defaults targetAudience to ['All Students'] when not provided", () => {
+      const result = ProposeEventSchema.safeParse(validProposal);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.targetAudience).toEqual(["All Students"]);
+      }
+    });
+
+    it("accepts custom targetAudience array", () => {
+      const result = ProposeEventSchema.safeParse({
+        ...validProposal,
+        targetAudience: ["2nd Year", "3rd Year"],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.targetAudience).toEqual(["2nd Year", "3rd Year"]);
+      }
+    });
+
+    it("rejects empty targetAudience array", () => {
+      const result = ProposeEventSchema.safeParse({
+        ...validProposal,
+        targetAudience: [],
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("rejects invalid targetAudience enum value", () => {
+      const result = ProposeEventSchema.safeParse({
+        ...validProposal,
+        targetAudience: ["Invalid Audience"],
+      });
+      expect(result.success).toBe(false);
+    });
   });
 
   describe("UpdateEventStatusSchema", () => {

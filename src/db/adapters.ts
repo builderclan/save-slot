@@ -19,6 +19,7 @@ export interface DrizzleEventRow {
   slug: string;
   description: string;
   category: string;
+  targetAudience?: string[] | null;
   tags?: string[] | null;
   startTime: Date | string;
   endTime: Date | string;
@@ -161,6 +162,7 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
     slug: row.slug,
     description: row.description,
     category: (row.category as EventCategory) || (rowAny.category as EventCategory),
+    target_audience: row.targetAudience || (rowAny.target_audience as string[]) || ["All Students"],
     tags: row.tags || (rowAny.tags as string[]) || [],
     start_time:
       rawStart instanceof Date

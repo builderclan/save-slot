@@ -14,6 +14,7 @@ import {
   Share2,
   Check,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "./category-badge";
@@ -231,6 +232,25 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Target Audience Logistics Row */}
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+              <Users className="w-4 h-4 text-indigo-600 shrink-0" />
+              <span className="font-semibold text-slate-700 shrink-0">Target Audience:</span>
+              <div className="flex flex-wrap gap-1">
+                {(event.target_audience && event.target_audience.length > 0
+                  ? event.target_audience
+                  : ["All Students"]
+                ).map((aud) => (
+                  <span
+                    key={aud}
+                    className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-white text-slate-800 border border-slate-200/80 shadow-2xs"
+                  >
+                    {aud}
+                  </span>
+                ))}
               </div>
             </div>
 

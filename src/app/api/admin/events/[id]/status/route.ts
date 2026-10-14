@@ -40,6 +40,7 @@ export async function POST(
           startTime: events.startTime,
           endTime: events.endTime,
           title: events.title,
+          targetAudience: events.targetAudience,
         })
         .from(events)
         .where(eq(events.id, id))
@@ -65,6 +66,7 @@ export async function POST(
         venueId: targetEvent.venueId,
         startTime: startTimeStr,
         endTime: endTimeStr,
+        targetAudience: targetEvent.targetAudience || ["All Students"],
         excludeEventId: id,
       });
 

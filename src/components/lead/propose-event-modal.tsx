@@ -16,10 +16,12 @@ import {
   ImageIcon,
   Check,
   Sparkles,
+  Users,
 } from "lucide-react";
 import { format, addDays, parseISO } from "date-fns";
 import { Venue, ConflictCheckResult, SafeSlotSuggestion, EventCategory, CampusEvent } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
+import { TARGET_AUDIENCE_OPTIONS } from "@/lib/validations";
 
 const PRESET_COVERS = [
   {
@@ -86,6 +88,11 @@ export function ProposeEventModal({
 
   const [title, setTitle] = useState(initialEvent?.title || "");
   const [category, setCategory] = useState<EventCategory>(initialEvent?.category || "Tech");
+  const [targetAudience, setTargetAudience] = useState<string[]>(
+    initialEvent?.target_audience && initialEvent.target_audience.length > 0
+      ? initialEvent.target_audience
+      : ["All Students"]
+  );
   const [venueId, setVenueId] = useState(
     initialEvent?.venue?.id || initialEvent?.venue_id || venues[0]?.id || ""
   );
@@ -99,6 +106,24 @@ export function ProposeEventModal({
   const [registrationUrl, setRegistrationUrl] = useState(
     initialEvent?.external_registration_url || ""
   );
+
+  const toggleAudience = (aud: string) => {
+    if (aud === "All Students") {
+      setTargetAudience(["All Students"]);
+    } else {
+      let next = targetAudience.filter((a) => a !== "All Students");
+      if (next.includes(aud)) {
+        next = next.filter((a) => a !== aud);
+      } else {
+        next.push(aud);
+      }
+      if (next.length === 0) {
+        next = ["All Students"];
+      }
+      setTargetAudience(next);
+    }
+    if (stepError) setStepError(null);
+  };
 
   const [stepError, setStepError] = useState<string | null>(null);
   const [checkingConflict, setCheckingConflict] = useState(false);
@@ -144,6 +169,7 @@ export function ProposeEventModal({
             startTime: startIso,
             endTime: endIso,
             category,
+            targetAudience,
             excludeEventId: initialEvent?.id,
           }),
         });
@@ -163,7 +189,7 @@ export function ProposeEventModal({
       isCurrent = false;
       clearTimeout(timer);
     };
-  }, [venueId, dateStr, startTimeStr, endTimeStr, category, initialEvent?.id, getIsoTimestamps]);
+  }, [venueId, dateStr, startTimeStr, endTimeStr, category, targetAudience, initialEvent?.id, getIsoTimestamps]);
 
   // Apply a recommended Safe Slot
   const applySafeSlot = (slot: SafeSlotSuggestion) => {
@@ -183,6 +209,10 @@ export function ProposeEventModal({
   const handleNextFromStep1 = () => {
     if (!title.trim()) {
       setStepError("Please provide an event title before proceeding.");
+      return;
+    }
+    if (targetAudience.length === 0) {
+      setStepError("Please select at least one target audience cohort.");
       return;
     }
     if (!description.trim()) {
@@ -237,6 +267,7 @@ export function ProposeEventModal({
         body: JSON.stringify({
           title,
           category,
+          targetAudience,
           venueId,
           startTime: startIso,
           endTime: endIso,
@@ -423,6 +454,44 @@ export function ProposeEventModal({
                 </div>
               </div>
 
+              {/* Target Audience Cohort Selector */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Target Audience Cohort *</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">
+                    {targetAudience.includes("All Students")
+                      ? "Campus-Wide (Open to All)"
+                      : `${targetAudience.length} cohort${targetAudience.length === 1 ? "" : "s"} selected`}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-slate-50 border border-slate-200/80">
+                  {TARGET_AUDIENCE_OPTIONS.map((aud) => {
+                    const isSelected = targetAudience.includes(aud);
+                    return (
+                      <button
+                        key={aud}
+                        type="button"
+                        onClick={() => toggleAudience(aud)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs font-semibold"
+                            : "bg-white text-slate-600 border-slate-200/90 hover:border-slate-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}
+                        <span>{aud}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  The Safe-Slot engine verifies concurrent campus events to protect student turnout for your selected cohorts.
+                </p>
+              </div>
+
               {/* Description */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
@@ -540,11 +609,13 @@ export function ProposeEventModal({
                   ) : conflictResult ? (
                     <div className="space-y-3">
                       {/* Status Banner */}
-                      {!conflictResult.hasConflict && !conflictResult.hasLeadTimeViolation ? (
+                      {!conflictResult.hasConflict &&
+                      !conflictResult.hasLeadTimeViolation &&
+                      !conflictResult.hasAudienceConflict ? (
                         <div className="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-900 text-xs flex items-center gap-2.5 shadow-xs">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                           <span>
-                            <strong>Safe Slot Verified:</strong> No venue collisions and satisfies the 7-day advance notice rule ({conflictResult.leadTimeDays} days notice).
+                            <strong>Safe Slot Verified:</strong> Venue is available, no audience clash, and meets the 7-day notice rule ({conflictResult.leadTimeDays} days ahead).
                           </span>
                         </div>
                       ) : (
@@ -555,13 +626,27 @@ export function ProposeEventModal({
                               : "border-amber-200 bg-amber-50 text-amber-900"
                           }`}
                         >
-                          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                          <div>
-                            <div className="font-semibold">{conflictResult.message}</div>
-                            {conflictResult.hasConflict && conflictResult.conflictingEvent && (
-                              <div className="text-[11px] opacity-80 mt-1">
-                                Clashing with: {conflictResult.conflictingEvent.title} (
-                                {conflictResult.conflictingEvent.community?.name})
+                          {conflictResult.hasConflict ? (
+                            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                          ) : conflictResult.hasAudienceConflict ? (
+                            <Users className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                          ) : (
+                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                          )}
+                          <div className="flex-1 space-y-1">
+                            <div className="font-semibold text-xs sm:text-sm">
+                              {conflictResult.hasConflict
+                                ? "Venue Already Booked"
+                                : conflictResult.hasAudienceConflict
+                                ? "Audience Overlap with Another Event"
+                                : "Short Advance Notice"}
+                            </div>
+                            <div className="text-xs leading-relaxed opacity-90">
+                              {conflictResult.message}
+                            </div>
+                            {conflictResult.hasAudienceConflict && !conflictResult.hasConflict && (
+                              <div className="text-[11px] font-medium text-amber-800 bg-amber-100/70 px-2 py-1 rounded-md inline-block mt-1">
+                                Note: You may still submit, but choosing a recommended slot below avoids splitting student attendance.
                               </div>
                             )}
                           </div>
@@ -698,6 +783,12 @@ export function ProposeEventModal({
                   <div className="flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-slate-400" />
                     <span>{selectedVenue?.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-indigo-500" />
+                    <span className="font-medium text-indigo-700">
+                      {targetAudience.join(", ")}
+                    </span>
                   </div>
                 </div>
               </div>

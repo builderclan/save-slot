@@ -213,6 +213,7 @@ export default function PrincipalDeskPage() {
             venueId: activeEvent.venue_id,
             startTime: activeEvent.start_time,
             endTime: activeEvent.end_time,
+            targetAudience: activeEvent.target_audience || ["All Students"],
             excludeEventId: activeEvent.id,
           }),
         });
