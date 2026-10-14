@@ -486,7 +486,7 @@ export function AdminTriageView({
                           Audience Overlap
                         </div>
                         <div className="mt-0.5 text-amber-800 leading-relaxed">
-                          Overlaps audience cohorts with &quot;{clashingAudienceEvent?.title}&quot; ({(clashingAudienceEvent?.target_audience || ["All Students"]).join(", ")}) scheduled at the same time.
+                          &quot;{clashingAudienceEvent?.title}&quot; is also scheduled at this time for {(clashingAudienceEvent?.target_audience || ["All Students"]).join(", ")}. Student attendance may be split.
                         </div>
                       </div>
                     </div>

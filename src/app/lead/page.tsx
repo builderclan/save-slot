@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   X,
   SlidersHorizontal,
+  Users,
 } from "lucide-react";
 import { CampusEvent, Venue } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
@@ -739,6 +740,13 @@ export default function LeadWorkspacePage() {
                           </span>
                         )}
                       </span>
+
+                      {ev.target_audience && ev.target_audience.length > 0 && (
+                        <span className="flex items-center gap-1.5 text-slate-500">
+                          <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>{ev.target_audience.join(", ")}</span>
+                        </span>
+                      )}
                     </div>
 
                     {/* Inline Administrative Feedback Snippet for Rejected Events */}
