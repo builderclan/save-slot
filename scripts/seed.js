@@ -1,26 +1,48 @@
+const fs = require("fs");
+const path = require("path");
 const { Client } = require("pg");
 
+// Load local environment files if running via node scripts/seed.js in Node 20+
+if (typeof process.loadEnvFile === "function") {
+  try {
+    process.loadEnvFile(".env.local");
+  } catch {}
+  try {
+    process.loadEnvFile(".env");
+  } catch {}
+}
+
 async function seedDatabase() {
-  const password = process.env.DB_PASSWORD || process.env.DB_password;
-  const host = process.env.DB_HOST;
-  const port = parseInt(process.env.DB_PORT || "6543", 10);
-  const database = process.env.DB_NAME || "postgres";
-  const user = process.env.DB_USER;
-
-  if (!password || !host || !user) {
-    throw new Error("Missing required database environment variables (DB_HOST, DB_USER, DB_PASSWORD).");
-  }
-
   const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
 
-  const client = new Client({
-    host,
-    port,
-    database,
-    user,
-    password,
-    ssl: { rejectUnauthorized },
-  });
+  let client;
+  if (process.env.DATABASE_URL) {
+    client = new Client({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized },
+    });
+  } else {
+    const password = process.env.DB_PASSWORD || process.env.DB_password;
+    const host = process.env.DB_HOST;
+    const port = parseInt(process.env.DB_PORT || "6543", 10);
+    const database = process.env.DB_NAME || "postgres";
+    const user = process.env.DB_USER;
+
+    if (!password || !host || !user) {
+      throw new Error(
+        "Missing required database environment variables. Provide DATABASE_URL or DB_HOST, DB_USER, and DB_PASSWORD."
+      );
+    }
+
+    client = new Client({
+      host,
+      port,
+      database,
+      user,
+      password,
+      ssl: { rejectUnauthorized },
+    });
+  }
 
   await client.connect();
   console.log("Connected to PostgreSQL for Phase 1 Seeding...\n");

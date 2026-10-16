@@ -13,6 +13,8 @@
     "db:migrate": "node scripts/migrate.js",
     "db:migrate:status": "node scripts/migrate.js --status",
     "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "node scripts/seed.js",
     "validate": "pnpm typecheck && pnpm lint && pnpm test && pnpm build"
   },
   "dependencies": {
