@@ -52,6 +52,8 @@ export interface Community {
   applicant_name?: string;
   applicant_email?: string;
   rejection_reason?: string;
+  lead_name?: string | null;
+  lead_email?: string | null;
   reviewed_at?: string;
   reviewed_by?: string;
   created_at?: string;
@@ -127,11 +129,16 @@ export interface CampusEvent {
   // Hydrated joins
   community?: Community;
   venue?: Venue;
-  creator?: UserProfile;
+  creator?: {
+    id: string;
+    full_name: string;
+    email?: string | null;
+    role?: UserRole;
+  } | null;
   reviewer?: {
     id: string;
     full_name: string;
-    email: string;
+    email?: string | null;
     role: UserRole;
   } | null;
 }

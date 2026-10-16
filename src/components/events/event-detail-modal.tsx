@@ -15,6 +15,7 @@ import {
   Check,
   ShieldCheck,
   Users,
+  UserCheck,
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "./category-badge";
@@ -65,6 +66,8 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   const durationLabel =
     hours > 0 ? (mins > 0 ? `${hours}h ${mins}m` : `${hours}h`) : `${mins}m`;
 
+  const leadName = event.community?.lead_name;
+
   const handleCopyLink = async () => {
     try {
       const url = `${window.location.origin}/?event=${event.id}`;
@@ -98,6 +101,11 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
             <span className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
               <span className="truncate">{event.community?.name || "Campus Community"}</span>
+              {leadName && (
+                <span className="text-slate-400 font-normal truncate hidden xs:inline">
+                  {" "}· {formatDisplayName(leadName)}
+                </span>
+              )}
             </span>
             <span className="text-slate-300">•</span>
             <CategoryBadge category={event.category} size="sm" />
@@ -175,118 +183,164 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               </h2>
             </div>
 
-            {/* Logistics Grid (in sync with mini-calendar & sidebar) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-slate-200/90 bg-slate-50/70 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/70">
-              {/* Left Column: Date & Time */}
-              <div className="flex items-start gap-3.5">
-                {/* Modern date badge matching mini-calendar */}
-                <div className="flex flex-col items-center justify-center w-11 h-12 rounded-xl bg-white border border-slate-200/90 text-center shadow-xs overflow-hidden shrink-0 mt-0.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 leading-tight pt-1">
-                    {format(startDate, "MMM")}
-                  </span>
-                  <span className="text-base font-extrabold leading-none text-slate-900 pb-1">
-                    {format(startDate, "d")}
-                  </span>
-                </div>
-
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-slate-900">
-                    {isSameDayEvent
-                      ? format(startDate, "EEEE, MMMM d, yyyy")
-                      : `${format(startDate, "EEE, MMM d")} – ${format(endDate, "EEE, MMM d, yyyy")}`}
-                  </div>
-                  <div className="text-xs text-slate-600 mt-1 flex items-center gap-1.5 flex-wrap">
-                    <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>
-                      {isSameDayEvent
-                        ? `${format(startDate, "h:mm a")} – ${format(endDate, "h:mm a")}`
-                        : `${format(startDate, "h:mm a")} – ${format(endDate, "h:mm a")}`}
+            {/* Logistics Card (Date, Venue, and Target Audience Strip) */}
+            <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 overflow-hidden divide-y divide-slate-200/70">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/70">
+                {/* Left Column: Date & Time */}
+                <div className="flex items-start gap-3.5">
+                  <div className="flex flex-col items-center justify-center w-11 h-12 rounded-xl bg-white border border-slate-200/90 text-center shadow-xs overflow-hidden shrink-0 mt-0.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 leading-tight pt-1">
+                      {format(startDate, "MMM")}
                     </span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-slate-500 text-[11px] font-medium">{durationLabel}</span>
+                    <span className="text-base font-extrabold leading-none text-slate-900 pb-1">
+                      {format(startDate, "d")}
+                    </span>
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-slate-900">
+                      {isSameDayEvent
+                        ? format(startDate, "EEEE, MMMM d, yyyy")
+                        : `${format(startDate, "EEE, MMM d")} – ${format(endDate, "EEE, MMM d, yyyy")}`}
+                    </div>
+                    <div className="text-xs text-slate-600 mt-1 flex items-center gap-1.5 flex-wrap">
+                      <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span>
+                        {format(startDate, "h:mm a")} – {format(endDate, "h:mm a")}
+                      </span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-slate-500 text-[11px] font-medium">{durationLabel}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Right Column: Venue & Space */}
-              <div className="flex items-start gap-3.5 pt-3 sm:pt-0 sm:pl-4">
-                <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-xs shrink-0 mt-0.5">
-                  <MapPin className="w-4 h-4 text-slate-600" />
-                </div>
+                {/* Right Column: Venue & Space */}
+                <div className="flex items-start gap-3.5 pt-3 sm:pt-0 sm:pl-4">
+                  <div className="w-9 h-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-500 shadow-xs shrink-0 mt-0.5">
+                    <MapPin className="w-4 h-4 text-slate-600" />
+                  </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap">
-                    <span>{event.venue?.name || event.location_name}</span>
-                    {event.venue?.capacity && (
-                      <span className="text-[11px] font-normal text-slate-500 bg-white border border-slate-200/90 px-1.5 py-0.5 rounded-md">
-                        {event.venue.capacity} cap
-                      </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold text-slate-900 flex items-center gap-1.5 flex-wrap">
+                      <span>{event.venue?.name || event.location_name}</span>
+                      {event.venue?.capacity && (
+                        <span className="text-[11px] font-normal text-slate-500 bg-white border border-slate-200/90 px-1.5 py-0.5 rounded-md">
+                          {event.venue.capacity} cap
+                        </span>
+                      )}
+                    </div>
+                    {event.venue?.address && (
+                      <div className="text-xs text-slate-600 mt-0.5">{event.venue.address}</div>
+                    )}
+                    {event.venue?.notes && (
+                      <div className="text-[11px] text-slate-500 mt-1 leading-normal">
+                        {event.venue.notes}
+                      </div>
                     )}
                   </div>
-                  {event.venue?.address && (
-                    <div className="text-xs text-slate-600 mt-0.5">{event.venue.address}</div>
-                  )}
-                  {event.venue?.notes && (
-                    <div className="text-[11px] text-slate-500 mt-1 leading-normal">
-                      {event.venue.notes}
-                    </div>
-                  )}
+                </div>
+              </div>
+
+              {/* Bottom Strip: Target Audience */}
+              <div className="px-4 py-2.5 bg-slate-100/40 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                  <Users className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span className="font-semibold text-slate-700 shrink-0 text-[11px]">Audience:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {(event.target_audience && event.target_audience.length > 0
+                      ? event.target_audience
+                      : ["All Students"]
+                    ).map((aud) => (
+                      <span
+                        key={aud}
+                        className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-white text-slate-800 border border-slate-200/80 shadow-2xs"
+                      >
+                        {aud}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Target Audience Logistics Row */}
-            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-              <Users className="w-4 h-4 text-indigo-600 shrink-0" />
-              <span className="font-semibold text-slate-700 shrink-0">Target Audience:</span>
-              <div className="flex flex-wrap gap-1">
-                {(event.target_audience && event.target_audience.length > 0
-                  ? event.target_audience
-                  : ["All Students"]
-                ).map((aud) => (
-                  <span
-                    key={aud}
-                    className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-white text-slate-800 border border-slate-200/80 shadow-2xs"
-                  >
-                    {aud}
-                  </span>
-                ))}
-              </div>
-            </div>
+            {/* Governance & Leadership Grid (Campus Lead & Institutional Sign-Off) */}
+            {(leadName || event.reviewer) && (
+              <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 overflow-hidden">
+                <div
+                  className={`grid grid-cols-1 ${
+                    leadName && event.reviewer
+                      ? "sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-slate-200/70"
+                      : ""
+                  } p-3.5 sm:p-4 gap-3.5 sm:gap-4`}
+                >
+                  {/* Left Column: Campus Lead / Organizer */}
+                  {leadName && (
+                    <div className="flex items-center justify-between gap-2.5 min-w-0">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border bg-indigo-100 border-indigo-200 text-indigo-700 shadow-2xs">
+                          {formatDisplayName(leadName).charAt(0) || "L"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] text-slate-400 font-medium leading-tight">
+                            Organized by
+                          </div>
+                          <div className="font-semibold text-slate-900 truncate text-xs">
+                            {formatDisplayName(leadName)}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-normal truncate">
+                            {event.community?.name || "Campus Community"} Lead
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold border bg-white border-slate-200/90 text-indigo-700 flex items-center gap-1 shrink-0 shadow-2xs">
+                        <UserCheck className="w-3 h-3 text-indigo-600" />
+                        <span>Campus Lead</span>
+                      </span>
+                    </div>
+                  )}
 
-            {/* Executive Decision Sign-Off */}
-            {event.reviewer && (
-              <div className="p-3.5 rounded-xl border border-slate-200/90 bg-slate-50/80 flex items-center justify-between gap-3 text-xs shadow-2xs">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border ${
-                      event.reviewer.role === "vice_principal"
-                        ? "bg-indigo-100 border-indigo-200 text-indigo-700"
-                        : event.reviewer.role === "principal"
-                        ? "bg-purple-100 border-purple-200 text-purple-700"
-                        : "bg-amber-100 border-amber-200 text-amber-800"
-                    }`}
-                  >
-                    {formatDisplayName(event.reviewer.full_name).charAt(0) || "U"}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-slate-900 truncate">
-                      {event.status === "published" ? "Approved by " : "Declined by "}
-                      {formatDisplayName(event.reviewer.full_name)}
+                  {/* Right Column: Institutional Sign-Off */}
+                  {event.reviewer && (
+                    <div
+                      className={`flex items-center justify-between gap-2.5 min-w-0 ${
+                        leadName ? "pt-3 sm:pt-0 sm:pl-4" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 border shadow-2xs ${
+                            event.reviewer.role === "vice_principal"
+                              ? "bg-indigo-100 border-indigo-200 text-indigo-700"
+                              : event.reviewer.role === "principal"
+                              ? "bg-purple-100 border-purple-200 text-purple-700"
+                              : "bg-amber-100 border-amber-200 text-amber-800"
+                          }`}
+                        >
+                          {formatDisplayName(event.reviewer.full_name).charAt(0) || "U"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-[10px] text-slate-400 font-medium leading-tight">
+                            {event.status === "published" ? "Approved by" : "Reviewed by"}
+                          </div>
+                          <div className="font-semibold text-slate-900 truncate text-xs">
+                            {formatDisplayName(event.reviewer.full_name)}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-normal truncate">
+                            {event.reviewer.role === "vice_principal"
+                              ? "Office of the Vice Principal"
+                              : event.reviewer.role === "principal"
+                              ? "Executive Office of the Principal"
+                              : "Campus Administration"}
+                          </div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold border bg-white border-slate-200/90 text-slate-700 flex items-center gap-1 shrink-0 shadow-2xs">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        <span>Sign-Off</span>
+                      </span>
                     </div>
-                    <div className="text-[10px] text-slate-500 font-medium">
-                      {event.reviewer.role === "vice_principal"
-                        ? "Office of the Vice Principal"
-                        : event.reviewer.role === "principal"
-                        ? "Executive Office of the Principal"
-                        : "Campus Administration"}
-                    </div>
-                  </div>
+                  )}
                 </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold border bg-white border-slate-200/90 text-slate-700 flex items-center gap-1 shrink-0">
-                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                  <span>Institutional Sign-Off</span>
-                </span>
               </div>
             )}
 

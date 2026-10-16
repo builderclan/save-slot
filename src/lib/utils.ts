@@ -11,6 +11,6 @@ export function cn(...inputs: ClassValue[]) {
  */
 export function formatDisplayName(name?: string | null): string {
   if (!name) return "";
-  return name.replace(/\s*\((Principal|Vice Principal|Admin|Campus Admin|Community Lead|Lead)\)/gi, "").trim();
+  return name.replace(/\s*\([^)]*(Lead|Principal|Vice Principal|Admin|Campus Admin)[^)]*\)/gi, "").trim();
 }
 

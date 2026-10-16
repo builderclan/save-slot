@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { withDbRetry } from "@/lib/db";
-import { events, communities, venues } from "@/db/schema";
+import { events, communities, venues, users, communityMembers } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { formatCampusEvent } from "@/db/adapters";
-import { eq, and, or, ilike, asc, getTableColumns, SQL } from "drizzle-orm";
+import { eq, and, or, ilike, asc, getTableColumns, SQL, aliasedTable, sql } from "drizzle-orm";
+
+const creators = aliasedTable(users, "creators");
+const reviewers = aliasedTable(users, "reviewers");
 
 export async function GET(request: Request) {
   try {
@@ -60,6 +63,7 @@ export async function GET(request: Request) {
             slug: communities.slug,
             category: communities.category,
             logoUrl: communities.logoUrl,
+            leadName: sql<string | null>`(SELECT u.full_name FROM ${communityMembers} cm JOIN ${users} u ON u.id = cm.user_id WHERE cm.community_id = ${communities.id} AND cm.role = 'lead' LIMIT 1)`,
           },
           venue: {
             id: venues.id,
@@ -71,10 +75,22 @@ export async function GET(request: Request) {
             notes: venues.notes,
             isActive: venues.isActive,
           },
+          creator: {
+            id: creators.id,
+            fullName: creators.fullName,
+            role: creators.role,
+          },
+          reviewer: {
+            id: reviewers.id,
+            fullName: reviewers.fullName,
+            role: reviewers.role,
+          },
         })
         .from(events)
         .innerJoin(communities, eq(communities.id, events.communityId))
         .leftJoin(venues, eq(venues.id, events.venueId))
+        .leftJoin(creators, eq(creators.id, events.createdBy))
+        .leftJoin(reviewers, eq(reviewers.id, events.reviewedBy))
         .where(and(...conditions))
         .orderBy(asc(events.startTime))
         .limit(limit)

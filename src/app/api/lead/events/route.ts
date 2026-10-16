@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
-import { events, venues } from "@/db/schema";
+import { events, venues, communityMembers } from "@/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { formatCampusEvent } from "@/db/adapters";
 import { ProposeEventSchema } from "@/lib/validations";
@@ -42,6 +42,20 @@ export async function GET() {
               name: true,
               slug: true,
             },
+            with: {
+              members: {
+                where: eq(communityMembers.role, "lead"),
+                with: {
+                  user: {
+                    columns: {
+                      id: true,
+                      fullName: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
+            },
           },
           venue: {
             columns: {
@@ -49,6 +63,14 @@ export async function GET() {
               name: true,
               building: true,
               capacity: true,
+            },
+          },
+          creator: {
+            columns: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: true,
             },
           },
           reviewer: {
