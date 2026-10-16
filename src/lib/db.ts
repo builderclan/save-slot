@@ -69,20 +69,30 @@ export async function withDbRetry<T>(
 }
 
 
+/**
+ * Resolves the PostgreSQL connection string using the hybrid resolution strategy:
+ * 1. Returns process.env.DATABASE_URL if set.
+ * 2. Otherwise constructs connection string from DB_* variables (DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME).
+ * 3. Returns empty string if credentials are insufficient.
+ */
+export function getDatabaseConnectionString(): string {
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+  const password = process.env.DB_PASSWORD || process.env.DB_password;
+  const host = process.env.DB_HOST;
+  const port = process.env.DB_PORT || "6543";
+  const user = process.env.DB_USER;
+  const database = process.env.DB_NAME || "postgres";
+
+  if (host && user && password) {
+    return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}?sslmode=require`;
+  }
+  return "";
+}
+
 export function getDbPool(): Pool {
   if (!globalForDb.pgPool) {
-    const password = process.env.DB_PASSWORD || process.env.DB_password;
-    const host = process.env.DB_HOST;
-    const port = parseInt(process.env.DB_PORT || "6543", 10);
-    const user = process.env.DB_USER;
-    const database = process.env.DB_NAME || "postgres";
-
-    if (!password || !host || !user) {
-      throw new Error(
-        "Database configuration error: Missing required environment variables (DB_HOST, DB_USER, or DB_PASSWORD)."
-      );
-    }
-
     const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
     const connectionTimeoutMillis = parseInt(
       process.env.DB_CONNECTION_TIMEOUT_MS || "5000",
@@ -94,12 +104,7 @@ export function getDbPool(): Pool {
       10
     );
 
-    const pool = new Pool({
-      host,
-      port,
-      user,
-      password,
-      database,
+    const baseConfig = {
       ssl: { rejectUnauthorized },
       max,
       idleTimeoutMillis: process.env.VERCEL ? 10000 : 30000,
@@ -107,7 +112,36 @@ export function getDbPool(): Pool {
       statement_timeout: 10000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
-    });
+    };
+
+    let pool: Pool;
+    if (process.env.DATABASE_URL) {
+      pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ...baseConfig,
+      });
+    } else {
+      const password = process.env.DB_PASSWORD || process.env.DB_password;
+      const host = process.env.DB_HOST;
+      const port = parseInt(process.env.DB_PORT || "6543", 10);
+      const user = process.env.DB_USER;
+      const database = process.env.DB_NAME || "postgres";
+
+      if (!password || !host || !user) {
+        throw new Error(
+          "Database configuration error: Missing required database credentials. Provide DATABASE_URL or DB_HOST, DB_USER, and DB_PASSWORD."
+        );
+      }
+
+      pool = new Pool({
+        host,
+        port,
+        user,
+        password,
+        database,
+        ...baseConfig,
+      });
+    }
 
     pool.on("error", (err) => {
       console.warn("Unexpected error on idle PostgreSQL client:", err?.message || err);
