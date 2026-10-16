@@ -20,7 +20,7 @@ function setupQueryChain(defaultRows: DrizzleEventRow[] = []) {
   mockLimit.mockReturnValue({ offset: mockOffset });
   mockOrderBy.mockReturnValue({ limit: mockLimit });
   mockWhere.mockReturnValue({ orderBy: mockOrderBy });
-  mockLeftJoin.mockReturnValue({ where: mockWhere });
+  mockLeftJoin.mockReturnValue({ leftJoin: mockLeftJoin, where: mockWhere });
   mockInnerJoin.mockReturnValue({ leftJoin: mockLeftJoin });
   mockFrom.mockReturnValue({ innerJoin: mockInnerJoin });
   mockSelect.mockReturnValue({ from: mockFrom });
@@ -94,7 +94,7 @@ describe("Events Public & Authenticated API (GET /api/events with Drizzle Core J
 
     expect(mockSelect).toHaveBeenCalledTimes(1);
     expect(mockInnerJoin).toHaveBeenCalledTimes(1);
-    expect(mockLeftJoin).toHaveBeenCalledTimes(1);
+    expect(mockLeftJoin).toHaveBeenCalledTimes(3);
     expect(mockLimit).toHaveBeenCalledWith(150);
     expect(mockOffset).toHaveBeenCalledWith(0);
 

@@ -1,6 +1,6 @@
 import { withDbRetry } from "@/lib/db";
-import { events, communities, venues, users } from "@/db/schema";
-import { eq, asc, getTableColumns } from "drizzle-orm";
+import { events, communities, venues, users, communityMembers } from "@/db/schema";
+import { eq, asc, getTableColumns, aliasedTable, sql } from "drizzle-orm";
 import { formatCampusEvent, formatVenue } from "@/db/adapters";
 import { getCurrentUser } from "@/lib/auth";
 import { CampusEvent, Venue } from "@/types/database";
@@ -10,6 +10,9 @@ import {
 } from "@/components/notice-board/notice-board-client";
 
 export const dynamic = "force-dynamic";
+
+const creators = aliasedTable(users, "creators");
+const reviewers = aliasedTable(users, "reviewers");
 
 export default async function StudentNoticeBoardPage() {
   let initialEvents: CampusEvent[] = [];
@@ -29,6 +32,7 @@ export default async function StudentNoticeBoardPage() {
               slug: communities.slug,
               category: communities.category,
               logoUrl: communities.logoUrl,
+              leadName: sql<string | null>`(SELECT u.full_name FROM ${communityMembers} cm JOIN ${users} u ON u.id = cm.user_id WHERE cm.community_id = ${communities.id} AND cm.role = 'lead' LIMIT 1)`,
             },
             venue: {
               id: venues.id,
@@ -40,17 +44,22 @@ export default async function StudentNoticeBoardPage() {
               notes: venues.notes,
               isActive: venues.isActive,
             },
+            creator: {
+              id: creators.id,
+              fullName: creators.fullName,
+              role: creators.role,
+            },
             reviewer: {
-              id: users.id,
-              fullName: users.fullName,
-              email: users.email,
-              role: users.role,
+              id: reviewers.id,
+              fullName: reviewers.fullName,
+              role: reviewers.role,
             },
           })
           .from(events)
           .innerJoin(communities, eq(communities.id, events.communityId))
           .leftJoin(venues, eq(venues.id, events.venueId))
-          .leftJoin(users, eq(users.id, events.reviewedBy))
+          .leftJoin(creators, eq(creators.id, events.createdBy))
+          .leftJoin(reviewers, eq(reviewers.id, events.reviewedBy))
           .where(eq(events.status, "published"))
           .orderBy(asc(events.startTime))
           .limit(200)

@@ -47,6 +47,8 @@ export interface DrizzleEventRow {
     website?: string | null;
     instagram?: string | null;
     status?: string | null;
+    leadName?: string | null;
+    leadEmail?: string | null;
     createdAt?: Date | string | null;
   } | null;
   venue?: {
@@ -59,6 +61,12 @@ export interface DrizzleEventRow {
     notes?: string | null;
     isActive?: boolean | null;
     createdAt?: Date | string | null;
+  } | null;
+  creator?: {
+    id: string;
+    fullName?: string | null;
+    email?: string | null;
+    role?: string | null;
   } | null;
   reviewer?: {
     id: string;
@@ -113,6 +121,13 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
   let community: Community | undefined = undefined;
   if (row.community && row.community.id) {
     const commAny = row.community as unknown as Record<string, unknown>;
+    const members = commAny.members as
+      | Array<{ role?: string; user?: { fullName?: string; email?: string } }>
+      | undefined;
+    const leadMember = Array.isArray(members)
+      ? members.find((m) => m.role === "lead")
+      : undefined;
+
     community = {
       id: row.community.id,
       campus_id: row.community.campusId || (commAny.campus_id as string) || "",
@@ -124,6 +139,16 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
       website: row.community.website || undefined,
       instagram: row.community.instagram || undefined,
       status: (row.community.status as "pending" | "approved" | "rejected") || undefined,
+      lead_name:
+        row.community.leadName ||
+        (commAny.lead_name as string) ||
+        leadMember?.user?.fullName ||
+        undefined,
+      lead_email:
+        row.community.leadEmail ||
+        (commAny.lead_email as string) ||
+        leadMember?.user?.email ||
+        undefined,
       created_at: row.community.createdAt instanceof Date ? row.community.createdAt.toISOString() : (row.community.createdAt || (commAny.created_at as string) || undefined),
     };
   }
@@ -131,6 +156,21 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
   let venue: Venue | undefined = undefined;
   if (row.venue && row.venue.id) {
     venue = formatVenue(row.venue as DrizzleVenueRow);
+  }
+
+  let creator: CampusEvent["creator"] = undefined;
+  if (row.creator && row.creator.id) {
+    const validRoles: UserRole[] = ["admin", "principal", "vice_principal", "organizer", "student"];
+    const parsedRole = row.creator.role && validRoles.includes(row.creator.role as UserRole)
+      ? (row.creator.role as UserRole)
+      : "organizer";
+
+    creator = {
+      id: row.creator.id,
+      full_name: row.creator.fullName || "",
+      email: row.creator.email || undefined,
+      role: parsedRole,
+    };
   }
 
   let reviewer: CampusEvent["reviewer"] = undefined;
@@ -143,7 +183,7 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
     reviewer = {
       id: row.reviewer.id,
       full_name: row.reviewer.fullName || "",
-      email: row.reviewer.email || "",
+      email: row.reviewer.email || undefined,
       role: parsedRole,
     };
   }
@@ -197,6 +237,7 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
         : undefined,
     community,
     venue,
+    creator,
     reviewer,
   };
 }
