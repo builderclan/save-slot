@@ -15,6 +15,8 @@ SaveSlot has adopted **Path A: Drizzle ORM for type-safe data access while prese
    - Applied in development via `pnpm db:migrate`.
    - Applied in production via [`.github/workflows/db-migrate.yml`](../.github/workflows/db-migrate.yml) guarded by `pg_advisory_lock(7429184712)`.
    - Optional schema diffing: `pnpm db:generate` drafts new SQL migrations from [`src/db/schema/`](../src/db/schema) into `migrations/`.
+3. **Hybrid Database Credentials Resolution**:
+   Both [`drizzle.config.ts`](../drizzle.config.ts) and [`src/lib/db.ts`](../src/lib/db.ts) resolve database credentials from `DATABASE_URL` with an automatic fallback to discrete `DB_*` variables (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`). Special characters in passwords are safely URL-encoded during assembly.
 
 ---
 
