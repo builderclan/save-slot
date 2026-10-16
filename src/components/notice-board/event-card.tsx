@@ -6,6 +6,7 @@ import { format, parseISO, isSameDay } from "date-fns";
 import { MapPin, Clock, ArrowUpRight, Calendar as CalendarIcon, CheckCircle2, Users } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge, CATEGORY_STYLES } from "@/components/events/category-badge";
+import { formatDisplayName } from "@/lib/utils";
 
 interface EventCardProps {
   event: CampusEvent;
@@ -20,6 +21,7 @@ export function EventCard({ event, onSelect }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
   const startDate = toDate(event.start_time);
   const endDate = toDate(event.end_time);
+  const leadName = event.community?.lead_name;
 
   const isSameDayEvent = isSameDay(startDate, endDate);
 
@@ -49,6 +51,9 @@ export function EventCard({ event, onSelect }: EventCardProps) {
           <span className={`w-2 h-2 rounded-full ${catStyle.dot} shrink-0`} />
           <span className="text-[11px] font-semibold text-slate-600 truncate">
             {event.community?.name || "Campus Community"}
+            {leadName && (
+              <span className="text-slate-400 font-normal"> · {formatDisplayName(leadName)}</span>
+            )}
           </span>
         </div>
         <CategoryBadge category={event.category} size="sm" />
