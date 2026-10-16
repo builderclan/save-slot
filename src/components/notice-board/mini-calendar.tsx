@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   format,
   addMonths,
-  subMonths,
   startOfWeek,
   endOfWeek,
   startOfMonth,
@@ -22,14 +21,27 @@ interface MiniCalendarProps {
 }
 
 export function MiniCalendar({ currentDate, onSelectDate }: MiniCalendarProps) {
-  const [displayMonth, setDisplayMonth] = useState<Date>(currentDate);
+  const [prevDate, setPrevDate] = useState(currentDate);
+  const [monthOffset, setMonthOffset] = useState(0);
 
-  useEffect(() => {
-    setDisplayMonth(currentDate);
-  }, [currentDate]);
+  // Reset navigation offset when currentDate changes externally
+  if (currentDate.getTime() !== prevDate.getTime()) {
+    setPrevDate(currentDate);
+    setMonthOffset(0);
+  }
 
-  const prevMonth = () => setDisplayMonth(subMonths(displayMonth, 1));
-  const nextMonth = () => setDisplayMonth(addMonths(displayMonth, 1));
+  const displayMonth = useMemo(
+    () => addMonths(startOfMonth(currentDate), monthOffset),
+    [currentDate, monthOffset]
+  );
+
+  const prevMonth = () => setMonthOffset((prev) => prev - 1);
+  const nextMonth = () => setMonthOffset((prev) => prev + 1);
+
+  const handleSelectDate = (day: Date) => {
+    onSelectDate(day);
+    setMonthOffset(0);
+  };
 
   const monthStart = startOfMonth(displayMonth);
   const monthEnd = endOfMonth(displayMonth);
@@ -86,7 +98,7 @@ export function MiniCalendar({ currentDate, onSelectDate }: MiniCalendarProps) {
             <button
               key={day.toISOString()}
               type="button"
-              onClick={() => onSelectDate(day)}
+              onClick={() => handleSelectDate(day)}
               className={`h-7 w-7 mx-auto rounded-lg text-xs flex items-center justify-center transition-all cursor-pointer ${
                 isSelected
                   ? "bg-indigo-600 text-white font-semibold shadow-xs"
