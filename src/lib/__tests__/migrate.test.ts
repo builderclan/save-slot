@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import fs from "fs";
+import os from "os";
+import path from "path";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const {
@@ -92,10 +95,6 @@ DB_PORT=5432
     });
 
     it("detects sequence gaps in migration filenames", () => {
-      const fs = require("fs");
-      const os = require("os");
-      const path = require("path");
-
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "migration-gap-test-"));
       try {
         fs.writeFileSync(path.join(tempDir, "001_first.sql"), "SELECT 1;");
