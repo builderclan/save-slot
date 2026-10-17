@@ -1,183 +1,211 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
-import { CampusEvent, Venue } from "@/types/database";
-import { AdminTab } from "@/components/admin/admin-metrics-row";
+import type { CampusEvent, Venue, AdminCommunityRow } from "@/types/database";
+import type { AdminTab } from "@/components/admin/admin-metrics-row";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AdminTriageView } from "@/components/admin/admin-triage-view";
 import { AdminEventsView } from "@/components/admin/admin-events-view";
 import { AdminArchiveView } from "@/components/admin/admin-archive-view";
-import {
-  AdminUsersView,
-  AdminUserRow,
-} from "@/components/admin/admin-users-view";
+import { AdminUsersView, type AdminUserRow } from "@/components/admin/admin-users-view";
 import { AdminVenuesView } from "@/components/admin/admin-venues-view";
 import { AdminCommunitiesView } from "@/components/admin/admin-communities-view";
-import { AdminAddUserModal } from "@/components/admin/admin-add-user-modal";
-import { AdminEditUserModal } from "@/components/admin/admin-edit-user-modal";
-import { AdminAddVenueModal } from "@/components/admin/admin-add-venue-modal";
-import { AdminEditVenueModal } from "@/components/admin/admin-edit-venue-modal";
-import { AdminAddCommunityModal } from "@/components/admin/admin-add-community-modal";
-import { AdminEditCommunityModal } from "@/components/admin/admin-edit-community-modal";
-import { AdminRejectionModal } from "@/components/admin/admin-rejection-modal";
+import { AdminAddUserModal, type NewUserData } from "@/components/admin/admin-add-user-modal";
+import { AdminEditUserModal, type EditUserData } from "@/components/admin/admin-edit-user-modal";
+import { AdminAddVenueModal, type NewVenueData } from "@/components/admin/admin-add-venue-modal";
+import { AdminEditVenueModal, type EditVenueData } from "@/components/admin/admin-edit-venue-modal";
+import { AdminAddCommunityModal, type NewCommunityData } from "@/components/admin/admin-add-community-modal";
+import { AdminEditCommunityModal, type EditCommunityData } from "@/components/admin/admin-edit-community-modal";
+import { RejectionModal } from "@/components/events/rejection-modal";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
-import { AdminCommunityRow, EventCategory } from "@/types/database";
+import { useAuth } from "@/context/auth-context";
 
-export default function AdminConsolePage() {
+const VALID_TABS: AdminTab[] = ["triage", "all-events", "archive", "users", "venues", "communities"];
+
+function isValidAdminTab(tab: string | null): tab is AdminTab {
+  return tab !== null && VALID_TABS.includes(tab as AdminTab);
+}
+
+function AdminLoadingFallback() {
+  return (
+    <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center text-center bg-white">
+      <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3" />
+      <p className="text-xs text-slate-400 font-medium">Loading Operations Console...</p>
+    </div>
+  );
+}
+
+function AdminConsoleContent() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
-  const [currentUserName, setCurrentUserName] = useState<string>("Campus Dean of Affairs");
-  const [currentUserEmail, setCurrentUserEmail] = useState<string>("admin@campus.edu");
-  const [activeTab, setActiveTab] = useState<AdminTab>("triage");
+  const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
 
+  // Tab synchronization via URL searchParams
+  const tabParam = searchParams.get("tab");
+  const activeTab: AdminTab = isValidAdminTab(tabParam) ? tabParam : "triage";
+
+  const handleTabChange = useCallback(
+    (tab: AdminTab) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (tab === "triage") {
+        params.delete("tab");
+      } else {
+        params.set("tab", tab);
+      }
+      const qs = params.toString();
+      router.replace(qs ? `/admin?${qs}` : "/admin", { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  // Auth Protection: Verify administrative clearance
+  useEffect(() => {
+    if (!authLoading && (!user || !user.isAdmin)) {
+      router.push("/login?error=admin_required");
+    }
+  }, [user, authLoading, router]);
+
+  // Tab-scoped data state
+  const [initialLoading, setInitialLoading] = useState(true);
   const [allEvents, setAllEvents] = useState<CampusEvent[]>([]);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
-  const [communities, setCommunities] = useState<Array<{ id: string; name: string }>>([]);
   const [adminCommunities, setAdminCommunities] = useState<AdminCommunityRow[]>([]);
 
-  // Add Community Modal State
+  // Modals & Action Status
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<AdminUserRow | null>(null);
+
+  const [isAddVenueOpen, setIsAddVenueOpen] = useState(false);
+  const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
+
   const [isAddCommunityOpen, setIsAddCommunityOpen] = useState(false);
-  const [newCommName, setNewCommName] = useState("");
-  const [newCommSlug, setNewCommSlug] = useState("");
-  const [newCommCategory, setNewCommCategory] = useState<EventCategory>("Tech");
-  const [newCommDesc, setNewCommDesc] = useState("");
-  const [newCommLogo, setNewCommLogo] = useState("");
-  const [newCommWebsite, setNewCommWebsite] = useState("");
-  const [newCommInstagram, setNewCommInstagram] = useState("");
-  const [newCommLeadId, setNewCommLeadId] = useState("");
-  const [commModalError, setCommModalError] = useState<string | null>(null);
-  const [isSubmittingComm, setIsSubmittingComm] = useState(false);
-
-  // Edit Community Modal State
-  const [isEditCommunityOpen, setIsEditCommunityOpen] = useState(false);
   const [editingCommunity, setEditingCommunity] = useState<AdminCommunityRow | null>(null);
-  const [editCommName, setEditCommName] = useState("");
-  const [editCommSlug, setEditCommSlug] = useState("");
-  const [editCommCategory, setEditCommCategory] = useState<EventCategory>("Tech");
-  const [editCommDesc, setEditCommDesc] = useState("");
-  const [editCommLogo, setEditCommLogo] = useState("");
-  const [editCommWebsite, setEditCommWebsite] = useState("");
-  const [editCommInstagram, setEditCommInstagram] = useState("");
-  const [editCommLeadId, setEditCommLeadId] = useState("");
-  const [editCommStatus, setEditCommStatus] = useState<"approved" | "pending" | "rejected">("approved");
-  const [editCommError, setEditCommError] = useState<string | null>(null);
-  const [isSubmittingEditComm, setIsSubmittingEditComm] = useState(false);
 
-  // Action status
+  const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
+  const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
+  const [rejectionNote, setRejectionNote] = useState("");
+
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [adminNotice, setAdminNotice] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
 
-  // Event Preview Drawer Modal
-  const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
-
-  // Rejection Modal State
-  const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
-  const [rejectionNote, setRejectionNote] = useState("");
-
-  // Add User Modal State
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
-  const [newUserName, setNewUserName] = useState("");
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("");
-  const [newUserRole, setNewUserRole] = useState<"admin" | "principal" | "vice_principal" | "organizer">("organizer");
-  const [newUserCommId, setNewUserCommId] = useState("");
-  const [userModalError, setUserModalError] = useState<string | null>(null);
-
-  // Edit User Modal State
-  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<AdminUserRow | null>(null);
-  const [editUserName, setEditUserName] = useState("");
-  const [editUserRole, setEditUserRole] = useState<"admin" | "principal" | "vice_principal" | "organizer">("organizer");
-  const [editUserCommId, setEditUserCommId] = useState("");
-  const [editUserError, setEditUserError] = useState<string | null>(null);
-
-  // Add Venue Modal State
-  const [isAddVenueOpen, setIsAddVenueOpen] = useState(false);
-  const [newVenueName, setNewVenueName] = useState("");
-  const [newVenueBuilding, setNewVenueBuilding] = useState("");
-  const [newVenueCapacity, setNewVenueCapacity] = useState("100");
-  const [newVenueAddress, setNewVenueAddress] = useState("");
-  const [newVenueNotes, setNewVenueNotes] = useState("");
-
-  // Edit Venue Modal State
-  const [isEditVenueOpen, setIsEditVenueOpen] = useState(false);
-  const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
-  const [editVenueName, setEditVenueName] = useState("");
-  const [editVenueBuilding, setEditVenueBuilding] = useState("");
-  const [editVenueCapacity, setEditVenueCapacity] = useState("100");
-  const [editVenueAddress, setEditVenueAddress] = useState("");
-  const [editVenueNotes, setEditVenueNotes] = useState("");
-  const [editVenueIsActive, setEditVenueIsActive] = useState(true);
-  const [editVenueError, setEditVenueError] = useState<string | null>(null);
-
-  const loadAllData = useCallback(async () => {
-    try {
-      setLoading(true);
-
-      // Concurrently fetch auth verification and all admin data streams independently
-      const [meRes, evRes, usersRes, venuesRes, commsRes] = await Promise.allSettled([
-        fetch("/api/auth/me"),
-        fetch("/api/lead/events"),
-        fetch("/api/admin/users"),
-        fetch("/api/admin/venues"),
-        fetch("/api/admin/communities"),
-      ]);
-
-      if (meRes.status === "fulfilled" && meRes.value.ok) {
-        const meData = await meRes.value.json();
-        if (!meData.authenticated || !meData.user?.isAdmin) {
-          router.push("/login?error=admin_required");
-          return;
-        }
-        setCurrentUserId(meData.user.id);
-        if (meData.user.fullName) setCurrentUserName(meData.user.fullName);
-        if (meData.user.email) setCurrentUserEmail(meData.user.email);
-      } else {
-        router.push("/login?error=admin_required");
-        return;
-      }
-
-      if (evRes.status === "fulfilled" && evRes.value.ok) {
-        const evData = await evRes.value.json();
-        setAllEvents(evData.events || []);
-      }
-
-      if (usersRes.status === "fulfilled" && usersRes.value.ok) {
-        const usersData = await usersRes.value.json();
-        setUsers(usersData.users || []);
-      }
-
-      if (venuesRes.status === "fulfilled" && venuesRes.value.ok) {
-        const venuesData = await venuesRes.value.json();
-        setVenues(venuesData.venues || []);
-      }
-
-      if (commsRes.status === "fulfilled" && commsRes.value.ok) {
-        const commsData = await commsRes.value.json();
-        const commList: AdminCommunityRow[] = commsData.communities || [];
-        setAdminCommunities(commList);
-        setCommunities(commList.map((c) => ({ id: c.id, name: c.name })));
-      } else {
-        console.error("Failed to load communities stream");
-      }
-
-    } catch (err) {
-      console.error("Admin data load error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [router]);
+  const [nowTimestamp, setNowTimestamp] = useState<number>(0);
 
   useEffect(() => {
-    loadAllData();
-  }, [loadAllData]);
+    setNowTimestamp(Date.now());
+  }, []);
+
+  // Discrete domain loaders
+  const loadEvents = useCallback(async () => {
+    try {
+      const res = await fetch("/api/lead/events");
+      if (res.ok) {
+        const data = await res.json();
+        setAllEvents(data.events || []);
+      }
+    } catch (err) {
+      console.error("[Admin] Failed to load events:", err);
+    }
+  }, []);
+
+  const loadUsers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/users");
+      if (res.ok) {
+        const data = await res.json();
+        setUsers(data.users || []);
+      }
+    } catch (err) {
+      console.error("[Admin] Failed to load users:", err);
+    }
+  }, []);
+
+  const loadVenues = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/venues");
+      if (res.ok) {
+        const data = await res.json();
+        setVenues(data.venues || []);
+      }
+    } catch (err) {
+      console.error("[Admin] Failed to load venues:", err);
+    }
+  }, []);
+
+  const loadCommunities = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/communities");
+      if (res.ok) {
+        const data = await res.json();
+        setAdminCommunities(data.communities || []);
+      }
+    } catch (err) {
+      console.error("[Admin] Failed to load communities:", err);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user?.isAdmin) {
+      setInitialLoading(false);
+      return;
+    }
+
+    Promise.allSettled([
+      loadEvents(),
+      loadUsers(),
+      loadVenues(),
+      loadCommunities(),
+    ]).finally(() => {
+      setInitialLoading(false);
+    });
+  }, [authLoading, user?.isAdmin, loadEvents, loadUsers, loadVenues, loadCommunities]);
+
+  // Derived data
+  const communities = useMemo(
+    () => adminCommunities.map((c) => ({ id: c.id, name: c.name })),
+    [adminCommunities]
+  );
+
+  const eligibleUsers = useMemo(() => {
+    const seen = new Set<string>();
+    const result: Array<{ id: string; fullName: string; email: string; role: string }> = [];
+    for (const u of users) {
+      if (u.role !== "organizer") continue;
+      if (!seen.has(u.id)) {
+        seen.add(u.id);
+        result.push({
+          id: u.id,
+          fullName: u.full_name,
+          email: u.email,
+          role: u.role,
+        });
+      }
+    }
+    return result;
+  }, [users]);
+
+  const pendingEvents = useMemo(() => allEvents.filter((e) => e.status === "pending"), [allEvents]);
+  const publishedEvents = useMemo(() => allEvents.filter((e) => e.status === "published"), [allEvents]);
+  const archivedEvents = useMemo(
+    () => (nowTimestamp ? allEvents.filter((e) => new Date(e.end_time).getTime() < nowTimestamp) : []),
+    [allEvents, nowTimestamp]
+  );
+  const activePublishedEvents = useMemo(
+    () =>
+      allEvents.filter(
+        (e) =>
+          e.status === "published" &&
+          (!e.end_time || (nowTimestamp ? new Date(e.end_time).getTime() >= nowTimestamp : true))
+      ),
+    [allEvents, nowTimestamp]
+  );
 
   // Event Approval
   const handleApprove = async (eventId: string) => {
@@ -272,9 +300,7 @@ export default function AdminConsolePage() {
 
     setActionInProgress(eventId);
     try {
-      const res = await fetch(`/api/admin/events/${eventId}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/admin/events/${eventId}`, { method: "DELETE" });
       if (res.ok) {
         setAllEvents((prev) => prev.filter((e) => e.id !== eventId));
         setAdminNotice({
@@ -293,99 +319,74 @@ export default function AdminConsolePage() {
     }
   };
 
-  // Create User
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUserModalError(null);
+  // User Handlers
+  const handleCreateUser = async (data: NewUserData) => {
+    setActionInProgress("create-user");
     try {
       const res = await fetch("/api/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName: newUserName,
-          email: newUserEmail,
-          password: newUserPassword,
-          role: newUserRole,
-          communityId: newUserRole === "organizer" ? newUserCommId : null,
+          fullName: data.fullName,
+          email: data.email,
+          password: data.password,
+          role: data.role,
+          communityId: data.role === "organizer" ? data.communityId : null,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create user");
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resData.error || "Failed to create user");
 
       setIsAddUserOpen(false);
-      setNewUserName("");
-      setNewUserEmail("");
-      setNewUserPassword("");
-      loadAllData();
+      await loadUsers();
       setAdminNotice({ message: "User account provisioned successfully.", type: "success" });
       setTimeout(() => setAdminNotice(null), 4000);
-    } catch (err: unknown) {
-      setUserModalError(err instanceof Error ? err.message : "Error creating user");
-    }
-  };
-
-  // Open Edit User
-  const handleOpenEditUser = (user: AdminUserRow) => {
-    setEditingUser(user);
-    setEditUserName(user.full_name);
-    setEditUserRole(user.role as "admin" | "principal" | "vice_principal" | "organizer");
-    setEditUserCommId(user.community_id || "");
-    setEditUserError(null);
-    setIsEditUserOpen(true);
-  };
-
-  // Submit Edit User
-  const handleSaveEditUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingUser) return;
-    setEditUserError(null);
-    setActionInProgress(editingUser.id);
-
-    try {
-      const res = await fetch(`/api/admin/users/${editingUser.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: editUserName,
-          role: editUserRole,
-          communityId: editUserRole === "organizer" ? editUserCommId : null,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update user");
-
-      setIsEditUserOpen(false);
-      setEditingUser(null);
-      loadAllData();
-      setAdminNotice({ message: "User account permissions updated successfully.", type: "success" });
-      setTimeout(() => setAdminNotice(null), 4000);
-    } catch (err: unknown) {
-      setEditUserError(err instanceof Error ? err.message : "Error updating user");
     } finally {
       setActionInProgress(null);
     }
   };
 
-  // Delete User
-  const handleDeleteUser = async (user: AdminUserRow) => {
-    if (!confirm(`Are you sure you want to permanently delete user account: ${user.full_name} (${user.email})?`)) {
+  const handleSaveEditUser = async (userId: string, data: EditUserData) => {
+    setActionInProgress(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: data.fullName,
+          role: data.role,
+          communityId: data.role === "organizer" ? data.communityId : null,
+        }),
+      });
+
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resData.error || "Failed to update user");
+
+      setEditingUser(null);
+      await loadUsers();
+      setAdminNotice({ message: "User account permissions updated successfully.", type: "success" });
+      setTimeout(() => setAdminNotice(null), 4000);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleDeleteUser = async (userToDelete: AdminUserRow) => {
+    if (!confirm(`Are you sure you want to permanently delete user account: ${userToDelete.full_name} (${userToDelete.email})?`)) {
       return;
     }
 
-    setActionInProgress(user.id);
+    setActionInProgress(userToDelete.id);
     try {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
-        method: "DELETE",
-      });
-      const data = await res.json();
+      const res = await fetch(`/api/admin/users/${userToDelete.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setAdminNotice({ message: data.error || "Failed to delete user", type: "error" });
         setTimeout(() => setAdminNotice(null), 6000);
       } else {
-        setUsers((prev) => prev.filter((u) => u.id !== user.id));
-        setAdminNotice({ message: `User ${user.email} removed from system.`, type: "success" });
+        setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+        setAdminNotice({ message: `User ${userToDelete.email} removed from system.`, type: "success" });
         setTimeout(() => setAdminNotice(null), 4000);
       }
     } catch {
@@ -395,106 +396,64 @@ export default function AdminConsolePage() {
     }
   };
 
-  // Create Venue
-  const handleCreateVenue = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Venue Handlers
+  const handleCreateVenue = async (data: NewVenueData) => {
+    setActionInProgress("create-venue");
     try {
       const res = await fetch("/api/admin/venues", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newVenueName,
-          building: newVenueBuilding,
-          capacity: newVenueCapacity,
-          address: newVenueAddress,
-          notes: newVenueNotes,
-        }),
+        body: JSON.stringify(data),
       });
 
-      if (res.ok) {
-        setIsAddVenueOpen(false);
-        setNewVenueName("");
-        setNewVenueBuilding("");
-        setNewVenueCapacity("100");
-        setNewVenueAddress("");
-        setNewVenueNotes("");
-        loadAllData();
-        setAdminNotice({ message: "Campus facility registered successfully.", type: "success" });
-        setTimeout(() => setAdminNotice(null), 4000);
-      } else {
-        const data = await res.json();
-        setAdminNotice({ message: data.error || "Failed to create venue", type: "error" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to create venue");
       }
-    } catch (err) {
-      console.error("Create venue error:", err);
-    }
-  };
 
-  // Open Edit Venue
-  const handleOpenEditVenue = (venue: Venue) => {
-    setEditingVenue(venue);
-    setEditVenueName(venue.name);
-    setEditVenueBuilding(venue.building || "");
-    setEditVenueCapacity(String(venue.capacity || 100));
-    setEditVenueAddress(venue.address || "");
-    setEditVenueNotes(venue.notes || "");
-    setEditVenueIsActive(venue.is_active);
-    setEditVenueError(null);
-    setIsEditVenueOpen(true);
-  };
-
-  // Submit Edit Venue
-  const handleSaveEditVenue = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingVenue) return;
-    setEditVenueError(null);
-    setActionInProgress(editingVenue.id);
-
-    try {
-      const res = await fetch(`/api/admin/venues/${editingVenue.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editVenueName,
-          building: editVenueBuilding,
-          capacity: parseInt(editVenueCapacity, 10),
-          address: editVenueAddress,
-          notes: editVenueNotes,
-          is_active: editVenueIsActive,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update facility");
-
-      setIsEditVenueOpen(false);
-      setEditingVenue(null);
-      loadAllData();
-      setAdminNotice({ message: "Facility details updated successfully.", type: "success" });
+      setIsAddVenueOpen(false);
+      await loadVenues();
+      setAdminNotice({ message: "Campus facility registered successfully.", type: "success" });
       setTimeout(() => setAdminNotice(null), 4000);
-    } catch (err: unknown) {
-      setEditVenueError(err instanceof Error ? err.message : "Error updating facility");
     } finally {
       setActionInProgress(null);
     }
   };
 
-  // Delete Venue
-  const handleDeleteVenue = async (venue: Venue) => {
-    if (!confirm(`Are you sure you want to delete facility: "${venue.name}"?`)) return;
-
-    setActionInProgress(venue.id);
+  const handleSaveEditVenue = async (venueId: string, data: EditVenueData) => {
+    setActionInProgress(venueId);
     try {
-      const res = await fetch(`/api/admin/venues/${venue.id}`, {
-        method: "DELETE",
+      const res = await fetch(`/api/admin/venues/${venueId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
       });
-      const data = await res.json();
+
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resData.error || "Failed to update facility");
+
+      setEditingVenue(null);
+      await loadVenues();
+      setAdminNotice({ message: "Facility details updated successfully.", type: "success" });
+      setTimeout(() => setAdminNotice(null), 4000);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleDeleteVenue = async (venueToDelete: Venue) => {
+    if (!confirm(`Are you sure you want to delete facility: "${venueToDelete.name}"?`)) return;
+
+    setActionInProgress(venueToDelete.id);
+    try {
+      const res = await fetch(`/api/admin/venues/${venueToDelete.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setAdminNotice({ message: data.error || "Failed to delete facility", type: "error" });
         setTimeout(() => setAdminNotice(null), 7000);
       } else {
-        setVenues((prev) => prev.filter((v) => v.id !== venue.id));
-        setAdminNotice({ message: `Facility "${venue.name}" deleted.`, type: "success" });
+        setVenues((prev) => prev.filter((v) => v.id !== venueToDelete.id));
+        setAdminNotice({ message: `Facility "${venueToDelete.name}" deleted.`, type: "success" });
         setTimeout(() => setAdminNotice(null), 4000);
       }
     } catch {
@@ -504,17 +463,16 @@ export default function AdminConsolePage() {
     }
   };
 
-  // Toggle Venue Active
-  const handleToggleVenueActive = async (venue: Venue) => {
+  const handleToggleVenueActive = async (venueToToggle: Venue) => {
     try {
       const res = await fetch("/api/admin/venues", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: venue.id, is_active: !venue.is_active }),
+        body: JSON.stringify({ id: venueToToggle.id, is_active: !venueToToggle.is_active }),
       });
       if (res.ok) {
         setVenues((prev) =>
-          prev.map((v) => (v.id === venue.id ? { ...v, is_active: !v.is_active } : v))
+          prev.map((v) => (v.id === venueToToggle.id ? { ...v, is_active: !v.is_active } : v))
         );
       }
     } catch (err) {
@@ -522,156 +480,77 @@ export default function AdminConsolePage() {
     }
   };
 
-  const eligibleUsers = useMemo(() => {
-    const seen = new Set<string>();
-    const result: Array<{ id: string; fullName: string; email: string; role: string }> = [];
-    for (const u of users) {
-      if (u.role !== "organizer") {
-        continue;
-      }
-      if (!seen.has(u.id)) {
-        seen.add(u.id);
-        result.push({
-          id: u.id,
-          fullName: u.full_name,
-          email: u.email,
-          role: u.role,
-        });
-      }
-    }
-    return result;
-  }, [users]);
-
-  // Create Community
-  const handleCreateCommunity = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCommModalError(null);
-    setIsSubmittingComm(true);
+  // Community Handlers
+  const handleCreateCommunity = async (data: NewCommunityData) => {
+    setActionInProgress("create-community");
     try {
       const res = await fetch("/api/admin/communities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newCommName,
-          slug: newCommSlug,
-          category: newCommCategory,
-          description: newCommDesc,
-          logoUrl: newCommLogo,
-          website: newCommWebsite,
-          instagram: newCommInstagram,
-          leadUserId: newCommLeadId,
-        }),
+        body: JSON.stringify(data),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setCommModalError(data.error || "Failed to create community");
-        return;
-      }
+
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resData.error || "Failed to create community");
+
       setIsAddCommunityOpen(false);
-      setNewCommName("");
-      setNewCommSlug("");
-      setNewCommCategory("Tech");
-      setNewCommDesc("");
-      setNewCommLogo("");
-      setNewCommWebsite("");
-      setNewCommInstagram("");
-      setNewCommLeadId("");
+      await loadCommunities();
       setAdminNotice({
-        message: `Community "${data.community?.name || newCommName}" registered successfully.`,
+        message: `Community "${resData.community?.name || data.name}" registered successfully.`,
         type: "success",
       });
       setTimeout(() => setAdminNotice(null), 5000);
-      loadAllData();
-    } catch {
-      setCommModalError("Network error while creating community");
     } finally {
-      setIsSubmittingComm(false);
+      setActionInProgress(null);
     }
   };
 
-  // Open Edit Community
-  const handleOpenEditCommunity = (comm: AdminCommunityRow) => {
-    setEditingCommunity(comm);
-    setEditCommName(comm.name);
-    setEditCommSlug(comm.slug);
-    setEditCommCategory(comm.category);
-    setEditCommDesc(comm.description || "");
-    setEditCommLogo(comm.logo_url || "");
-    setEditCommWebsite(comm.website || "");
-    setEditCommInstagram(comm.instagram || "");
-    setEditCommLeadId(comm.lead_id || "");
-    setEditCommStatus(comm.status || "approved");
-    setEditCommError(null);
-    setIsEditCommunityOpen(true);
-  };
-
-  // Save Edit Community
-  const handleSaveEditCommunity = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCommunity) return;
-    setEditCommError(null);
-    setIsSubmittingEditComm(true);
+  const handleSaveEditCommunity = async (communityId: string, data: EditCommunityData) => {
+    setActionInProgress(communityId);
     try {
-      const res = await fetch(`/api/admin/communities/${editingCommunity.id}`, {
+      const res = await fetch(`/api/admin/communities/${communityId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editCommName,
-          slug: editCommSlug,
-          category: editCommCategory,
-          description: editCommDesc,
-          logoUrl: editCommLogo,
-          website: editCommWebsite,
-          instagram: editCommInstagram,
-          leadUserId: editCommLeadId,
-          status: editCommStatus,
-        }),
+        body: JSON.stringify(data),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setEditCommError(data.error || "Failed to update community");
-        return;
-      }
-      setIsEditCommunityOpen(false);
+
+      const resData = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(resData.error || "Failed to update community");
+
       setEditingCommunity(null);
+      await loadCommunities();
       setAdminNotice({
-        message: `Community "${editCommName}" updated successfully.`,
+        message: `Community "${data.name}" updated successfully.`,
         type: "success",
       });
       setTimeout(() => setAdminNotice(null), 5000);
-      loadAllData();
-    } catch {
-      setEditCommError("Network error while updating community");
     } finally {
-      setIsSubmittingEditComm(false);
+      setActionInProgress(null);
     }
   };
 
-  // Delete Community
-  const handleDeleteCommunity = async (comm: AdminCommunityRow) => {
-    if (comm.event_count > 0) {
+  const handleDeleteCommunity = async (commToDelete: AdminCommunityRow) => {
+    if (commToDelete.event_count > 0) {
       setAdminNotice({
-        message: `Cannot delete "${comm.name}": ${comm.event_count} active or pending event(s) exist.`,
+        message: `Cannot delete "${commToDelete.name}": ${commToDelete.event_count} active or pending event(s) exist.`,
         type: "error",
       });
       setTimeout(() => setAdminNotice(null), 5000);
       return;
     }
-    if (!confirm(`Are you sure you want to delete community: "${comm.name}"?`)) return;
+    if (!confirm(`Are you sure you want to delete community: "${commToDelete.name}"?`)) return;
 
-    setActionInProgress(comm.id);
+    setActionInProgress(commToDelete.id);
     try {
-      const res = await fetch(`/api/admin/communities/${comm.id}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/admin/communities/${commToDelete.id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) {
         setAdminNotice({ message: data.error || "Failed to delete community", type: "error" });
         setTimeout(() => setAdminNotice(null), 7000);
       } else {
-        setAdminNotice({ message: `Community "${comm.name}" deleted.`, type: "success" });
+        setAdminNotice({ message: `Community "${commToDelete.name}" deleted.`, type: "success" });
         setTimeout(() => setAdminNotice(null), 4000);
-        loadAllData();
+        await loadCommunities();
       }
     } catch {
       setAdminNotice({ message: "Network error while deleting community", type: "error" });
@@ -680,30 +559,8 @@ export default function AdminConsolePage() {
     }
   };
 
-  const [nowTimestamp, setNowTimestamp] = useState<number>(0);
-
-  useEffect(() => {
-    setNowTimestamp(Date.now());
-  }, []);
-
-  const pendingEvents = allEvents.filter((e) => e.status === "pending");
-  const publishedEvents = allEvents.filter((e) => e.status === "published");
-  const archivedEvents = allEvents.filter((e) =>
-    nowTimestamp ? new Date(e.end_time).getTime() < nowTimestamp : false
-  );
-  const activePublishedEvents = allEvents.filter(
-    (e) =>
-      e.status === "published" &&
-      (!e.end_time || (nowTimestamp ? new Date(e.end_time).getTime() >= nowTimestamp : true))
-  );
-
-  if (loading) {
-    return (
-      <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center text-center bg-white">
-        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-slate-400 font-medium">Loading Operations Console...</p>
-      </div>
-    );
+  if (initialLoading || authLoading) {
+    return <AdminLoadingFallback />;
   }
 
   return (
@@ -739,15 +596,15 @@ export default function AdminConsolePage() {
       {/* LEFT SIDEBAR NAVIGATION */}
       <AdminSidebar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         pendingCount={pendingEvents.length}
         publishedCount={activePublishedEvents.length}
         archivedCount={archivedEvents.length}
         usersCount={users.length}
         venuesCount={venues.length}
         communitiesCount={adminCommunities.length}
-        currentUserName={currentUserName}
-        currentUserEmail={currentUserEmail}
+        currentUserName={user?.fullName || "Campus Administrator"}
+        currentUserEmail={user?.email || "admin@campus.edu"}
       />
 
       {/* WORKSPACE CONTENT AREA */}
@@ -771,7 +628,7 @@ export default function AdminConsolePage() {
             allEvents={allEvents}
             onDeleteEvent={handleDeleteEvent}
             onPreviewEvent={(ev) => setPreviewEvent(ev)}
-            onNavigateToArchive={() => setActiveTab("archive")}
+            onNavigateToArchive={() => handleTabChange("archive")}
             actionInProgress={actionInProgress}
             nowTimestamp={nowTimestamp}
           />
@@ -789,9 +646,9 @@ export default function AdminConsolePage() {
         {activeTab === "users" && (
           <AdminUsersView
             users={users}
-            currentUserId={currentUserId}
+            currentUserId={user?.id}
             onAddUserClick={() => setIsAddUserOpen(true)}
-            onEditUserClick={handleOpenEditUser}
+            onEditUserClick={(u) => setEditingUser(u)}
             onDeleteUserClick={handleDeleteUser}
             actionInProgress={actionInProgress}
           />
@@ -802,7 +659,7 @@ export default function AdminConsolePage() {
             venues={venues}
             onToggleVenueActive={handleToggleVenueActive}
             onAddVenueClick={() => setIsAddVenueOpen(true)}
-            onEditVenueClick={handleOpenEditVenue}
+            onEditVenueClick={(v) => setEditingVenue(v)}
             onDeleteVenueClick={handleDeleteVenue}
             actionInProgress={actionInProgress}
           />
@@ -811,11 +668,8 @@ export default function AdminConsolePage() {
         {activeTab === "communities" && (
           <AdminCommunitiesView
             communities={adminCommunities}
-            onAddCommunityClick={() => {
-              setCommModalError(null);
-              setIsAddCommunityOpen(true);
-            }}
-            onEditCommunityClick={handleOpenEditCommunity}
+            onAddCommunityClick={() => setIsAddCommunityOpen(true)}
+            onEditCommunityClick={(c) => setEditingCommunity(c)}
             onDeleteCommunityClick={handleDeleteCommunity}
             actionInProgress={actionInProgress}
           />
@@ -829,13 +683,16 @@ export default function AdminConsolePage() {
       />
 
       {/* REJECT MODAL WITH NOTE & PRESETS */}
-      <AdminRejectionModal
+      <RejectionModal
         rejectingEvent={rejectingEvent}
         rejectionNote={rejectionNote}
         onRejectionNoteChange={setRejectionNote}
         onSubmit={handleReject}
         onClose={() => setRejectingEvent(null)}
         isSubmitting={actionInProgress === rejectingEvent?.id}
+        title="Reject Event Proposal"
+        submitLabel="Submit Rejection"
+        submittingLabel="Rejecting..."
       />
 
       {/* ADD USER MODAL */}
@@ -843,34 +700,17 @@ export default function AdminConsolePage() {
         isOpen={isAddUserOpen}
         onClose={() => setIsAddUserOpen(false)}
         onSubmit={handleCreateUser}
-        name={newUserName}
-        onNameChange={setNewUserName}
-        email={newUserEmail}
-        onEmailChange={setNewUserEmail}
-        password={newUserPassword}
-        onPasswordChange={setNewUserPassword}
-        role={newUserRole}
-        onRoleChange={setNewUserRole}
-        communityId={newUserCommId}
-        onCommunityIdChange={setNewUserCommId}
         communities={communities}
-        error={userModalError}
+        isSubmitting={actionInProgress === "create-user"}
       />
 
       {/* EDIT USER MODAL */}
       <AdminEditUserModal
-        isOpen={isEditUserOpen}
-        onClose={() => setIsEditUserOpen(false)}
+        isOpen={Boolean(editingUser)}
+        onClose={() => setEditingUser(null)}
         onSubmit={handleSaveEditUser}
         user={editingUser}
-        name={editUserName}
-        onNameChange={setEditUserName}
-        role={editUserRole}
-        onRoleChange={setEditUserRole}
-        communityId={editUserCommId}
-        onCommunityIdChange={setEditUserCommId}
         communities={communities}
-        error={editUserError}
         isSubmitting={actionInProgress === editingUser?.id}
       />
 
@@ -879,37 +719,15 @@ export default function AdminConsolePage() {
         isOpen={isAddVenueOpen}
         onClose={() => setIsAddVenueOpen(false)}
         onSubmit={handleCreateVenue}
-        name={newVenueName}
-        onNameChange={setNewVenueName}
-        building={newVenueBuilding}
-        onBuildingChange={setNewVenueBuilding}
-        capacity={newVenueCapacity}
-        onCapacityChange={setNewVenueCapacity}
-        address={newVenueAddress}
-        onAddressChange={setNewVenueAddress}
-        notes={newVenueNotes}
-        onNotesChange={setNewVenueNotes}
+        isSubmitting={actionInProgress === "create-venue"}
       />
 
       {/* EDIT VENUE MODAL */}
       <AdminEditVenueModal
-        isOpen={isEditVenueOpen}
-        onClose={() => setIsEditVenueOpen(false)}
+        isOpen={Boolean(editingVenue)}
+        onClose={() => setEditingVenue(null)}
         onSubmit={handleSaveEditVenue}
         venue={editingVenue}
-        name={editVenueName}
-        onNameChange={setEditVenueName}
-        building={editVenueBuilding}
-        onBuildingChange={setEditVenueBuilding}
-        capacity={editVenueCapacity}
-        onCapacityChange={setEditVenueCapacity}
-        address={editVenueAddress}
-        onAddressChange={setEditVenueAddress}
-        notes={editVenueNotes}
-        onNotesChange={setEditVenueNotes}
-        isActive={editVenueIsActive}
-        onIsActiveChange={setEditVenueIsActive}
-        error={editVenueError}
         isSubmitting={actionInProgress === editingVenue?.id}
       />
 
@@ -918,55 +736,27 @@ export default function AdminConsolePage() {
         isOpen={isAddCommunityOpen}
         onClose={() => setIsAddCommunityOpen(false)}
         onSubmit={handleCreateCommunity}
-        name={newCommName}
-        onNameChange={setNewCommName}
-        slug={newCommSlug}
-        onSlugChange={setNewCommSlug}
-        category={newCommCategory}
-        onCategoryChange={setNewCommCategory}
-        description={newCommDesc}
-        onDescriptionChange={setNewCommDesc}
-        logoUrl={newCommLogo}
-        onLogoUrlChange={setNewCommLogo}
-        website={newCommWebsite}
-        onWebsiteChange={setNewCommWebsite}
-        instagram={newCommInstagram}
-        onInstagramChange={setNewCommInstagram}
-        leadUserId={newCommLeadId}
-        onLeadUserIdChange={setNewCommLeadId}
         eligibleUsers={eligibleUsers}
-        error={commModalError}
-        isSubmitting={isSubmittingComm}
+        isSubmitting={actionInProgress === "create-community"}
       />
 
       {/* EDIT COMMUNITY MODAL */}
       <AdminEditCommunityModal
-        isOpen={isEditCommunityOpen}
-        onClose={() => setIsEditCommunityOpen(false)}
+        isOpen={Boolean(editingCommunity)}
+        onClose={() => setEditingCommunity(null)}
         onSubmit={handleSaveEditCommunity}
         community={editingCommunity}
-        name={editCommName}
-        onNameChange={setEditCommName}
-        slug={editCommSlug}
-        onSlugChange={setEditCommSlug}
-        category={editCommCategory}
-        onCategoryChange={setEditCommCategory}
-        description={editCommDesc}
-        onDescriptionChange={setEditCommDesc}
-        logoUrl={editCommLogo}
-        onLogoUrlChange={setEditCommLogo}
-        website={editCommWebsite}
-        onWebsiteChange={setEditCommWebsite}
-        instagram={editCommInstagram}
-        onInstagramChange={setEditCommInstagram}
-        leadUserId={editCommLeadId}
-        onLeadUserIdChange={setEditCommLeadId}
-        status={editCommStatus}
-        onStatusChange={setEditCommStatus}
         eligibleUsers={eligibleUsers}
-        error={editCommError}
-        isSubmitting={isSubmittingEditComm}
+        isSubmitting={actionInProgress === editingCommunity?.id}
       />
     </div>
+  );
+}
+
+export default function AdminConsolePage() {
+  return (
+    <Suspense fallback={<AdminLoadingFallback />}>
+      <AdminConsoleContent />
+    </Suspense>
   );
 }
