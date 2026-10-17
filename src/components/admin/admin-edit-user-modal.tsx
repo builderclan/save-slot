@@ -1,20 +1,21 @@
 "use client";
 
-import { AdminUserRow } from "./admin-users-view";
+import { useState, useEffect } from "react";
+import { Modal } from "@/components/ui/modal";
+import type { AdminUserRow } from "./admin-users-view";
 
-interface AdminEditUserModalProps {
+export interface EditUserData {
+  fullName: string;
+  role: "admin" | "principal" | "vice_principal" | "organizer";
+  communityId: string | null;
+}
+
+export interface AdminEditUserModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (userId: string, data: EditUserData) => Promise<void>;
   user: AdminUserRow | null;
-  name: string;
-  onNameChange: (v: string) => void;
-  role: "admin" | "principal" | "vice_principal" | "organizer";
-  onRoleChange: (r: "admin" | "principal" | "vice_principal" | "organizer") => void;
-  communityId: string;
-  onCommunityIdChange: (id: string) => void;
   communities: Array<{ id: string; name: string }>;
-  error: string | null;
   isSubmitting?: boolean;
 }
 
@@ -23,103 +24,122 @@ export function AdminEditUserModal({
   onClose,
   onSubmit,
   user,
-  name,
-  onNameChange,
-  role,
-  onRoleChange,
-  communityId,
-  onCommunityIdChange,
   communities,
-  error,
   isSubmitting = false,
 }: AdminEditUserModalProps) {
-  if (!isOpen || !user) return null;
+  const [name, setName] = useState(user?.full_name || "");
+  const [role, setRole] = useState<"admin" | "principal" | "vice_principal" | "organizer">(
+    (user?.role as "admin" | "principal" | "vice_principal" | "organizer") || "organizer"
+  );
+  const [communityId, setCommunityId] = useState(user?.community_id || "");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user && isOpen) {
+      setName(user.full_name || "");
+      setRole((user.role as "admin" | "principal" | "vice_principal" | "organizer") || "organizer");
+      setCommunityId(user.community_id || "");
+      setError(null);
+    }
+  }, [user, isOpen]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setError(null);
+    try {
+      await onSubmit(user.id, {
+        fullName: name.trim(),
+        role,
+        communityId: role === "organizer" ? communityId || null : null,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error updating user");
+    }
+  };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-3xl border border-slate-200 bg-white text-slate-900 p-6 z-10 shadow-2xl">
-        <h3 className="text-base font-bold text-slate-900 mb-1">
-          Edit User Account
-        </h3>
-        <p className="text-xs text-slate-500 mb-4">
-          Update role permissions or assigned community for <span className="font-mono font-medium text-slate-700">{user.email}</span>.
-        </p>
+    <Modal
+      isOpen={isOpen && !!user}
+      onClose={onClose}
+      title="Edit User Account"
+      description={
+        user ? `Update role permissions or assigned community for ${user.email}.` : ""
+      }
+    >
+      {error && (
+        <div className="p-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs">
+          {error}
+        </div>
+      )}
 
-        {error && (
-          <div className="p-3 mb-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs">
-            {error}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+          <input
+            type="text"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">Role *</label>
+          <select
+            value={role}
+            onChange={(e) =>
+              setRole(e.target.value as "admin" | "principal" | "vice_principal" | "organizer")
+            }
+            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 cursor-pointer"
+          >
+            <option value="organizer">Community Lead (Club Organizer)</option>
+            <option value="principal">College Principal (Final Sign-off Authority)</option>
+            <option value="vice_principal">Vice Principal (Academic Review)</option>
+            <option value="admin">Campus Administrator (Full Operations Access)</option>
+          </select>
+        </div>
+
+        {role === "organizer" && (
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Assigned Student Community *
+            </label>
+            <select
+              required
+              value={communityId}
+              onChange={(e) => setCommunityId(e.target.value)}
+              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 cursor-pointer"
+            >
+              <option value="">-- Select a recognized club / society --</option>
+              {communities.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={(e) => onNameChange(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Role *</label>
-            <select
-              value={role}
-              onChange={(e) =>
-                onRoleChange(e.target.value as "admin" | "principal" | "vice_principal" | "organizer")
-              }
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 cursor-pointer"
-            >
-              <option value="organizer">Community Lead (Club Organizer)</option>
-              <option value="principal">College Principal (Final Sign-off Authority)</option>
-              <option value="vice_principal">Vice Principal (Academic Review)</option>
-              <option value="admin">Campus Administrator (Full Operations Access)</option>
-            </select>
-          </div>
-
-          {role === "organizer" && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Assigned Student Community *
-              </label>
-              <select
-                required
-                value={communityId}
-                onChange={(e) => onCommunityIdChange(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 cursor-pointer"
-              >
-                <option value="">-- Select a recognized club / society --</option>
-                {communities.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50 active:scale-[0.98]"
-            >
-              {isSubmitting ? "Saving Changes..." : "Save Changes"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+          >
+            {isSubmitting ? "Saving Changes..." : "Save Changes"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
