@@ -140,13 +140,16 @@ describe("StudentNoticeBoardPage ISR (src/app/page.tsx)", () => {
     expect(jsx.props.initialVenues[0].name).toBe("Turing Auditorium");
   });
 
-  it("propagates database error so Next.js ISR retains previous cache and error boundary handles it", async () => {
+  it("handles database SSR error gracefully and renders with empty arrays", async () => {
     setQueryError(new Error("Database connection lost"));
 
-    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    await expect(StudentNoticeBoardPage()).rejects.toThrow("Database connection lost");
+    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const jsx = await StudentNoticeBoardPage();
+    expect(jsx).toBeDefined();
+    expect(jsx.props.initialEvents).toHaveLength(0);
+    expect(jsx.props.initialVenues).toHaveLength(0);
     expect(consoleSpy).toHaveBeenCalledWith(
-      "Error performing ISR query in StudentNoticeBoardPage:",
+      "Notice board pre-render: database query failed (build/offline fallback):",
       expect.any(Error)
     );
     consoleSpy.mockRestore();

@@ -156,6 +156,13 @@ export function NoticeBoardClient({
     }
   }, []);
 
+  // Hydrate events on mount if initial pre-render had empty dataset (e.g. offline CI build)
+  useEffect(() => {
+    if (initialEvents.length === 0) {
+      loadData();
+    }
+  }, [initialEvents.length, loadData]);
+
   // Toggle category in checklist
   const toggleCategory = (cat: string) => {
     setSelectedCategories((prev) =>

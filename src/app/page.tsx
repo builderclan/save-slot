@@ -82,8 +82,7 @@ export default async function StudentNoticeBoardPage() {
     initialEvents = eventsRows.map(formatCampusEvent);
     initialVenues = venuesRows.map(formatVenue);
   } catch (err) {
-    console.error("Error performing ISR query in StudentNoticeBoardPage:", err);
-    throw err;
+    console.warn("Notice board pre-render: database query failed (build/offline fallback):", err);
   }
 
   return (
