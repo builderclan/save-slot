@@ -330,7 +330,20 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
         setRejectingEvent(null);
         setRejectionNote("");
         router.refresh();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        setBannerNotice({
+          message: errData.error || "Failed to decline event. Please try again.",
+          type: "error",
+        });
+        setTimeout(() => setBannerNotice(null), 7000);
       }
+    } catch {
+      setBannerNotice({
+        message: "An unexpected error occurred while communicating with the server.",
+        type: "error",
+      });
+      setTimeout(() => setBannerNotice(null), 7000);
     } finally {
       setActionInProgress(null);
     }
