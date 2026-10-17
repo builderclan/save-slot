@@ -82,7 +82,8 @@ export default async function StudentNoticeBoardPage() {
     initialEvents = eventsRows.map(formatCampusEvent);
     initialVenues = venuesRows.map(formatVenue);
   } catch (err) {
-    console.error("Error performing SSR query in StudentNoticeBoardPage:", err);
+    console.error("Error performing ISR query in StudentNoticeBoardPage:", err);
+    throw err;
   }
 
   return (

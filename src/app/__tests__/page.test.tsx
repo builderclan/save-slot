@@ -140,14 +140,15 @@ describe("StudentNoticeBoardPage ISR (src/app/page.tsx)", () => {
     expect(jsx.props.initialVenues[0].name).toBe("Turing Auditorium");
   });
 
-  it("handles database SSR error gracefully and renders with empty arrays", async () => {
+  it("propagates database error so Next.js ISR retains previous cache and error boundary handles it", async () => {
     setQueryError(new Error("Database connection lost"));
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const jsx = await StudentNoticeBoardPage();
-    expect(jsx).toBeDefined();
-    expect(jsx.props.initialEvents).toHaveLength(0);
-    expect(jsx.props.initialVenues).toHaveLength(0);
+    await expect(StudentNoticeBoardPage()).rejects.toThrow("Database connection lost");
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Error performing ISR query in StudentNoticeBoardPage:",
+      expect.any(Error)
+    );
     consoleSpy.mockRestore();
   });
 });
