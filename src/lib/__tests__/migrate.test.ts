@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import fs from "fs";
+import os from "os";
+import path from "path";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const {
   parseEnv,
   getMigrationFiles,
+  validateMigrationFiles,
   ensureLedgerTable,
   getMigrationStatus,
   runMigrations,
@@ -72,6 +76,36 @@ DB_PORT=5432
     it("returns empty array for non-existent directory", () => {
       const files = getMigrationFiles("/non/existent/path");
       expect(files).toEqual([]);
+    });
+  });
+
+  describe("validateMigrationFiles()", () => {
+    it("successfully validates all active migration files on disk", () => {
+      const result = validateMigrationFiles();
+      expect(result.valid).toBe(true);
+      expect(result.count).toBeGreaterThanOrEqual(9);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("returns invalid status for empty or non-existent directories", () => {
+      const result = validateMigrationFiles("/non/existent/path");
+      expect(result.valid).toBe(false);
+      expect(result.count).toBe(0);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it("detects sequence gaps in migration filenames", () => {
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "migration-gap-test-"));
+      try {
+        fs.writeFileSync(path.join(tempDir, "001_first.sql"), "SELECT 1;");
+        fs.writeFileSync(path.join(tempDir, "003_third.sql"), "SELECT 3;"); // Gap: missing 002
+
+        const result = validateMigrationFiles(tempDir);
+        expect(result.valid).toBe(false);
+        expect(result.errors.some((e: string) => e.includes("Gap in migration sequence"))).toBe(true);
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
     });
   });
 
