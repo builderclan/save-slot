@@ -1,0 +1,81 @@
+name: ✨ Feature Request
+description: Propose a new feature, enhancement, or capability for SaveSlot
+title: "[Feature]: "
+labels: ["enhancement", "proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We welcome proposals to improve SaveSlot! Please describe the problem you are facing and what solution you envision.
+
+  - type: dropdown
+    id: persona
+    attributes:
+      label: Target Persona / Role
+      description: Who will benefit from this feature?
+      options:
+        - "Public Student (Notice board, calendar sync, filters)"
+        - "Community Lead (Proposals, safe-slot conflict engine)"
+        - "Principal / Vice-Principal (Institutional approval, triage)"
+        - "Campus Admin (Venues, communities, user permissions)"
+        - "Developer / Contributor (DX, tooling, CI, database)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What user problem, limitation, or friction does this feature solve?
+      placeholder: "As a [student/club lead/principal], I struggle with [problem] because [reason]..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe your proposed solution. How should it work, look, or behave from a user's perspective?
+      placeholder: "A detailed breakdown of the proposed user interaction, visual flow, or feature behavior..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered (Optional)
+      description: Did you consider alternative approaches or temporary workarounds?
+      placeholder: "We considered ... but chose ... because ..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria (Optional)
+      description: What specific outcomes or capabilities must be demonstrated for this feature to be considered complete?
+      placeholder: |
+        - [ ] Users can ...
+        - [ ] Validated on mobile (360px) and desktop
+        - [ ] Safe slot recommendations updated
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context or Mockups (Optional)
+      description: Add any sketches, reference links, or screenshots illustrating the idea.
+      placeholder: "Paste links, mockups, or inspiration from high-craft tools..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Validation Checklist
+      options:
+        - label: I have searched existing issues to confirm this feature hasn't already been proposed.
+          required: true
+        - label: This proposal aligns with SaveSlot's quiet, high-craft Linear/Apple aesthetic.
+          required: true
