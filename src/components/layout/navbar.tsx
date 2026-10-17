@@ -3,62 +3,27 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Calendar as CalendarIcon,
-  CalendarDays,
   LayoutGrid,
   Shield,
   LogOut,
   LogIn,
-  ChevronLeft,
-  ChevronRight,
   Menu,
   X,
   GraduationCap,
 } from "lucide-react";
-import { format, startOfWeek, endOfWeek, isSameMonth, isSameYear } from "date-fns";
-import { useCalendar } from "@/context/calendar-context";
+import { useAuth } from "@/context/auth-context";
 import { formatDisplayName } from "@/lib/utils";
-
-interface UserSession {
-  id: string;
-  email: string;
-  fullName: string;
-  role: string;
-  isAdmin: boolean;
-  isPrincipal: boolean;
-  isVicePrincipal?: boolean;
-  isLead: boolean;
-  leadCommunities: Array<{ id: string; name: string; slug: string }>;
-}
-
-function getDateHeading(
-  date: Date,
-  viewMode: "month" | "week" | "cards",
-  isShort: boolean
-): string {
-  if (viewMode === "week") {
-    const start = startOfWeek(date);
-    const end = endOfWeek(date);
-    if (isSameMonth(start, end)) {
-      return `${format(start, "MMM d")} – ${format(end, isShort ? "d" : "d, yyyy")}`;
-    }
-    if (isSameYear(start, end)) {
-      return `${format(start, "MMM d")} – ${format(end, isShort ? "MMM d" : "MMM d, yyyy")}`;
-    }
-    return `${format(start, "MMM d, yyyy")} – ${format(end, "MMM d, yyyy")}`;
-  }
-  return format(date, isShort ? "MMM yyyy" : "MMMM yyyy");
-}
+import {
+  CalendarDateControls,
+  CalendarViewSwitcher,
+} from "./calendar-nav-controls";
 
 export function Navbar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const calendar = useCalendar();
-  const [user, setUser] = useState<UserSession | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loggingOut, setLoggingOut] = useState(false);
+  const { user, loading, logout, isLoggingOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isCalendarHome = pathname === "/";
@@ -68,45 +33,9 @@ export function Navbar() {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    let isMounted = true;
-    async function checkAuth() {
-      try {
-        const res = await fetch("/api/auth/me");
-        const data = await res.json();
-        if (isMounted) {
-          if (data.authenticated && data.user) {
-            setUser(data.user);
-          } else {
-            setUser(null);
-          }
-        }
-      } catch {
-        if (isMounted) setUser(null);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    }
-    checkAuth();
-    return () => {
-      isMounted = false;
-    };
-  }, [pathname]);
-
   const handleLogout = async () => {
-    if (loggingOut) return;
-    try {
-      setLoggingOut(true);
-      await fetch("/api/auth/logout", { method: "POST" });
-      setUser(null);
-      setMobileMenuOpen(false);
-      router.push("/");
-      router.refresh();
-    } catch (err) {
-      console.error("Logout failed:", err);
-    } finally {
-      setLoggingOut(false);
-    }
+    setMobileMenuOpen(false);
+    await logout();
   };
 
   return (
@@ -145,143 +74,13 @@ export function Navbar() {
           </Link>
 
           {/* Date Controls (Active Month/Week range, < >, Today) when on Calendar Home */}
-          {isCalendarHome && calendar && (
-            <div className="flex items-center gap-1 sm:gap-2 border-l border-slate-200 pl-1.5 sm:pl-3 min-w-0">
-              <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight select-none truncate">
-                <span className="md:hidden">
-                  {getDateHeading(calendar.activeDate, calendar.viewMode, true)}
-                </span>
-                <span className="hidden md:inline">
-                  {getDateHeading(calendar.activeDate, calendar.viewMode, false)}
-                </span>
-              </h2>
-
-              <div className="flex items-center gap-0.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={calendar.handlePrev}
-                  className="p-1 sm:p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-                  aria-label={calendar.viewMode === "week" ? "Previous week" : "Previous month"}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={calendar.handleNext}
-                  className="p-1 sm:p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
-                  aria-label={calendar.viewMode === "week" ? "Next week" : "Next month"}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={calendar.handleToday}
-                className="px-2 sm:px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] sm:text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs shrink-0"
-              >
-                Today
-              </button>
-            </div>
-          )}
+          {isCalendarHome && <CalendarDateControls />}
         </div>
 
-        {/* Center: View Switcher (Month / Week / Board) and/or Main Nav */}
-        {/* Center: Unified Navigation / View Switcher */}
+        {/* Center: Navigation / View Switcher */}
         <div className="hidden md:flex items-center justify-center shrink-0">
-          {isCalendarHome && calendar ? (
-            <div
-              role="tablist"
-              aria-label="Calendar view and navigation"
-              className="flex items-center p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 text-xs shadow-2xs"
-            >
-              {/* Calendar View Switcher (Month | Week | Board) */}
-              <button
-                type="button"
-                role="tab"
-                aria-selected={calendar.viewMode === "month"}
-                onClick={() => calendar.setViewMode("month")}
-                title="Month View"
-                className={`px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                  calendar.viewMode === "month"
-                    ? "bg-white text-slate-900 font-semibold shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <CalendarIcon className="w-3.5 h-3.5" />
-                <span>Month</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={calendar.viewMode === "week"}
-                onClick={() => calendar.setViewMode("week")}
-                title="Week View"
-                className={`px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                  calendar.viewMode === "week"
-                    ? "bg-white text-slate-900 font-semibold shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <CalendarDays className="w-3.5 h-3.5" />
-                <span>Week</span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={calendar.viewMode === "cards"}
-                onClick={() => calendar.setViewMode("cards")}
-                title="Board View"
-                className={`px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
-                  calendar.viewMode === "cards"
-                    ? "bg-white text-slate-900 font-semibold shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Board</span>
-              </button>
-
-              {/* Hairline Divider & Workspace Shortcuts */}
-              {(user?.isPrincipal || user?.isLead || user?.isAdmin) && (
-                <>
-                  <div className="w-px h-4 bg-slate-300/80 mx-1 shrink-0" aria-hidden="true" />
-
-                  {user?.isPrincipal && (
-                    <Link
-                      href="/principal"
-                      className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-purple-900 hover:bg-white/80 hover:text-purple-950 active:scale-[0.98]"
-                      title={user?.role === "vice_principal" ? "Vice Principal Desk" : "Principal Desk"}
-                    >
-                      <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
-                      <span>{user?.role === "vice_principal" ? "Vice Principal Desk" : "Principal Desk"}</span>
-                    </Link>
-                  )}
-
-                  {user?.isLead && (
-                    <Link
-                      href="/lead"
-                      className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-slate-700 hover:bg-white/80 hover:text-slate-900 active:scale-[0.98]"
-                      title="Lead Workspace"
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Lead Workspace</span>
-                    </Link>
-                  )}
-
-                  {user?.isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-amber-900 hover:bg-white/80 hover:text-amber-950 active:scale-[0.98]"
-                      title="Admin Console"
-                    >
-                      <Shield className="w-3.5 h-3.5 text-amber-600" />
-                      <span>Admin Console</span>
-                    </Link>
-                  )}
-                </>
-              )}
-            </div>
+          {isCalendarHome ? (
+            <CalendarViewSwitcher user={user} />
           ) : (
             <nav
               aria-label="Main navigation"
@@ -386,7 +185,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={handleLogout}
-                disabled={loggingOut}
+                disabled={isLoggingOut}
                 title="Sign Out"
                 aria-label="Sign out"
                 className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-400 hover:text-rose-600 disabled:opacity-50 transition-colors cursor-pointer shadow-2xs"
@@ -455,7 +254,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={handleLogout}
-                disabled={loggingOut}
+                disabled={isLoggingOut}
                 className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs font-medium transition-colors flex items-center gap-1 shrink-0"
               >
                 <LogOut className="w-3.5 h-3.5" />
