@@ -21,6 +21,7 @@ import { AdminEditCommunityModal, type EditCommunityData } from "@/components/ad
 import { RejectionModal } from "@/components/events/rejection-modal";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
 import { useAuth } from "@/context/auth-context";
+import AdminLoading from "./loading";
 
 const VALID_TABS: AdminTab[] = ["triage", "all-events", "archive", "users", "venues", "communities"];
 
@@ -29,12 +30,7 @@ function isValidAdminTab(tab: string | null): tab is AdminTab {
 }
 
 function AdminLoadingFallback() {
-  return (
-    <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center text-center bg-white">
-      <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3" />
-      <p className="text-xs text-slate-400 font-medium">Loading Operations Console...</p>
-    </div>
-  );
+  return <AdminLoading />;
 }
 
 function AdminConsoleContent() {

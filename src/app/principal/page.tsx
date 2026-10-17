@@ -17,6 +17,7 @@ import {
   DEFAULT_REJECTION_PRESETS,
 } from "@/components/principal/principal-rejection-modal";
 import { formatDisplayName } from "@/lib/utils";
+import PrincipalLoading from "./loading";
 
 interface PrincipalSession {
   id: string;
@@ -358,12 +359,7 @@ export default function PrincipalDeskPage() {
   };
 
   if (loading) {
-    return (
-      <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center text-center bg-white">
-        <div className="w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-slate-400 font-medium">Loading Executive Desk...</p>
-      </div>
-    );
+    return <PrincipalLoading />;
   }
 
   return (

@@ -21,6 +21,7 @@ import { LeadWithdrawModal } from "@/components/lead/lead-withdraw-modal";
 import { LeadRejectionNoticeModal } from "@/components/lead/lead-rejection-notice-modal";
 import { ProposeEventModal } from "@/components/lead/propose-event-modal";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
+import LeadLoading from "./loading";
 
 function LeadWorkspaceContent() {
   const router = useRouter();
@@ -237,12 +238,7 @@ function LeadWorkspaceContent() {
   }, [handleStatusFilterChange]);
 
   if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center">
-        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-slate-400 font-medium">Loading Lead Workspace...</p>
-      </div>
-    );
+    return <LeadLoading />;
   }
 
   return (
