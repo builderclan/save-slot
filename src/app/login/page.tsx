@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useCallback } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/context/auth-context";
 import {
   Lock,
   Mail,
@@ -171,43 +172,10 @@ export default function LoginPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
   const [customRedirect, setCustomRedirect] = useState<string | null>(null);
-  const [loggingOutExisting, setLoggingOutExisting] = useState(false);
-
-  const [currentSession, setCurrentSession] = useState<{
-    fullName: string;
-    role: string;
-    isAdmin: boolean;
-    isPrincipal: boolean;
-    isVicePrincipal?: boolean;
-    isLead: boolean;
-  } | null>(null);
-
-  useEffect(() => {
-    async function checkExistingAuth() {
-      try {
-        const res = await fetch("/api/auth/me");
-        const data = await res.json();
-        if (data.authenticated && data.user) {
-          setCurrentSession(data.user);
-        }
-      } catch {
-        // Ignored
-      }
-    }
-    checkExistingAuth();
-  }, []);
+  const { user, logout, isLoggingOut, refreshSession } = useAuth();
 
   const handleSignOutExisting = async () => {
-    try {
-      setLoggingOutExisting(true);
-      await fetch("/api/auth/logout", { method: "POST" });
-      setCurrentSession(null);
-      router.refresh();
-    } catch {
-      // Ignored
-    } finally {
-      setLoggingOutExisting(false);
-    }
+    await logout();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -228,6 +196,7 @@ export default function LoginPage() {
         throw new Error(data.error || "Login failed");
       }
 
+      await refreshSession(true);
       const destination = customRedirect || data.redirectUrl || "/";
       router.push(destination);
       router.refresh();
@@ -299,20 +268,20 @@ export default function LoginPage() {
             </div>
 
             {/* Existing Active Session Banner */}
-            {currentSession && (
+            {user && (
               <div className="mb-6 p-3 rounded-xl border border-indigo-200 bg-indigo-50/70 text-xs flex items-center justify-between gap-3 shadow-2xs">
                 <div className="flex items-center gap-2 min-w-0">
                   <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" aria-hidden="true" />
                   <div className="truncate">
                     <span className="text-slate-700">Signed in: </span>
-                    <strong className="font-semibold text-indigo-950">{currentSession.fullName}</strong>
+                    <strong className="font-semibold text-indigo-950">{user.fullName}</strong>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={handleSignOutExisting}
-                    disabled={loggingOutExisting}
+                    disabled={isLoggingOut}
                     className="px-2 py-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-[11px] font-medium transition-colors"
                   >
                     <LogOut className="w-3 h-3 inline mr-1" aria-hidden="true" />
@@ -320,11 +289,11 @@ export default function LoginPage() {
                   </button>
                   <Link
                     href={
-                      currentSession.isAdmin
+                      user.isAdmin
                         ? "/admin"
-                        : currentSession.isPrincipal || currentSession.isVicePrincipal
+                        : user.isPrincipal || user.isVicePrincipal
                         ? "/principal"
-                        : currentSession.isLead
+                        : user.isLead
                         ? "/lead"
                         : "/"
                     }
