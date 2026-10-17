@@ -1,15 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import StudentNoticeBoardPage from "../page";
-import { getCurrentUser } from "@/lib/auth";
+import StudentNoticeBoardPage, { revalidate } from "../page";
 
 vi.mock("@/components/notice-board/notice-board-client", () => ({
   NoticeBoardClient: (props: Record<string, unknown>) => (
     <div data-testid="notice-board-client" data-props={JSON.stringify(props)} />
   ),
-}));
-
-vi.mock("@/lib/auth", () => ({
-  getCurrentUser: vi.fn(),
 }));
 
 const {
@@ -89,15 +84,17 @@ vi.mock("@/lib/db", () => {
   };
 });
 
-const mockGetCurrentUser = vi.mocked(getCurrentUser);
-
-describe("StudentNoticeBoardPage SSR (src/app/page.tsx)", () => {
+describe("StudentNoticeBoardPage ISR (src/app/page.tsx)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetQueryQueue();
   });
 
-  it("renders notice board with events, venues, and user session", async () => {
+  it("exports revalidate = 60 for Edge ISR caching", () => {
+    expect(revalidate).toBe(60);
+  });
+
+  it("renders notice board with events and venues", async () => {
     const mockEvent = {
       id: "event-1",
       campusId: "campus-1",
@@ -134,21 +131,6 @@ describe("StudentNoticeBoardPage SSR (src/app/page.tsx)", () => {
     };
 
     queueQueryResults([mockEvent], [mockVenue]);
-    mockGetCurrentUser.mockResolvedValueOnce({
-      userId: "user-1",
-      email: "user@campus.edu",
-      profile: {
-        id: "user-1",
-        email: "user@campus.edu",
-        full_name: "Test User",
-        role: "student",
-      },
-      leadCommunities: [{ id: "comm-1", name: "ACM", slug: "acm", category: "Tech", campus_id: "c-1" }],
-      isAdmin: false,
-      isPrincipal: false,
-      isVicePrincipal: false,
-      isLead: true,
-    });
 
     const jsx = await StudentNoticeBoardPage();
     expect(jsx).toBeDefined();
@@ -156,20 +138,16 @@ describe("StudentNoticeBoardPage SSR (src/app/page.tsx)", () => {
     expect(jsx.props.initialEvents[0].title).toBe("Tech Fest 2026");
     expect(jsx.props.initialVenues).toHaveLength(1);
     expect(jsx.props.initialVenues[0].name).toBe("Turing Auditorium");
-    expect(jsx.props.initialUserSession?.authenticated).toBe(true);
-    expect(jsx.props.initialUserSession?.user.fullName).toBe("Test User");
   });
 
   it("handles database SSR error gracefully and renders with empty arrays", async () => {
     setQueryError(new Error("Database connection lost"));
-    mockGetCurrentUser.mockResolvedValueOnce(null);
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const jsx = await StudentNoticeBoardPage();
     expect(jsx).toBeDefined();
     expect(jsx.props.initialEvents).toHaveLength(0);
     expect(jsx.props.initialVenues).toHaveLength(0);
-    expect(jsx.props.initialUserSession).toBeNull();
     consoleSpy.mockRestore();
   });
 });

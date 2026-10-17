@@ -21,6 +21,7 @@ import {
   addDays,
 } from "date-fns";
 import { useCalendar } from "@/context/calendar-context";
+import { useAuth } from "@/context/auth-context";
 import { CampusEvent, EventCategory, Venue } from "@/types/database";
 import { CATEGORY_STYLES } from "@/components/events/category-badge";
 import { MiniCalendar } from "@/components/notice-board/mini-calendar";
@@ -113,7 +114,11 @@ export function NoticeBoardClient({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Auth & Proposal modal
-  const [userSession, setUserSession] = useState<UserSessionState | null>(initialUserSession);
+  const { user: authUser } = useAuth();
+  const activeUser = authUser || initialUserSession?.user;
+  const isPrivileged = Boolean(
+    activeUser?.isLead || activeUser?.isAdmin || activeUser?.isPrincipal
+  );
   const [isProposeOpen, setIsProposeOpen] = useState(false);
 
   // Selected event for detail modal
@@ -131,10 +136,9 @@ export function NoticeBoardClient({
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [eventsRes, venuesRes, authRes] = await Promise.all([
+      const [eventsRes, venuesRes] = await Promise.all([
         fetch("/api/events?status=published"),
         fetch("/api/venues"),
-        fetch("/api/auth/me"),
       ]);
 
       if (!eventsRes.ok) throw new Error("Failed to load events");
@@ -144,11 +148,6 @@ export function NoticeBoardClient({
       if (venuesRes.ok) {
         const venuesData = await venuesRes.json();
         setVenues(venuesData.venues || []);
-      }
-
-      if (authRes.ok) {
-        const authData = await authRes.json();
-        setUserSession(authData);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error fetching events");
@@ -169,10 +168,7 @@ export function NoticeBoardClient({
 
   // Handle Create Event button
   const handleCreateEventClick = () => {
-    if (
-      userSession?.authenticated &&
-      (userSession.user?.isLead || userSession.user?.isAdmin || userSession.user?.isPrincipal)
-    ) {
+    if (isPrivileged) {
       setIsProposeOpen(true);
     } else {
       router.push("/login");
@@ -312,19 +308,16 @@ export function NoticeBoardClient({
             )}
           </div>
 
-          {userSession?.authenticated &&
-            (userSession.user?.isLead ||
-              userSession.user?.isAdmin ||
-              userSession.user?.isPrincipal) && (
-              <button
-                type="button"
-                onClick={handleCreateEventClick}
-                className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Create</span>
-              </button>
-            )}
+          {isPrivileged && (
+            <button
+              type="button"
+              onClick={handleCreateEventClick}
+              className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Create</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -370,19 +363,16 @@ export function NoticeBoardClient({
           </button>
         </div>
 
-        {userSession?.authenticated &&
-          (userSession.user?.isLead ||
-            userSession.user?.isAdmin ||
-            userSession.user?.isPrincipal) && (
-            <button
-              type="button"
-              onClick={handleCreateEventClick}
-              className="w-full py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
-            >
-              <Plus className="w-4 h-4 text-indigo-600" />
-              <span>Create Event</span>
-            </button>
-          )}
+        {isPrivileged && (
+          <button
+            type="button"
+            onClick={handleCreateEventClick}
+            className="w-full py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
+          >
+            <Plus className="w-4 h-4 text-indigo-600" />
+            <span>Create Event</span>
+          </button>
+        )}
 
         {/* Mini Calendar Picker */}
         <div className="pt-1">
@@ -657,8 +647,8 @@ export function NoticeBoardClient({
       {isProposeOpen && (
         <ProposeEventModal
           venues={venues}
-          communityId={userSession?.user?.leadCommunities?.[0]?.id}
-          communityName={userSession?.user?.leadCommunities?.[0]?.name}
+          communityId={activeUser?.leadCommunities?.[0]?.id}
+          communityName={activeUser?.leadCommunities?.[0]?.name}
           onClose={() => setIsProposeOpen(false)}
           onSuccess={() => {
             setIsProposeOpen(false);
