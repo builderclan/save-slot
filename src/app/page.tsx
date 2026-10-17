@@ -2,14 +2,11 @@ import { withDbRetry } from "@/lib/db";
 import { events, communities, venues, users, communityMembers } from "@/db/schema";
 import { eq, asc, getTableColumns, aliasedTable, sql } from "drizzle-orm";
 import { formatCampusEvent, formatVenue } from "@/db/adapters";
-import { getCurrentUser } from "@/lib/auth";
 import { CampusEvent, Venue } from "@/types/database";
-import {
-  NoticeBoardClient,
-  UserSessionState,
-} from "@/components/notice-board/notice-board-client";
+import { NoticeBoardClient } from "@/components/notice-board/notice-board-client";
 
-export const dynamic = "force-dynamic";
+// Incremental Static Regeneration: Cache at the Edge with 60s background revalidation
+export const revalidate = 60;
 
 const creators = aliasedTable(users, "creators");
 const reviewers = aliasedTable(users, "reviewers");
@@ -17,10 +14,9 @@ const reviewers = aliasedTable(users, "reviewers");
 export default async function StudentNoticeBoardPage() {
   let initialEvents: CampusEvent[] = [];
   let initialVenues: Venue[] = [];
-  let initialUserSession: UserSessionState | null = null;
 
   try {
-    const [eventsRows, venuesRows, session] = await Promise.all([
+    const [eventsRows, venuesRows] = await Promise.all([
       withDbRetry((client) =>
         client
           .select({
@@ -81,38 +77,18 @@ export default async function StudentNoticeBoardPage() {
           .where(eq(venues.isActive, true))
           .orderBy(asc(venues.name))
       ),
-      getCurrentUser(),
     ]);
 
     initialEvents = eventsRows.map(formatCampusEvent);
     initialVenues = venuesRows.map(formatVenue);
-
-    if (session) {
-      initialUserSession = {
-        authenticated: true,
-        user: {
-          fullName: session.profile.full_name,
-          isLead: session.isLead,
-          isAdmin: session.isAdmin,
-          isPrincipal: session.isPrincipal,
-          isVicePrincipal: session.isVicePrincipal,
-          role: session.profile.role,
-          leadCommunities: session.leadCommunities.map((c) => ({
-            id: c.id,
-            name: c.name,
-          })),
-        },
-      };
-    }
   } catch (err) {
-    console.error("Error performing SSR query in StudentNoticeBoardPage:", err);
+    console.warn("Notice board pre-render: database query failed (build/offline fallback):", err);
   }
 
   return (
     <NoticeBoardClient
       initialEvents={initialEvents}
       initialVenues={initialVenues}
-      initialUserSession={initialUserSession}
     />
   );
 }

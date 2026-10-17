@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeRevalidatePath } from "@/lib/revalidate";
 import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
 import { events, venues } from "@/db/schema";
@@ -111,6 +112,10 @@ export async function PUT(
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
 
+    safeRevalidatePath("/");
+    safeRevalidatePath("/lead");
+    safeRevalidatePath("/admin");
+
     return NextResponse.json({ success: true, event: formatCampusEvent(updated) });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Failed to update event proposal";
@@ -179,6 +184,10 @@ export async function DELETE(
         { status: 404 }
       );
     }
+
+    safeRevalidatePath("/");
+    safeRevalidatePath("/lead");
+    safeRevalidatePath("/admin");
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {
