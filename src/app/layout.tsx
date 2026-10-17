@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { CalendarProvider } from "@/context/calendar-context";
+import { AuthProvider } from "@/context/auth-context";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -52,10 +53,12 @@ export default function RootLayout({
         className="min-h-screen flex flex-col bg-white text-slate-800 selection:bg-indigo-100 selection:text-indigo-900 font-sans"
         suppressHydrationWarning
       >
-        <CalendarProvider>
-          <Navbar />
-          <main className="flex-1 w-full flex flex-col min-h-0">{children}</main>
-        </CalendarProvider>
+        <AuthProvider>
+          <CalendarProvider>
+            <Navbar />
+            <main className="flex-1 w-full flex flex-col min-h-0">{children}</main>
+          </CalendarProvider>
+        </AuthProvider>
       </body>
     </html>
   );
