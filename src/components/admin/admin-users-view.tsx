@@ -14,15 +14,8 @@ import {
   UserCheck,
 } from "lucide-react";
 
-export interface AdminUserRow {
-  id: string;
-  email: string;
-  full_name: string;
-  role: "admin" | "principal" | "vice_principal" | "organizer";
-  community_id?: string | null;
-  community_name?: string | null;
-  created_at?: string;
-}
+import type { AdminUserRow } from "@/types/database";
+export type { AdminUserRow };
 
 interface AdminUsersViewProps {
   users: AdminUserRow[];
