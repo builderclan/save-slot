@@ -47,25 +47,25 @@ vi.mock("@/lib/db", () => ({
 }));
 
 // Mock sub-views
-vi.mock("@/components/principal/principal-nav-sidebar", () => ({
+vi.mock("@/features/principal/components/principal-nav-sidebar", () => ({
   PrincipalNavSidebar: (props: { activeTab: string; userName?: string }) => (
     <div data-testid="principal-sidebar" data-tab={props.activeTab} data-user={props.userName} />
   ),
 }));
 
-vi.mock("@/components/principal/principal-inbox-view", () => ({
+vi.mock("@/features/principal/components/principal-inbox-view", () => ({
   PrincipalInboxView: () => <div data-testid="inbox-view">Inbox View</div>,
 }));
 
-vi.mock("@/components/principal/principal-schedule-view", () => ({
+vi.mock("@/features/principal/components/principal-schedule-view", () => ({
   PrincipalScheduleView: () => <div data-testid="schedule-view">Schedule View</div>,
 }));
 
-vi.mock("@/components/principal/principal-history-view", () => ({
+vi.mock("@/features/principal/components/principal-history-view", () => ({
   PrincipalHistoryView: () => <div data-testid="history-view">History View</div>,
 }));
 
-vi.mock("@/components/principal/principal-rejection-modal", () => ({
+vi.mock("@/features/principal/components/principal-rejection-modal", () => ({
   PrincipalRejectionModal: () => null,
   DEFAULT_REJECTION_PRESETS: ["Preset 1"],
 }));
@@ -75,7 +75,7 @@ vi.mock("@/components/events/event-detail-modal", () => ({
 }));
 
 import PrincipalDeskPage from "../principal/page";
-import { PrincipalClientDesk } from "@/components/principal/principal-client-desk";
+import { PrincipalClientDesk } from "@/features/principal";
 import type { CampusEvent } from "@/types/database";
 
 const mockEvent: CampusEvent = {

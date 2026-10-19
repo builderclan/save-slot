@@ -7,14 +7,14 @@ import { EventDetailModal } from "@/components/events/event-detail-modal";
 import {
   PrincipalNavSidebar,
   PrincipalDeskTab,
-} from "@/components/principal/principal-nav-sidebar";
-import { PrincipalInboxView } from "@/components/principal/principal-inbox-view";
-import { PrincipalScheduleView } from "@/components/principal/principal-schedule-view";
-import { PrincipalHistoryView } from "@/components/principal/principal-history-view";
+} from "./principal-nav-sidebar";
+import { PrincipalInboxView } from "./principal-inbox-view";
+import { PrincipalScheduleView } from "./principal-schedule-view";
+import { PrincipalHistoryView } from "./principal-history-view";
 import {
   PrincipalRejectionModal,
   DEFAULT_REJECTION_PRESETS,
-} from "@/components/principal/principal-rejection-modal";
+} from "./principal-rejection-modal";
 import { NotificationBanner, type NotificationType } from "@/components/ui/notification-banner";
 import { formatDisplayName } from "@/lib/utils";
 import PrincipalLoading from "@/app/principal/loading";
