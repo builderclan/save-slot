@@ -66,8 +66,9 @@ function LeadWorkspaceContent() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-      {/* Toast Notification */}
+    <div className="flex-1 w-full flex flex-col bg-slate-50/50">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+        {/* Toast Notification */}
       {actionNotice && (
         <div
           role="alert"
@@ -167,8 +168,8 @@ function LeadWorkspaceContent() {
         />
       </div>
 
-      {/* Filter Toolbar */}
-      <div className="mt-6">
+      {/* Filter Toolbar & Events Listing Card */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-2xs overflow-hidden">
         <LeadFilterBar
           totalCount={communityEvents.length}
           filteredCount={filteredEvents.length}
@@ -181,10 +182,6 @@ function LeadWorkspaceContent() {
           hasActiveFilters={hasActiveFilters}
           onResetFilters={resetFilters}
         />
-      </div>
-
-      {/* Events Listing */}
-      <div className="mt-6">
         <LeadEventsList
           events={filteredEvents}
           hasActiveFilters={hasActiveFilters}
@@ -259,6 +256,7 @@ function LeadWorkspaceContent() {
           onConfirm={handleConfirmWithdraw}
         />
       )}
+      </div>
     </div>
   );
 }
