@@ -12,14 +12,16 @@ import {
   X,
 } from "lucide-react";
 import type { CampusEvent } from "@/types/database";
-import { LeadStatsRow } from "@/components/lead/lead-stats-row";
-import { LeadFilterBar } from "@/components/lead/lead-filter-bar";
-import { LeadEventsList } from "@/components/lead/lead-events-list";
-import { LeadWithdrawModal } from "@/components/lead/lead-withdraw-modal";
-import { LeadRejectionNoticeModal } from "@/components/lead/lead-rejection-notice-modal";
-import { ProposeEventModal } from "@/components/lead/propose-event-modal";
+import {
+  useLeadWorkspace,
+  LeadStatsRow,
+  LeadFilterBar,
+  LeadEventsList,
+  LeadWithdrawModal,
+  LeadRejectionNoticeModal,
+  ProposeEventModal,
+} from "@/features/lead";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
-import { useLeadWorkspace } from "@/features/lead/hooks/use-lead-workspace";
 import LeadLoading from "./loading";
 
 function LeadWorkspaceContent() {

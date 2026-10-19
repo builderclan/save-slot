@@ -20,7 +20,7 @@ import { MonthView } from "@/components/notice-board/month-view";
 import { WeekView } from "@/components/notice-board/week-view";
 import { EventCard } from "@/components/notice-board/event-card";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
-import { ProposeEventModal } from "@/components/lead/propose-event-modal";
+import { ProposeEventModal } from "@/features/lead";
 import {
   useNoticeBoard,
   NOTICE_BOARD_CATEGORIES as CATEGORIES,

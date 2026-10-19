@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CampusEvent, Venue } from "@/types/database";
-import type { StatusFilter } from "@/components/lead/lead-stats-row";
-import type { SortOption } from "@/components/lead/lead-filter-bar";
+import type { StatusFilter, SortOption } from "../components";
 import { eventsApi } from "@/features/events/api";
 import { venuesApi } from "@/features/venues/api";
 import { useAuth } from "@/context/auth-context";
