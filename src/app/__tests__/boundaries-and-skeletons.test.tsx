@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderToString } from "react-dom/server";
-import NoticeBoardLoading from "../loading";
+import NoticeBoardLoading from "../(board)/loading";
 import AdminLoading from "../admin/loading";
 import LeadLoading from "../lead/loading";
 import AdminError from "../admin/error";

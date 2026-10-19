@@ -43,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Validation Types (`src/lib/validations/`)**:
   - Exported Zod-inferred TypeScript input/output contracts for strict end-to-end type safety.
 
+### Fixed
+
+- **Desk View Loading Waterfall & Skeleton Flashing**:
+  - Encapsulated the root student notice board (`page.tsx`) and its skeleton (`loading.tsx`) into an isolated `(board)` route group.
+  - Eliminated root-level Suspense fallback leakage into `/principal`, `/admin`, and `/lead`, ensuring desk views immediately display their dedicated loading skeletons without flashing the student calendar view.
+
 ### Removed
 
 - **Legacy Facade Directories**:
