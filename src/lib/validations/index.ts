@@ -184,4 +184,27 @@ export const UpdateCommunityFullSchema = z.object({
   status: z.enum(["approved", "pending", "rejected"]).optional(),
 });
 
+// ==========================================================================
+// Centralized Inferred TypeScript Input Types (Single Source of Truth)
+// ==========================================================================
+
+export type LoginInput = z.infer<typeof LoginSchema>;
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+
+export type ProposeEventInput = z.infer<typeof ProposeEventSchema>;
+export type UpdateEventStatusInput = z.infer<typeof UpdateEventStatusSchema>;
+export type ConflictCheckInput = z.infer<typeof ConflictCheckSchema>;
+
+export type CreateUserInput = z.infer<typeof CreateUserSchema>;
+export type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
+
+export type CreateVenueInput = z.infer<typeof CreateVenueSchema>;
+export type UpdateVenueInput = z.infer<typeof UpdateVenueSchema>;
+export type UpdateVenueFullInput = z.infer<typeof UpdateVenueFullSchema>;
+
+export type CreateCommunityInput = z.infer<typeof CreateCommunitySchema>;
+export type UpdateCommunityFullInput = z.infer<typeof UpdateCommunityFullSchema>;
+
+
 

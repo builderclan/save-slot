@@ -5,7 +5,7 @@ import { events, communityMembers } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { formatCampusEvent } from "@/db/adapters";
 import { CampusEvent } from "@/types/database";
-import { PrincipalClientDesk } from "@/components/principal/principal-client-desk";
+import { PrincipalClientDesk } from "@/features/principal";
 
 export default async function PrincipalDeskPage() {
   const session = await getCurrentUser();

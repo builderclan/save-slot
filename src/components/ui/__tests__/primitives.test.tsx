@@ -4,9 +4,9 @@ import { StatusBadge } from "../status-badge";
 import { NotificationBanner } from "../notification-banner";
 import { EmptyState } from "../empty-state";
 import { Modal } from "../modal";
-import { RejectionModal } from "@/components/events/rejection-modal";
-import { AdminRejectionModal } from "@/components/admin/admin-rejection-modal";
-import { PrincipalRejectionModal } from "@/components/principal/principal-rejection-modal";
+import { RejectionModal } from "@/features/events";
+import { AdminRejectionModal } from "@/features/admin";
+import { PrincipalRejectionModal } from "@/features/principal";
 import type { CampusEvent } from "@/types/database";
 
 describe("UI Design System Primitives", () => {
@@ -143,7 +143,7 @@ describe("UI Design System Primitives", () => {
     });
   });
 
-  describe("RejectionModal (src/components/events/rejection-modal.tsx)", () => {
+  describe("RejectionModal (src/features/events/components/rejection-modal.tsx)", () => {
     const mockEvent: CampusEvent = {
       id: "ev-1",
       campus_id: "c-1",

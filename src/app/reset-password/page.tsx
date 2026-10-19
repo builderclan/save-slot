@@ -15,6 +15,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { authApi } from "@/features/auth/api";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -104,16 +105,7 @@ function ResetPasswordForm() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/reset-password/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password, confirmPassword }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to update password.");
-      }
+      await authApi.confirmPasswordReset({ password, confirmPassword });
 
       // Success: redirect to /login with confirmation banner
       router.push("/login?reset=success");

@@ -1,0 +1,526 @@
+"use client";
+
+import { useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import {
+  Search,
+  Plus,
+  Check,
+  X,
+  Filter,
+  ChevronDown,
+  Calendar as CalendarIcon,
+  CalendarDays,
+  LayoutGrid,
+} from "lucide-react";
+import { CampusEvent, Venue } from "@/types/database";
+import { CATEGORY_STYLES } from "./category-badge";
+import { MiniCalendar } from "./mini-calendar";
+import { MonthView } from "./month-view";
+import { WeekView } from "./week-view";
+import { EventCard } from "./event-card";
+import { EventDetailModal } from "./event-detail-modal";
+import { ProposeEventModal } from "@/features/lead";
+import {
+  useNoticeBoard,
+  NOTICE_BOARD_CATEGORIES as CATEGORIES,
+  type UserSessionState,
+} from "../hooks/use-notice-board";
+
+export { type UserSessionState };
+
+function EventDeepLinkHandler({
+  events,
+  onSelectEvent,
+}: {
+  events: CampusEvent[];
+  onSelectEvent: (ev: CampusEvent) => void;
+}) {
+  const searchParams = useSearchParams();
+  const eventId = searchParams.get("event");
+
+  useEffect(() => {
+    if (eventId && events.length > 0) {
+      const match = events.find((e) => e.id === eventId);
+      if (match) {
+        onSelectEvent(match);
+      }
+    }
+  }, [eventId, events, onSelectEvent]);
+
+  return null;
+}
+
+interface NoticeBoardClientProps {
+  initialEvents: CampusEvent[];
+  initialVenues: Venue[];
+  initialUserSession?: UserSessionState | null;
+}
+
+export function NoticeBoardClient({
+  initialEvents,
+  initialVenues,
+  initialUserSession = null,
+}: NoticeBoardClientProps) {
+  const {
+    events,
+    venues,
+    loading,
+    error,
+    loadData,
+    activeDate,
+    setActiveDate,
+    viewMode,
+    setViewMode,
+    search,
+    setSearch,
+    selectedCategories,
+    selectedHorizon,
+    setSelectedHorizon,
+    mobileFiltersOpen,
+    setMobileFiltersOpen,
+    toggleCategory,
+    selectAllCategories,
+    clearCategories,
+    filteredEvents,
+    hasActiveFilters,
+    handleResetFilters,
+    selectedEvent,
+    setSelectedEvent,
+    handleCloseDetailModal,
+    isProposeOpen,
+    setIsProposeOpen,
+    handleCreateEventClick,
+    activeUser,
+    isPrivileged,
+  } = useNoticeBoard({
+    initialEvents,
+    initialVenues,
+    initialUserSession,
+  });
+
+  return (
+    <div className="calendar-shell w-full flex-1 flex flex-col lg:flex-row bg-white min-h-0">
+      {/* Mobile Secondary Bar (Visible only on < lg) */}
+      <div className="lg:hidden border-b border-slate-200 bg-white shrink-0">
+        {/* On mobile (< md), show the dedicated View Switcher */}
+        <div className="md:hidden px-4 pt-3 pb-2 border-b border-slate-100 bg-slate-50/50">
+          <div
+            role="tablist"
+            aria-label="Mobile calendar view switcher"
+            className="grid grid-cols-3 p-1 rounded-xl bg-slate-100 border border-slate-200 gap-1 text-xs shadow-2xs"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === "month"}
+              onClick={() => setViewMode("month")}
+              className={`py-1.5 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                viewMode === "month"
+                  ? "bg-white text-slate-900 font-semibold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <CalendarIcon className="w-3.5 h-3.5" />
+              <span>Month</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === "week"}
+              onClick={() => setViewMode("week")}
+              className={`py-1.5 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                viewMode === "week"
+                  ? "bg-white text-slate-900 font-semibold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>Week</span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === "cards"}
+              onClick={() => setViewMode("cards")}
+              className={`py-1.5 rounded-lg font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                viewMode === "cards"
+                  ? "bg-white text-slate-900 font-semibold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Board</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Search & Filters Row */}
+        <div className="px-4 py-2.5 flex items-center justify-between gap-2.5 bg-white">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search club or venue..."
+              className="w-full pl-8.5 pr-7 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-500 shadow-2xs"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {isPrivileged && (
+            <button
+              type="button"
+              onClick={handleCreateEventClick}
+              className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Create</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen((prev) => !prev)}
+            className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer transition-colors ${
+              selectedCategories.length < CATEGORIES.length || selectedHorizon !== "all"
+                ? "border-indigo-300 bg-indigo-50 text-indigo-700"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            <Filter className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Filters</span>
+            {selectedCategories.length < CATEGORIES.length && (
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+            )}
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform ${
+                mobileFiltersOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* LEFT SIDEBAR (User Profile, + Create Event, Mini-Cal, Filters) */}
+      {/* ============================================================== */}
+      <aside className={`w-full lg:w-72 lg:h-full lg:max-h-full lg:overflow-y-auto border-b lg:border-b-0 lg:border-r border-slate-200 p-5 sm:p-6 flex-col gap-6 bg-white shrink-0 z-20 ${mobileFiltersOpen ? "flex" : "hidden lg:flex"}`}>
+
+        {/* Mobile Filters Drawer Header (visible only on < lg) */}
+        <div className="lg:hidden flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-indigo-600" />
+            <h3 className="font-bold text-sm text-slate-900">Filter Events</h3>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen(false)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+            aria-label="Close filters"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {isPrivileged && (
+          <button
+            type="button"
+            onClick={handleCreateEventClick}
+            className="w-full py-2.5 px-4 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs"
+          >
+            <Plus className="w-4 h-4 text-indigo-600" />
+            <span>Create Event</span>
+          </button>
+        )}
+
+        {/* Mini Calendar Picker */}
+        <div className="pt-1">
+          <MiniCalendar
+            currentDate={activeDate}
+            onSelectDate={(newDate) => setActiveDate(newDate)}
+          />
+        </div>
+
+        {/* Quick Search Input (Desktop) */}
+        <div className="hidden lg:block relative">
+          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search club or venue..."
+            className="w-full pl-8.5 pr-7 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-500 transition-colors"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* "My calendars" / Categories Checklist */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-900 tracking-tight">
+              My calendars
+            </span>
+            <div className="flex items-center gap-2 text-[10px]">
+              <button
+                type="button"
+                onClick={selectAllCategories}
+                className="text-indigo-600 hover:underline cursor-pointer"
+              >
+                All
+              </button>
+              <span className="text-slate-300">•</span>
+              <button
+                type="button"
+                onClick={clearCategories}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {CATEGORIES.map((cat) => {
+              const isChecked = selectedCategories.includes(cat);
+              const catStyle = CATEGORY_STYLES[cat] || {
+                bg: "bg-indigo-50",
+                text: "text-indigo-700",
+                border: "border-indigo-100",
+                dot: "bg-indigo-500",
+              };
+
+              return (
+                <label
+                  key={cat}
+                  onClick={() => toggleCategory(cat)}
+                  className="flex items-center gap-2.5 text-xs text-slate-700 hover:text-slate-900 cursor-pointer select-none py-0.5 group"
+                >
+                  <div
+                    className={`w-4 h-4 rounded flex items-center justify-center transition-all ${
+                      isChecked
+                        ? `${catStyle.dot} text-white shadow-2xs`
+                        : "border border-slate-300 bg-white group-hover:border-slate-400"
+                    }`}
+                  >
+                    {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
+                  <span className="flex-1 font-medium">{cat}</span>
+                  <span className={`w-2 h-2 rounded-full ${catStyle.dot} opacity-70`} />
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Date Horizon Quick Filter */}
+        <div className="pt-2 border-t border-slate-100">
+          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
+            Time Horizon
+          </span>
+          <div className="grid grid-cols-2 gap-1.5 text-xs">
+            {(
+              [
+                { id: "all", label: "All Dates" },
+                { id: "today", label: "Today" },
+                { id: "week", label: "Next 7 Days" },
+                { id: "weekend", label: "Weekend" },
+              ] as const
+            ).map((h) => (
+              <button
+                key={h.id}
+                type="button"
+                onClick={() => setSelectedHorizon(h.id)}
+                className={`py-1.5 px-2 rounded-lg text-center font-medium transition-all cursor-pointer ${
+                  selectedHorizon === h.id
+                    ? "bg-slate-900 text-white shadow-xs"
+                    : "bg-slate-50 text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {h.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile Filter Action Buttons */}
+        <div className="lg:hidden pt-3 border-t border-slate-100 flex items-center gap-2 pb-12">
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="flex-1 py-2 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+          >
+            Reset Filters
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileFiltersOpen(false)}
+            className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
+          >
+            Show {filteredEvents.length} Events
+          </button>
+        </div>
+
+        {/* Desktop Sidebar Bottom Status Card */}
+        <div className="hidden lg:flex mt-auto pt-4 border-t border-slate-100 flex-col gap-1.5 pb-6">
+          <div className="flex items-center justify-between text-[11px]">
+            <span className="font-semibold text-slate-700">SaveSlot™ System</span>
+            <span className="flex items-center gap-1 text-emerald-600 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
+              Active
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400 leading-tight">
+            Automated conflict-prevention enabled for all campus venues.
+          </p>
+        </div>
+      </aside>
+
+      {/* ============================================================== */}
+      {/* MAIN CALENDAR SECTION (Month/Week/Board Views) */}
+      {/* ============================================================== */}
+      <section
+        style={{ height: "100%", maxHeight: "100%" }}
+        className="flex-1 flex flex-col min-w-0 min-h-0 bg-white overflow-hidden"
+      >
+        <div
+          style={{ height: "100%", maxHeight: "100%" }}
+          className="flex-1 flex flex-col min-h-0 overflow-hidden bg-white"
+        >
+          {loading ? (
+            <div className="p-16 text-center">
+              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs text-slate-400">Loading campus calendar...</p>
+            </div>
+          ) : error ? (
+            <div className="p-8 m-6 text-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-800">
+              <p className="text-sm font-medium">{error}</p>
+            </div>
+          ) : viewMode === "cards" && filteredEvents.length === 0 ? (
+            <div className="text-center py-24 p-8 my-auto">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                <Search className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-semibold text-slate-800 mb-1">
+                {hasActiveFilters
+                  ? "No events found matching your filters"
+                  : "No campus events scheduled"}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-4">
+                {hasActiveFilters
+                  ? "Try adjusting your search terms or selecting more categories in the sidebar."
+                  : "Check back later or switch to Month view to explore the calendar."}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs active:scale-[0.98]"
+                >
+                  Reset All Filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {filteredEvents.length === 0 && hasActiveFilters && (
+                <div className="px-4 py-2.5 bg-indigo-50/70 border-b border-indigo-100/80 flex items-center justify-between text-xs text-slate-700 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <Search className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>No events match your current filters in this view.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleResetFilters}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors cursor-pointer underline underline-offset-2 shrink-0"
+                  >
+                    Reset Filters
+                  </button>
+                </div>
+              )}
+              {viewMode === "month" && (
+                <MonthView
+                  events={filteredEvents}
+                  onSelectEvent={(ev) => setSelectedEvent(ev)}
+                  currentDate={activeDate}
+                  onDateChange={(newDate) => setActiveDate(newDate)}
+                />
+              )}
+
+              {viewMode === "week" && (
+                <WeekView
+                  events={filteredEvents}
+                  onSelectEvent={(ev) => setSelectedEvent(ev)}
+                  currentDate={activeDate}
+                  onDateChange={(newDate) => setActiveDate(newDate)}
+                />
+              )}
+
+              {viewMode === "cards" && (
+                <div
+                  style={{ height: "100%", maxHeight: "100%" }}
+                  className="flex-1 min-h-0 overflow-y-auto p-6"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {filteredEvents.map((event) => (
+                      <EventCard
+                        key={event.id}
+                        event={event}
+                        onSelect={(ev) => setSelectedEvent(ev)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Deep Link URL Handler */}
+      <Suspense fallback={null}>
+        <EventDeepLinkHandler
+          events={events}
+          onSelectEvent={(ev) => setSelectedEvent(ev)}
+        />
+      </Suspense>
+
+      {/* Event Detail Modal */}
+      <EventDetailModal
+        event={selectedEvent}
+        onClose={handleCloseDetailModal}
+      />
+
+      {/* Proposal Modal for Community Leads */}
+      {isProposeOpen && (
+        <ProposeEventModal
+          venues={venues}
+          communityId={activeUser?.leadCommunities?.[0]?.id}
+          communityName={activeUser?.leadCommunities?.[0]?.name}
+          onClose={() => setIsProposeOpen(false)}
+          onSuccess={() => {
+            setIsProposeOpen(false);
+            loadData();
+          }}
+        />
+      )}
+    </div>
+  );
+}

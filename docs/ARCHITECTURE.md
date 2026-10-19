@@ -205,3 +205,40 @@ To prevent Time-of-Check to Time-of-Use (TOCTOU) race conditions when concurrent
 - **Database & Client**: Supabase (`@supabase/supabase-js`, `@supabase/ssr`, `pg` with TCP keepAlive & 15s timeout).
 - **Icons & Components**: `lucide-react`, `date-fns` v4.
 - **Validation**: `zod` v4.
+
+---
+
+## 6. Domain-Colocated Feature Slices (Vertical Slices)
+
+To eliminate cross-cutting monoliths and avoid scattered dependencies, the presentation and application layers are organized as self-contained domain vertical slices under `src/features/`:
+
+```
+src/
+├── features/
+│   ├── admin/        # Views (triage, events, venues, users, audit), modals, tests, and useAdminDashboard hook
+│   ├── lead/         # Proposal wizard (details, schedule, poster), modals, tests, and useLeadWorkspace hook
+│   ├── principal/    # Split-view desk, triage inbox, master schedule, audit history, and rejection modal
+│   ├── events/       # Calendar notice board (month, week, mini-calendar, event card), detail modal, category badge, and useNoticeBoard hook
+│   ├── conflicts/    # Automated conflict prevention API client
+│   ├── venues/       # Campus venue querying and mutation API client
+│   └── auth/         # Session and password recovery API client
+│
+├── components/
+│   ├── ui/           # Pure cross-cutting design system primitives (Modal, StatusBadge, NotificationBanner, EmptyState)
+│   └── layout/       # Shared app shell & header (Navbar, CalendarNavControls)
+│
+├── lib/
+│   ├── api-client.ts # Centralized typed HTTP client with error handling
+│   ├── auth.ts       # Server-side auth & token verification
+│   ├── db.ts         # Resilient database connection pooling with retry mechanics
+│   └── validations/  # Zod schemas & inferred TypeScript contracts
+│
+└── app/              # Declarative Next.js App Router pages, layouts, and route handlers
+```
+
+### 6.1 Architectural Rules
+
+1. **Vertical Slice Autonomy**: Each feature slice owns its API client functions, state hooks, presentation subcomponents, and colocated unit tests.
+2. **Clean Public API (Barrels)**: Each slice exports its public interface via an `index.ts` file, preventing brittle deep-directory imports.
+3. **Pure Primitives**: `src/components/` is strictly reserved for shared UI primitives (`ui/`) and layout wrappers (`layout/`). Domain-specific business logic is prohibited inside `src/components/`.
+4. **Typed Central API**: Client components consume typed API methods through `src/lib/api-client.ts`, eliminating raw `fetch()` calls and duplicate type contracts.

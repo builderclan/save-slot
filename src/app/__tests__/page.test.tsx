@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import StudentNoticeBoardPage, { revalidate } from "../page";
 
-vi.mock("@/components/notice-board/notice-board-client", () => ({
+vi.mock("@/features/events/components/notice-board-client", () => ({
   NoticeBoardClient: (props: Record<string, unknown>) => (
     <div data-testid="notice-board-client" data-props={JSON.stringify(props)} />
   ),
