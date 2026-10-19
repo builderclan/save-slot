@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import StudentNoticeBoardPage, { revalidate } from "../page";
+import StudentNoticeBoardPage, { revalidate } from "../(board)/page";
 
 vi.mock("@/features/events/components/notice-board-client", () => ({
   NoticeBoardClient: (props: Record<string, unknown>) => (
