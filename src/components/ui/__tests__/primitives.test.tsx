@@ -5,7 +5,7 @@ import { NotificationBanner } from "../notification-banner";
 import { EmptyState } from "../empty-state";
 import { Modal } from "../modal";
 import { RejectionModal } from "@/components/events/rejection-modal";
-import { AdminRejectionModal } from "@/components/admin/admin-rejection-modal";
+import { AdminRejectionModal } from "@/features/admin";
 import { PrincipalRejectionModal } from "@/components/principal/principal-rejection-modal";
 import type { CampusEvent } from "@/types/database";
 
