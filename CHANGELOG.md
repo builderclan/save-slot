@@ -48,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Desk View Loading Waterfall & Skeleton Flashing**:
   - Encapsulated the root student notice board (`page.tsx`) and its skeleton (`loading.tsx`) into an isolated `(board)` route group.
   - Eliminated root-level Suspense fallback leakage into `/principal`, `/admin`, and `/lead`, ensuring desk views immediately display their dedicated loading skeletons without flashing the student calendar view.
+- **Lead Workspace Layout & Skeleton Width Consistency**:
+  - Synchronized the live Lead Workspace container (`src/app/lead/page.tsx`) width (`max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6`), page background (`bg-slate-50/50`), and elevated card container with `src/app/lead/loading.tsx`, eliminating layout shifts and matching the skeleton screen's visual boundaries.
 
 ### Removed
 
