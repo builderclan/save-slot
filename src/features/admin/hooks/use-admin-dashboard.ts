@@ -3,13 +3,15 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { CampusEvent, Venue, AdminCommunityRow, AdminUserRow } from "@/types/database";
-import type { AdminTab } from "@/components/admin/admin-metrics-row";
-import type { NewUserData } from "@/components/admin/admin-add-user-modal";
-import type { EditUserData } from "@/components/admin/admin-edit-user-modal";
-import type { NewVenueData } from "@/components/admin/admin-add-venue-modal";
-import type { EditVenueData } from "@/components/admin/admin-edit-venue-modal";
-import type { NewCommunityData } from "@/components/admin/admin-add-community-modal";
-import type { EditCommunityData } from "@/components/admin/admin-edit-community-modal";
+import type {
+  AdminTab,
+  NewUserData,
+  EditUserData,
+  NewVenueData,
+  EditVenueData,
+  NewCommunityData,
+  EditCommunityData,
+} from "../components";
 import { adminApi } from "@/features/admin/api";
 import { venuesApi } from "@/features/venues/api";
 import { eventsApi } from "@/features/events/api";

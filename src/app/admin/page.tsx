@@ -2,22 +2,24 @@
 
 import { Suspense } from "react";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
-import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { AdminTriageView } from "@/components/admin/admin-triage-view";
-import { AdminEventsView } from "@/components/admin/admin-events-view";
-import { AdminArchiveView } from "@/components/admin/admin-archive-view";
-import { AdminUsersView } from "@/components/admin/admin-users-view";
-import { AdminVenuesView } from "@/components/admin/admin-venues-view";
-import { AdminCommunitiesView } from "@/components/admin/admin-communities-view";
-import { AdminAddUserModal } from "@/components/admin/admin-add-user-modal";
-import { AdminEditUserModal } from "@/components/admin/admin-edit-user-modal";
-import { AdminAddVenueModal } from "@/components/admin/admin-add-venue-modal";
-import { AdminEditVenueModal } from "@/components/admin/admin-edit-venue-modal";
-import { AdminAddCommunityModal } from "@/components/admin/admin-add-community-modal";
-import { AdminEditCommunityModal } from "@/components/admin/admin-edit-community-modal";
+import {
+  AdminSidebar,
+  AdminTriageView,
+  AdminEventsView,
+  AdminArchiveView,
+  AdminUsersView,
+  AdminVenuesView,
+  AdminCommunitiesView,
+  AdminAddUserModal,
+  AdminEditUserModal,
+  AdminAddVenueModal,
+  AdminEditVenueModal,
+  AdminAddCommunityModal,
+  AdminEditCommunityModal,
+  useAdminDashboard,
+} from "@/features/admin";
 import { RejectionModal } from "@/components/events/rejection-modal";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
-import { useAdminDashboard } from "@/features/admin/hooks/use-admin-dashboard";
 import AdminLoading from "./loading";
 
 function AdminLoadingFallback() {
