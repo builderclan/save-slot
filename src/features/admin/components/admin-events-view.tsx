@@ -19,7 +19,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import { CampusEvent, EventCategory } from "@/types/database";
-import { CategoryBadge } from "@/components/events/category-badge";
+import { CategoryBadge } from "@/features/events";
 
 interface AdminEventsViewProps {
   allEvents: CampusEvent[];

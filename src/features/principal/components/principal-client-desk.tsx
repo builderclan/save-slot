@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CampusEvent, ConflictCheckResult, TargetAudience } from "@/types/database";
-import { EventDetailModal } from "@/components/events/event-detail-modal";
+import { EventDetailModal } from "@/features/events";
 import {
   PrincipalNavSidebar,
   PrincipalDeskTab,

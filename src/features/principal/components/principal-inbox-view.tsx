@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { CampusEvent, ConflictCheckResult } from "@/types/database";
-import { CategoryBadge } from "@/components/events/category-badge";
+import { CategoryBadge } from "@/features/events";
 
 export const CATEGORY_DEFAULT_IMAGES: Record<string, string> = {
   Tech: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",

@@ -18,8 +18,7 @@ import {
   AdminEditCommunityModal,
   useAdminDashboard,
 } from "@/features/admin";
-import { RejectionModal } from "@/components/events/rejection-modal";
-import { EventDetailModal } from "@/components/events/event-detail-modal";
+import { RejectionModal, EventDetailModal } from "@/features/events";
 import AdminLoading from "./loading";
 
 function AdminLoadingFallback() {

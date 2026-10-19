@@ -17,7 +17,7 @@ import {
   ArrowDown,
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
-import { CategoryBadge } from "@/components/events/category-badge";
+import { CategoryBadge } from "@/features/events";
 
 type ScheduleSortField = "time" | "title" | "club" | "venue";
 type SortDirection = "asc" | "desc";

@@ -5,7 +5,7 @@ import Image from "next/image";
 import { format, parseISO, isSameDay } from "date-fns";
 import { MapPin, Clock, ArrowUpRight, Calendar as CalendarIcon, CheckCircle2, Users } from "lucide-react";
 import { CampusEvent } from "@/types/database";
-import { CategoryBadge, CATEGORY_STYLES } from "@/components/events/category-badge";
+import { CategoryBadge, CATEGORY_STYLES } from "./category-badge";
 import { formatDisplayName } from "@/lib/utils";
 
 interface EventCardProps {

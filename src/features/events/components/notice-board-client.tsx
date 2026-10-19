@@ -14,18 +14,18 @@ import {
   LayoutGrid,
 } from "lucide-react";
 import { CampusEvent, Venue } from "@/types/database";
-import { CATEGORY_STYLES } from "@/components/events/category-badge";
-import { MiniCalendar } from "@/components/notice-board/mini-calendar";
-import { MonthView } from "@/components/notice-board/month-view";
-import { WeekView } from "@/components/notice-board/week-view";
-import { EventCard } from "@/components/notice-board/event-card";
-import { EventDetailModal } from "@/components/events/event-detail-modal";
+import { CATEGORY_STYLES } from "./category-badge";
+import { MiniCalendar } from "./mini-calendar";
+import { MonthView } from "./month-view";
+import { WeekView } from "./week-view";
+import { EventCard } from "./event-card";
+import { EventDetailModal } from "./event-detail-modal";
 import { ProposeEventModal } from "@/features/lead";
 import {
   useNoticeBoard,
   NOTICE_BOARD_CATEGORIES as CATEGORIES,
   type UserSessionState,
-} from "@/features/events";
+} from "../hooks/use-notice-board";
 
 export { type UserSessionState };
 

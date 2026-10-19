@@ -1,6 +1,6 @@
 "use client";
 
-import { RejectionModal } from "@/components/events/rejection-modal";
+import { RejectionModal } from "@/features/events";
 import type { CampusEvent } from "@/types/database";
 
 export interface AdminRejectionModalProps {

@@ -15,7 +15,7 @@ import {
 } from "date-fns";
 import { X, Calendar as CalendarIcon, Clock, MapPin } from "lucide-react";
 import { CampusEvent } from "@/types/database";
-import { CATEGORY_STYLES, CategoryBadge } from "@/components/events/category-badge";
+import { CATEGORY_STYLES, CategoryBadge } from "./category-badge";
 
 interface MonthViewProps {
   events: CampusEvent[];

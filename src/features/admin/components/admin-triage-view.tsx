@@ -17,7 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
-import { CategoryBadge } from "@/components/events/category-badge";
+import { CategoryBadge } from "@/features/events";
 import { doAudiencesOverlap } from "@/lib/conflicts/audience";
 
 export const CATEGORY_DEFAULT_IMAGES: Record<string, string> = {

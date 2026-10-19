@@ -12,7 +12,7 @@ import {
 } from "date-fns";
 import { MapPin, Clock, Calendar as CalendarIcon } from "lucide-react";
 import { CampusEvent } from "@/types/database";
-import { CATEGORY_STYLES, CategoryBadge } from "@/components/events/category-badge";
+import { CATEGORY_STYLES, CategoryBadge } from "./category-badge";
 
 interface WeekViewProps {
   events: CampusEvent[];

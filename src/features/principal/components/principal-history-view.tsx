@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { formatDisplayName } from "@/lib/utils";
-import { CategoryBadge } from "@/components/events/category-badge";
+import { CategoryBadge } from "@/features/events";
 
 type SortField = "decision_date" | "scheduled" | "title" | "club" | "verdict" | "reviewer";
 type SortDirection = "asc" | "desc";

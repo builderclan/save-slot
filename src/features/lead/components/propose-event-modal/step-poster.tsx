@@ -10,7 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { format } from "date-fns";
-import { CategoryBadge } from "@/components/events/category-badge";
+import { CategoryBadge } from "@/features/events";
 import { EventCategory, Venue } from "@/types/database";
 import { PRESET_COVERS } from "./types";
 

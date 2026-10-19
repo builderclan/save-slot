@@ -3,7 +3,7 @@ import { events, communities, venues, users, communityMembers } from "@/db/schem
 import { eq, asc, getTableColumns, aliasedTable, sql } from "drizzle-orm";
 import { formatCampusEvent, formatVenue } from "@/db/adapters";
 import { CampusEvent, Venue } from "@/types/database";
-import { NoticeBoardClient } from "@/components/notice-board/notice-board-client";
+import { NoticeBoardClient } from "@/features/events";
 
 // Incremental Static Regeneration: Cache at the Edge with 60s background revalidation
 export const revalidate = 60;

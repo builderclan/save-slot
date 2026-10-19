@@ -21,7 +21,7 @@ import {
   LeadRejectionNoticeModal,
   ProposeEventModal,
 } from "@/features/lead";
-import { EventDetailModal } from "@/components/events/event-detail-modal";
+import { EventDetailModal } from "@/features/events";
 import LeadLoading from "./loading";
 
 function LeadWorkspaceContent() {

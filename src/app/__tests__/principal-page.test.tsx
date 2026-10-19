@@ -70,7 +70,7 @@ vi.mock("@/features/principal/components/principal-rejection-modal", () => ({
   DEFAULT_REJECTION_PRESETS: ["Preset 1"],
 }));
 
-vi.mock("@/components/events/event-detail-modal", () => ({
+vi.mock("@/features/events/components/event-detail-modal", () => ({
   EventDetailModal: () => null,
 }));
 
