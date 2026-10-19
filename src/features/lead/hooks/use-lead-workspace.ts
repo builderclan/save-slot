@@ -175,7 +175,7 @@ export function useLeadWorkspace() {
 
     result.sort((a, b) => {
       const startA = new Date(a.start_time).getTime();
-      const startB = new Date(b.end_time).getTime();
+      const startB = new Date(b.start_time).getTime();
       const createdA = new Date(a.created_at || a.start_time).getTime();
       const createdB = new Date(b.created_at || b.start_time).getTime();
 
