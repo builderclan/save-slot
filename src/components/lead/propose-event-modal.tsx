@@ -19,9 +19,11 @@ import {
   Users,
 } from "lucide-react";
 import { format, addDays, parseISO } from "date-fns";
-import { Venue, ConflictCheckResult, SafeSlotSuggestion, EventCategory, CampusEvent } from "@/types/database";
+import { Venue, ConflictCheckResult, SafeSlotSuggestion, EventCategory, CampusEvent, TargetAudience } from "@/types/database";
 import { CategoryBadge } from "@/components/events/category-badge";
 import { TARGET_AUDIENCE_OPTIONS } from "@/lib/validations";
+import { conflictsApi } from "@/features/conflicts/api";
+import { eventsApi } from "@/features/events/api";
 
 const PRESET_COVERS = [
   {
@@ -161,21 +163,16 @@ export function ProposeEventModal({
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch("/api/conflicts/check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            venueId,
-            startTime: startIso,
-            endTime: endIso,
-            category,
-            targetAudience,
-            excludeEventId: initialEvent?.id,
-          }),
+        const data = await conflictsApi.check({
+          venueId,
+          startTime: startIso,
+          endTime: endIso,
+          category,
+          targetAudience: targetAudience as TargetAudience[],
+          excludeEventId: initialEvent?.id,
         });
 
-        if (res.ok && isCurrent) {
-          const data: ConflictCheckResult = await res.json();
+        if (isCurrent) {
           setConflictResult(data);
         }
       } catch (err) {
@@ -258,29 +255,23 @@ export function ProposeEventModal({
     }
 
     try {
-      const url = initialEvent ? `/api/lead/events/${initialEvent.id}` : "/api/lead/events";
-      const method = initialEvent ? "PUT" : "POST";
+      const payload = {
+        title,
+        category,
+        targetAudience: targetAudience as TargetAudience[],
+        venueId,
+        startTime: startIso,
+        endTime: endIso,
+        description,
+        coverImageUrl,
+        externalRegistrationUrl: registrationUrl || null,
+        communityId,
+      };
 
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          category,
-          targetAudience,
-          venueId,
-          startTime: startIso,
-          endTime: endIso,
-          description,
-          coverImageUrl,
-          externalRegistrationUrl: registrationUrl || null,
-          communityId,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to submit event proposal");
+      if (initialEvent) {
+        await eventsApi.update(initialEvent.id, payload);
+      } else {
+        await eventsApi.propose(payload);
       }
 
       onSuccess();

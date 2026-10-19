@@ -30,6 +30,8 @@ import { WeekView } from "@/components/notice-board/week-view";
 import { EventCard } from "@/components/notice-board/event-card";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
 import { ProposeEventModal } from "@/components/lead/propose-event-modal";
+import { eventsApi } from "@/features/events/api";
+import { venuesApi } from "@/features/venues/api";
 
 const CATEGORIES: EventCategory[] = [
   "Tech",
@@ -136,18 +138,19 @@ export function NoticeBoardClient({
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [eventsRes, venuesRes] = await Promise.all([
-        fetch("/api/events?status=published"),
-        fetch("/api/venues"),
+      const [eventsRes, venuesRes] = await Promise.allSettled([
+        eventsApi.getPublished(),
+        venuesApi.getVenues(),
       ]);
 
-      if (!eventsRes.ok) throw new Error("Failed to load events");
-      const eventsData = await eventsRes.json();
-      setEvents(eventsData.events || []);
+      if (eventsRes.status === "fulfilled") {
+        setEvents(eventsRes.value.events || []);
+      } else {
+        throw new Error("Failed to load events");
+      }
 
-      if (venuesRes.ok) {
-        const venuesData = await venuesRes.json();
-        setVenues(venuesData.venues || []);
+      if (venuesRes.status === "fulfilled") {
+        setVenues(venuesRes.value.venues || []);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error fetching events");

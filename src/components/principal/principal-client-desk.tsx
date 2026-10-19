@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CampusEvent, ConflictCheckResult } from "@/types/database";
+import { CampusEvent, ConflictCheckResult, TargetAudience } from "@/types/database";
 import { EventDetailModal } from "@/components/events/event-detail-modal";
 import {
   PrincipalNavSidebar,
@@ -18,6 +18,9 @@ import {
 import { NotificationBanner, type NotificationType } from "@/components/ui/notification-banner";
 import { formatDisplayName } from "@/lib/utils";
 import PrincipalLoading from "@/app/principal/loading";
+import { eventsApi } from "@/features/events/api";
+import { conflictsApi } from "@/features/conflicts/api";
+import { adminApi } from "@/features/admin/api";
 
 const VALID_TABS: PrincipalDeskTab[] = ["inbox", "master-schedule", "history"];
 
@@ -71,8 +74,8 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
   // Client hydration fallback: If server query was empty (e.g. transient failure), fetch client-side
   useEffect(() => {
     if (initialEvents.length === 0) {
-      fetch("/api/lead/events")
-        .then((res) => (res.ok ? res.json() : null))
+      eventsApi
+        .getLeadEvents()
         .then((data) => {
           if (data?.events) {
             setEvents(data.events);
@@ -208,19 +211,14 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
       }
       setCheckingActiveConflict(true);
       try {
-        const res = await fetch("/api/conflicts/check", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            venueId: activeEvent.venue_id,
-            startTime: activeEvent.start_time,
-            endTime: activeEvent.end_time,
-            targetAudience: activeEvent.target_audience || ["All Students"],
-            excludeEventId: activeEvent.id,
-          }),
+        const data = await conflictsApi.check({
+          venueId: activeEvent.venue_id,
+          startTime: activeEvent.start_time,
+          endTime: activeEvent.end_time,
+          targetAudience: (activeEvent.target_audience || ["All Students"]) as TargetAudience[],
+          excludeEventId: activeEvent.id,
         });
-        if (res.ok && isMounted) {
-          const data: ConflictCheckResult = await res.json();
+        if (isMounted) {
           setActiveConflictResult(data);
         }
       } catch (err) {
@@ -239,42 +237,29 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
   const handleApprove = async (eventId: string) => {
     setActionInProgress(eventId);
     try {
-      const res = await fetch(`/api/admin/events/${eventId}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "published" }),
-      });
-      if (res.ok) {
-        const updated = await res.json();
-        setEvents((prev) =>
-          prev.map((e) => (e.id === eventId ? { ...e, status: "published" } : e))
-        );
+      const updated = await adminApi.updateEventStatus(eventId, { status: "published" });
+      setEvents((prev) =>
+        prev.map((e) => (e.id === eventId ? { ...e, status: "published" } : e))
+      );
 
-        const remaining = pendingEvents.filter((e) => e.id !== eventId);
-        if (remaining.length > 0) {
-          setSelectedEventId(remaining[0].id);
-        } else {
-          setSelectedEventId(null);
-          setMobileDetailView(false);
-        }
-
-        setBannerNotice({
-          message: `Approved: "${updated.event?.title || "Event"}" is now published on the Student Notice Board.`,
-          type: "success",
-        });
-        setTimeout(() => setBannerNotice(null), 5000);
-        router.refresh();
+      const remaining = pendingEvents.filter((e) => e.id !== eventId);
+      if (remaining.length > 0) {
+        setSelectedEventId(remaining[0].id);
       } else {
-        const errData = await res.json();
-        setBannerNotice({
-          message: errData.error || "Failed to approve event: Venue collision or validation error occurred.",
-          type: "error",
-        });
-        setTimeout(() => setBannerNotice(null), 7000);
+        setSelectedEventId(null);
+        setMobileDetailView(false);
       }
-    } catch {
+
       setBannerNotice({
-        message: "An unexpected error occurred while communicating with the server.",
+        message: `Approved: "${updated.event?.title || "Event"}" is now published on the Student Notice Board.`,
+        type: "success",
+      });
+      setTimeout(() => setBannerNotice(null), 5000);
+      router.refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to approve event.";
+      setBannerNotice({
+        message: msg,
         type: "error",
       });
       setTimeout(() => setBannerNotice(null), 7000);
@@ -296,51 +281,39 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
     const eventId = rejectingEvent.id;
     setActionInProgress(eventId);
     try {
-      const res = await fetch(`/api/admin/events/${eventId}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "rejected",
-          rejectionReason: rejectionNote.trim(),
-        }),
+      await adminApi.updateEventStatus(eventId, {
+        status: "rejected",
+        rejectionReason: rejectionNote.trim(),
       });
 
-      if (res.ok) {
-        setEvents((prev) =>
-          prev.map((e) =>
-            e.id === eventId
-              ? { ...e, status: "rejected", rejection_reason: rejectionNote.trim() }
-              : e
-          )
-        );
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === eventId
+            ? { ...e, status: "rejected", rejection_reason: rejectionNote.trim() }
+            : e
+        )
+      );
 
-        const remaining = pendingEvents.filter((e) => e.id !== eventId);
-        if (remaining.length > 0) {
-          setSelectedEventId(remaining[0].id);
-        } else {
-          setSelectedEventId(null);
-          setMobileDetailView(false);
-        }
-
-        setBannerNotice({
-          message: `Declined: Feedback note sent to ${rejectingEvent.community?.name || "Organizer"}.`,
-          type: "info",
-        });
-        setTimeout(() => setBannerNotice(null), 5000);
-        setRejectingEvent(null);
-        setRejectionNote("");
-        router.refresh();
+      const remaining = pendingEvents.filter((e) => e.id !== eventId);
+      if (remaining.length > 0) {
+        setSelectedEventId(remaining[0].id);
       } else {
-        const errData = await res.json().catch(() => ({}));
-        setBannerNotice({
-          message: errData.error || "Failed to decline event. Please try again.",
-          type: "error",
-        });
-        setTimeout(() => setBannerNotice(null), 7000);
+        setSelectedEventId(null);
+        setMobileDetailView(false);
       }
-    } catch {
+
       setBannerNotice({
-        message: "An unexpected error occurred while communicating with the server.",
+        message: `Declined: Feedback note sent to ${rejectingEvent.community?.name || "Organizer"}.`,
+        type: "info",
+      });
+      setTimeout(() => setBannerNotice(null), 5000);
+      setRejectingEvent(null);
+      setRejectionNote("");
+      router.refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to decline event. Please try again.";
+      setBannerNotice({
+        message: msg,
         type: "error",
       });
       setTimeout(() => setBannerNotice(null), 7000);
