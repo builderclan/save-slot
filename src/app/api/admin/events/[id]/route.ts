@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeRevalidatePath } from "@/lib/revalidate";
 import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
 import { events } from "@/db/schema";
@@ -25,6 +26,10 @@ export async function DELETE(
     if (deleted.length === 0) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
+
+    safeRevalidatePath("/");
+    safeRevalidatePath("/admin");
+    safeRevalidatePath("/lead");
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {

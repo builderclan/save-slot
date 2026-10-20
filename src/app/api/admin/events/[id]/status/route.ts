@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeRevalidatePath } from "@/lib/revalidate";
 import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
 import { events, venues } from "@/db/schema";
@@ -130,6 +131,10 @@ export async function POST(
     if (!updatedEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
     }
+
+    safeRevalidatePath("/");
+    safeRevalidatePath("/admin");
+    safeRevalidatePath("/lead");
 
     return NextResponse.json({ success: true, event: formatCampusEvent(updatedEvent) });
   } catch (err: unknown) {

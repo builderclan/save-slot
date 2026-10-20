@@ -14,6 +14,7 @@ Detailed design documents, specifications, and architecture are maintained in [`
 - **[System Architecture (`docs/ARCHITECTURE.md`)](./docs/ARCHITECTURE.md)**: Database ERD, deterministic conflict engine algorithms, and RBAC matrix.
 - **[Database Migrations Guide (`docs/MIGRATIONS.md`)](./docs/MIGRATIONS.md)**: Versioned SQL migrations, ledger table architecture, dev/prod workflows, and CI/CD automation.
 - **[Development Plan (`docs/DEVELOPMENT_PLAN.md`)](./docs/DEVELOPMENT_PLAN.md)**: Phased implementation roadmap, milestone checklist, and test scenarios.
+- **[Changelog (`CHANGELOG.md`)](./CHANGELOG.md)**: Chronological record of vertical-slice domain architecture, features, and release milestones.
 
 ---
 
@@ -58,7 +59,21 @@ pnpm install
 
 ### 2. Configure Environment
 
-Ensure your `.env` contains valid Supabase database credentials (see `.env.example`).
+Copy `.env.example` to `.env` and configure your database credentials:
+
+```bash
+cp .env.example .env
+```
+
+SaveSlot supports a **Hybrid Database Configuration**:
+
+- **Option 1 (Recommended)**: Provide a unified `DATABASE_URL` (standard for Supabase, Neon, and Drizzle Kit):
+
+  ```env
+  DATABASE_URL=postgresql://postgres.your-ref:your-password@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?sslmode=require
+  ```
+
+- **Option 2 (Discrete Parameters)**: Provide individual `DB_*` variables (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`). Drizzle Kit CLI, migration scripts, and runtime connection pools automatically construct the connection URL with URL-encoded credentials when `DATABASE_URL` is omitted.
 
 ### 3. Run Database Migrations
 

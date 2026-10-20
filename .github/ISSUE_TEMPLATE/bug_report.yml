@@ -1,0 +1,107 @@
+name: 🐛 Bug Report
+description: File a bug report or regression in SaveSlot
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please search existing issues before filing to avoid duplicates.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area / Subsystem
+      description: Where did you encounter this bug?
+      options:
+        - "Public Student Notice Board (/)"
+        - "Community Lead Workspace (/lead)"
+        - "Principal Institutional Desk (/principal)"
+        - "Campus Admin Infrastructure (/admin)"
+        - "Conflict Engine & Scheduling Logic"
+        - "Authentication, Roles & Security"
+        - "Database, Migrations & Performance"
+        - "Build, CI & Tooling"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise summary of what went wrong.
+      placeholder: "A brief summary of the bug and its impact..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Provide click-by-click instructions or the exact steps/payload needed to reproduce this behavior.
+      placeholder: |
+        1. Navigate to '...'
+        2. Click on '...'
+        3. Fill in '...'
+        4. Observe error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What should have happened instead?
+      placeholder: "Expected the form to submit successfully and redirect to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually occurred?
+      placeholder: "Observed a crash / unexpected error / visual misalignment..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: viewport
+    attributes:
+      label: Device / Viewport (Optional)
+      description: If this is a UI or responsive issue, what screen width did you observe it on?
+      options:
+        - "Mobile (<= 390px e.g. Galaxy A55 / iPhone)"
+        - "Tablet (768px - 1024px e.g. iPad)"
+        - "Desktop (1280px+)"
+        - "API / Backend / Headless"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Logs or Error Stack (Optional)
+      description: Paste any browser DevTools console errors, terminal stack traces, or attach screenshots.
+      placeholder: "Paste console trace or error message here..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Suggested Fix or Workaround (Optional)
+      description: If you have identified the potential root cause or know a workaround, describe it here.
+      placeholder: "Possible issue in ... or temporary workaround..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Validation Checklist
+      options:
+        - label: I have searched existing issues and confirmed this is not a duplicate.
+          required: true
+        - label: I have verified this behavior on the latest `develop` or `main` branch.
+          required: true

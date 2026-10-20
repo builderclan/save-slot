@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeRevalidatePath } from "@/lib/revalidate";
 import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
 import { events, venues, communityMembers } from "@/db/schema";
@@ -183,6 +184,9 @@ export async function POST(request: Request) {
         })
         .returning()
     );
+
+    safeRevalidatePath("/admin");
+    safeRevalidatePath("/lead");
 
     return NextResponse.json({ success: true, event: formatCampusEvent(inserted) });
   } catch (err: unknown) {

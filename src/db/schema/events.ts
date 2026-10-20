@@ -40,6 +40,7 @@ export const events = pgTable(
   (table) => [
     index("idx_events_campus_status").on(table.campusId, table.status),
     index("idx_events_start_time").on(table.startTime),
+    index("idx_events_status_start_time").on(table.status, table.startTime),
     index("idx_events_venue_time").on(table.venueId, table.startTime, table.endTime),
     index("idx_events_target_audience").using("gin", table.targetAudience),
   ]

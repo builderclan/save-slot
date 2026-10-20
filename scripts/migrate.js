@@ -272,12 +272,86 @@ async function runMigrations({ client, dir = MIGRATIONS_DIR, dryRun = false } = 
 }
 
 /**
+ * Validates migration SQL files for naming convention, sequential numbering, and content integrity
+ */
+function validateMigrationFiles(dir = MIGRATIONS_DIR) {
+  const errors = [];
+  const files = getMigrationFiles(dir);
+
+  if (files.length === 0) {
+    errors.push(`No migration files found in directory: ${dir}`);
+    return { valid: false, count: 0, errors };
+  }
+
+  const seenNumbers = new Set();
+  const parsedNumbers = [];
+  const fileRegex = /^(\d{3})_([a-zA-Z0-9_-]+)\.sql$/;
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const match = file.match(fileRegex);
+
+    if (!match) {
+      errors.push(
+        `Invalid migration filename format: "${file}". Expected "XXX_description.sql" (e.g. 001_initial_schema.sql)`
+      );
+      continue;
+    }
+
+    const num = parseInt(match[1], 10);
+    if (seenNumbers.has(num)) {
+      errors.push(`Duplicate migration sequence number: ${match[1]} in "${file}"`);
+    } else {
+      seenNumbers.add(num);
+      parsedNumbers.push(num);
+    }
+
+    const fullPath = path.join(dir, file);
+    try {
+      const stats = fs.statSync(fullPath);
+      if (stats.size === 0) {
+        errors.push(`Empty migration file: "${file}"`);
+        continue;
+      }
+
+      const content = fs.readFileSync(fullPath, "utf-8");
+      if (!content.trim()) {
+        errors.push(`Migration file has no executable content: "${file}"`);
+      }
+    } catch (readErr) {
+      errors.push(`Failed to read migration file "${file}": ${readErr.message}`);
+    }
+  }
+
+  // Verify contiguous sequence ordering without gaps
+  parsedNumbers.sort((a, b) => a - b);
+  for (let i = 0; i < parsedNumbers.length; i++) {
+    const expected = i + 1;
+    if (parsedNumbers[i] !== expected) {
+      errors.push(
+        `Gap in migration sequence: expected ${String(expected).padStart(3, "0")} but found ${String(
+          parsedNumbers[i]
+        ).padStart(3, "0")}`
+      );
+      break;
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    count: files.length,
+    errors,
+  };
+}
+
+/**
  * CLI Entrypoint
  */
 async function main() {
   const args = process.argv.slice(2);
   const isStatus = args.includes("--status");
   const isDryRun = args.includes("--dry-run");
+  const isCheck = args.includes("--check") || args.includes("--validate");
   const isHelp = args.includes("--help") || args.includes("-h");
 
   const envArg = args.find((a) => a.startsWith("--env="));
@@ -288,15 +362,30 @@ async function main() {
 SaveSlot Database Migration Runner
 
 Options:
-  --status         Display migration ledger history & status table
-  --dry-run        Preview pending migrations without modifying the database
-  --env=<path>     Path to custom environment file (e.g. --env=.env.production)
-  --help, -h       Display this help message
+  --check, --validate Validate migration files on disk (structural checks, sequencing, non-empty)
+  --status            Display migration ledger history & status table
+  --dry-run           Preview pending migrations without modifying the database
+  --env=<path>        Path to custom environment file (e.g. --env=.env.production)
+  --help, -h          Display this help message
 
 Environment Variables:
   DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD, DB_SSL_REJECT_UNAUTHORIZED
   or DATABASE_URL
 `);
+    process.exit(0);
+  }
+
+  if (isCheck) {
+    console.log("[migrate] Validating database migration files...");
+    const result = validateMigrationFiles();
+    if (!result.valid) {
+      console.error(`\n✗ Found ${result.errors.length} migration validation error(s):`);
+      for (const err of result.errors) {
+        console.error(`  • ${err}`);
+      }
+      process.exit(1);
+    }
+    console.log(`✓ All ${result.count} migration file(s) passed structural and sequencing validation.\n`);
     process.exit(0);
   }
 
@@ -336,6 +425,7 @@ module.exports = {
   loadEnvironment,
   getClientConfig,
   getMigrationFiles,
+  validateMigrationFiles,
   ensureLedgerTable,
   getMigrationStatus,
   runMigrations,

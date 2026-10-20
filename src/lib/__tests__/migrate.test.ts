@@ -1,9 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import fs from "fs";
+import os from "os";
+import path from "path";
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const {
   parseEnv,
   getMigrationFiles,
+  validateMigrationFiles,
   ensureLedgerTable,
   getMigrationStatus,
   runMigrations,
@@ -58,10 +62,10 @@ DB_PORT=5432
     it("returns sorted SQL files from migrations directory", () => {
       const files = getMigrationFiles();
       expect(Array.isArray(files)).toBe(true);
-      expect(files.length).toBeGreaterThanOrEqual(9);
+      expect(files.length).toBeGreaterThanOrEqual(10);
       expect(files[0]).toBe("001_initial_schema.sql");
       expect(files[1]).toBe("002_optional_registration_url.sql");
-      expect(files[files.length - 1]).toBe("009_add_target_audience.sql");
+      expect(files[files.length - 1]).toBe("010_add_events_status_start_time_idx.sql");
 
       // Verify all items are .sql
       for (const file of files) {
@@ -72,6 +76,36 @@ DB_PORT=5432
     it("returns empty array for non-existent directory", () => {
       const files = getMigrationFiles("/non/existent/path");
       expect(files).toEqual([]);
+    });
+  });
+
+  describe("validateMigrationFiles()", () => {
+    it("successfully validates all active migration files on disk", () => {
+      const result = validateMigrationFiles();
+      expect(result.valid).toBe(true);
+      expect(result.count).toBeGreaterThanOrEqual(9);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("returns invalid status for empty or non-existent directories", () => {
+      const result = validateMigrationFiles("/non/existent/path");
+      expect(result.valid).toBe(false);
+      expect(result.count).toBe(0);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it("detects sequence gaps in migration filenames", () => {
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "migration-gap-test-"));
+      try {
+        fs.writeFileSync(path.join(tempDir, "001_first.sql"), "SELECT 1;");
+        fs.writeFileSync(path.join(tempDir, "003_third.sql"), "SELECT 3;"); // Gap: missing 002
+
+        const result = validateMigrationFiles(tempDir);
+        expect(result.valid).toBe(false);
+        expect(result.errors.some((e: string) => e.includes("Gap in migration sequence"))).toBe(true);
+      } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
     });
   });
 
@@ -167,6 +201,7 @@ DB_PORT=5432
               { name: "006_community_onboarding.sql", applied_at: "2026-09-14T07:03:00.505Z" },
               { name: "007_add_reviewed_by.sql", applied_at: "2026-10-08T12:00:00.000Z" },
               { name: "008_add_principal_and_vice_principal_roles.sql", applied_at: "2026-10-10T12:00:00.000Z" },
+              { name: "009_add_target_audience.sql", applied_at: "2026-10-15T12:00:00.000Z" },
             ],
           });
         }
@@ -176,7 +211,7 @@ DB_PORT=5432
       const mockClient = { query: mockQuery };
       const res = await runMigrations({ client: mockClient });
 
-      expect(res.appliedCount).toBe(1); // Only 009 was pending
+      expect(res.appliedCount).toBe(1); // Only 010 was pending
       expect(queryLog).toContain("BEGIN;");
       expect(queryLog).toContain("COMMIT;");
       expect(queryLog.some((q) => q.includes("pg_advisory_lock"))).toBe(true);

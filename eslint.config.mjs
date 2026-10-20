@@ -7,6 +7,8 @@ const eslintConfig = defineConfig([
   ...nextTs,
   {
     rules: {
+      // Temporarily disabled while dashboard views rely on SSR hydration timestamps (e.g. setInternalNow(Date.now())).
+      // Scheduled for clean refactoring with a unified useHydrated() hook in Phase 2.
       "react-hooks/set-state-in-effect": "off",
     },
   },
