@@ -265,6 +265,22 @@ export function Select<T extends string = string>({
         />
       </button>
 
+      {/* Hidden native select for form serialization, accessibility and SSR */}
+      <select
+        tabIndex={-1}
+        aria-hidden="true"
+        name={name}
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+        className="sr-only pointer-events-none"
+      >
+        {normalizedOptions.map((opt) => (
+          <option key={opt.value} value={opt.value} disabled={opt.disabled}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+
       {/* Portal Dropdown Menu: renders directly on body to avoid modal overflow clipping */}
       {isOpen &&
         coords &&
