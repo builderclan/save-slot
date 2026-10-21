@@ -273,9 +273,9 @@ export function NoticeBoardClient({
             <button
               type="button"
               onClick={handleCreateEventClick}
-              className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer active:scale-95"
+              className="px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs shrink-0 cursor-pointer active:scale-95 transition-all"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="w-3.5 h-3.5 text-indigo-600" />
               <span className="hidden xs:inline">Create</span>
             </button>
           )}
@@ -327,14 +327,14 @@ export function NoticeBoardClient({
 
         {/* Primary Action Button */}
         {isPrivileged && (
-          <Button
-            variant="primary"
+          <button
+            type="button"
             onClick={handleCreateEventClick}
-            className="w-full justify-center shadow-2xs"
-            leftIcon={<Plus className="w-4 h-4" />}
+            className="w-full py-2 px-4 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-100/70 text-indigo-700 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-2xs hover:shadow-xs active:scale-[0.98]"
           >
+            <Plus className="w-4 h-4 text-indigo-600" />
             <span>Create Event</span>
-          </Button>
+          </button>
         )}
 
         {/* Search Input */}
