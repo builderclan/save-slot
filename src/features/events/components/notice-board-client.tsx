@@ -523,7 +523,7 @@ export function NoticeBoardClient({
           {loading ? (
             <div className="p-16 text-center">
               <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-xs text-slate-400">Loading campus calendar...</p>
+              <p className="text-xs text-zinc-400">Loading campus calendar...</p>
             </div>
           ) : error ? (
             <div className="p-8 m-6 text-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-800">
