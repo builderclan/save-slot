@@ -42,8 +42,8 @@ export function CalendarDateControls() {
   if (!calendar) return null;
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2 border-l border-slate-200 pl-1.5 sm:pl-3 min-w-0">
-      <h2 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight select-none truncate">
+    <div className="flex items-center gap-1 sm:gap-2.5 border-l border-zinc-200/80 pl-2 sm:pl-3 min-w-0">
+      <h2 className="text-xs sm:text-sm font-semibold text-zinc-900 tracking-tight select-none truncate">
         <span className="md:hidden">
           {getDateHeading(calendar.activeDate, calendar.viewMode, true)}
         </span>
@@ -56,7 +56,7 @@ export function CalendarDateControls() {
         <button
           type="button"
           onClick={calendar.handlePrev}
-          className="p-1 sm:p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+          className="h-7 w-7 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer active:scale-95"
           aria-label={calendar.viewMode === "week" ? "Previous week" : "Previous month"}
         >
           <ChevronLeft className="w-4 h-4" />
@@ -64,7 +64,7 @@ export function CalendarDateControls() {
         <button
           type="button"
           onClick={calendar.handleNext}
-          className="p-1 sm:p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+          className="h-7 w-7 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer active:scale-95"
           aria-label={calendar.viewMode === "week" ? "Next week" : "Next month"}
         >
           <ChevronRight className="w-4 h-4" />
@@ -74,7 +74,7 @@ export function CalendarDateControls() {
       <button
         type="button"
         onClick={calendar.handleToday}
-        className="px-2 sm:px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] sm:text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-xs shrink-0"
+        className="h-7 px-2.5 rounded-lg border border-zinc-200/90 bg-white hover:bg-zinc-50 text-[11px] sm:text-xs font-medium text-zinc-700 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.98] shrink-0"
       >
         Today
       </button>
@@ -94,7 +94,7 @@ export function CalendarViewSwitcher({ user }: { user: AuthUser | null }) {
     <div
       role="tablist"
       aria-label="Calendar view and navigation"
-      className="flex items-center p-1 rounded-xl bg-slate-100/90 border border-slate-200/80 gap-1 text-xs shadow-2xs"
+      className="flex items-center p-1 rounded-xl bg-zinc-100/90 border border-zinc-200/80 gap-1 text-xs shadow-2xs"
     >
       {/* Calendar View Switcher (Month | Week | Board) */}
       <button
@@ -103,10 +103,10 @@ export function CalendarViewSwitcher({ user }: { user: AuthUser | null }) {
         aria-selected={calendar.viewMode === "month"}
         onClick={() => calendar.setViewMode("month")}
         title="Month View"
-        className={`px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+        className={`px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
           calendar.viewMode === "month"
-            ? "bg-white text-slate-900 font-semibold shadow-xs"
-            : "text-slate-600 hover:text-slate-900"
+            ? "bg-white text-zinc-900 font-semibold shadow-xs"
+            : "text-zinc-600 hover:text-zinc-900 hover:bg-white/60"
         }`}
       >
         <CalendarIcon className="w-3.5 h-3.5" />
@@ -118,10 +118,10 @@ export function CalendarViewSwitcher({ user }: { user: AuthUser | null }) {
         aria-selected={calendar.viewMode === "week"}
         onClick={() => calendar.setViewMode("week")}
         title="Week View"
-        className={`px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+        className={`px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
           calendar.viewMode === "week"
-            ? "bg-white text-slate-900 font-semibold shadow-xs"
-            : "text-slate-600 hover:text-slate-900"
+            ? "bg-white text-zinc-900 font-semibold shadow-xs"
+            : "text-zinc-600 hover:text-zinc-900 hover:bg-white/60"
         }`}
       >
         <CalendarDays className="w-3.5 h-3.5" />
@@ -133,10 +133,10 @@ export function CalendarViewSwitcher({ user }: { user: AuthUser | null }) {
         aria-selected={calendar.viewMode === "cards"}
         onClick={() => calendar.setViewMode("cards")}
         title="Board View"
-        className={`px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+        className={`px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
           calendar.viewMode === "cards"
-            ? "bg-white text-slate-900 font-semibold shadow-xs"
-            : "text-slate-600 hover:text-slate-900"
+            ? "bg-white text-zinc-900 font-semibold shadow-xs"
+            : "text-zinc-600 hover:text-zinc-900 hover:bg-white/60"
         }`}
       >
         <LayoutGrid className="w-3.5 h-3.5" />
@@ -146,7 +146,7 @@ export function CalendarViewSwitcher({ user }: { user: AuthUser | null }) {
       {/* Hairline Divider & Workspace Shortcuts */}
       {(user?.isPrincipal || user?.isLead || user?.isAdmin) && (
         <>
-          <div className="w-px h-4 bg-slate-300/80 mx-1 shrink-0" aria-hidden="true" />
+          <div className="w-px h-4 bg-zinc-300/80 mx-1 shrink-0" aria-hidden="true" />
 
           {user?.isPrincipal && (
             <Link
@@ -162,10 +162,10 @@ export function CalendarViewSwitcher({ user }: { user: AuthUser | null }) {
           {user?.isLead && (
             <Link
               href="/lead"
-              className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-slate-700 hover:bg-white/80 hover:text-slate-900 active:scale-[0.98]"
+              className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-indigo-900 hover:bg-white/80 hover:text-indigo-950 active:scale-[0.98]"
               title="Lead Workspace"
             >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+              <LayoutGrid className="w-3.5 h-3.5 text-indigo-600" />
               <span>Lead Workspace</span>
             </Link>
           )}
