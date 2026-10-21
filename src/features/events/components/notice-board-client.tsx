@@ -388,7 +388,15 @@ export function NoticeBoardClient({
         {/* Desktop Sidebar Bottom Status Card */}
         <div className="mt-auto pt-3 border-t border-zinc-200/80 flex flex-col gap-1 pb-1">
           <div className="flex items-center justify-between text-[11px]">
-            <span className="font-semibold text-zinc-700">SaveSlot™ Conflict Engine</span>
+            <a
+              href="https://builderclan.org"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-zinc-700 hover:text-indigo-600 transition-colors inline-flex items-center gap-1"
+              title="Visit BuilderClan (builderclan.org)"
+            >
+              <span>SaveSlot by BuilderClan</span>
+            </a>
             <span className="flex items-center gap-1.5 text-emerald-700 font-medium text-[10px] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Active
