@@ -30,11 +30,11 @@ export function StepDetails({
   onFieldChange,
 }: StepDetailsProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Event Title - Hero Input */}
       <div>
         <label className="block text-xs font-semibold text-zinc-900 mb-1.5">
-          Event Title <span className="text-zinc-400 font-normal">· Clear, recognizable name</span>
+          Event Title <span className="hidden sm:inline text-zinc-400 font-normal">· Clear, recognizable name</span>
         </label>
         <input
           type="text"
@@ -46,12 +46,12 @@ export function StepDetails({
             onFieldChange();
           }}
           placeholder="e.g. Systems Programming Workshop & Hack"
-          className="w-full px-4 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all"
+          className="w-full px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all"
         />
       </div>
 
       {/* Category & Audience Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-start">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 items-start">
         {/* Category Dropdown */}
         <div className="sm:col-span-1">
           <Select
@@ -82,7 +82,7 @@ export function StepDetails({
                   key={aud}
                   type="button"
                   onClick={() => toggleAudience(aud)}
-                  className={`px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
                     isSelected
                       ? "bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold shadow-2xs"
                       : "bg-white text-zinc-600 border border-zinc-200/90 hover:border-zinc-300 hover:bg-zinc-50"
@@ -109,14 +109,14 @@ export function StepDetails({
         </div>
         <textarea
           required
-          rows={4}
+          rows={3}
           value={description}
           onChange={(e) => {
             setDescription(e.target.value);
             onFieldChange();
           }}
           placeholder="Outline what attendees will learn or experience, prerequisites, schedule highlights, and key speakers..."
-          className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all resize-none"
+          className="w-full px-3.5 py-2 sm:py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all resize-none sm:rows-4"
         />
       </div>
     </div>

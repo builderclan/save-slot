@@ -244,31 +244,31 @@ export function ProposeEventModal({
   const selectedVenue = venues.find((v) => v.id === venueId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 overflow-y-auto">
       <div className="fixed inset-0 bg-zinc-950/45 backdrop-blur-xs" onClick={onClose} />
 
-      <div className="relative w-full max-w-2xl rounded-2xl border border-zinc-200/90 bg-white text-zinc-900 shadow-2xl overflow-hidden z-10 my-6 flex flex-col max-h-[92vh]">
+      <div className="relative w-full max-w-2xl rounded-2xl border border-zinc-200/90 bg-white text-zinc-900 shadow-2xl overflow-hidden z-10 my-auto flex flex-col max-h-[94vh] sm:max-h-[92vh]">
         {/* Editorial Header */}
-        <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between bg-white shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-zinc-100 flex items-center justify-between gap-2.5 bg-white shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 border border-indigo-100/80 flex items-center justify-center text-indigo-600 shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-base font-semibold text-zinc-900 tracking-tight">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h2 className="text-sm sm:text-base font-semibold text-zinc-900 tracking-tight truncate">
                   {isEditMode
                     ? initialEvent?.status === "rejected"
-                      ? "Revise & Resubmit Proposal"
-                      : "Edit Proposal Details"
-                    : "Propose Campus Event"}
+                      ? "Revise Proposal"
+                      : "Edit Proposal"
+                    : "Propose Event"}
                 </h2>
-                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200/60 truncate">
-                  {communityName || "Campus Club"}
+                <span className="text-[10px] sm:text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200/60 truncate shrink-0">
+                  {communityName || "Club"}
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                Safe-Slot conflict engine active • Step {currentStep} of 3
+              <p className="text-[10px] sm:text-[11px] text-zinc-400 mt-0.5 truncate">
+                Safe-Slot Active · Step {currentStep} of 3
               </p>
             </div>
           </div>
@@ -276,7 +276,7 @@ export function ProposeEventModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer shrink-0"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
@@ -320,7 +320,7 @@ export function ProposeEventModal({
         )}
 
         {/* Scrollable Stage Content */}
-        <div className="flex-1 overflow-y-auto p-6 sm:p-7">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
           {currentStep === 1 && (
             <StepDetails
               title={title}
@@ -378,12 +378,12 @@ export function ProposeEventModal({
         </div>
 
         {/* Multi-Stage Navigation Footer */}
-        <div className="px-6 py-4 border-t border-zinc-100 bg-zinc-50/50 flex items-center justify-between gap-3 shrink-0">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-zinc-100 bg-zinc-50/50 flex items-center justify-between gap-2.5 shrink-0">
           {currentStep === 1 ? (
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors cursor-pointer shadow-2xs"
+              className="px-3.5 sm:px-4 py-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors cursor-pointer shadow-2xs whitespace-nowrap"
             >
               Cancel
             </button>
@@ -394,7 +394,7 @@ export function ProposeEventModal({
                 setStepError(null);
                 setCurrentStep((prev) => (prev > 1 ? ((prev - 1) as 1 | 2 | 3) : 1));
               }}
-              className="px-4 py-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5"
+              className="px-3.5 sm:px-4 py-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5 whitespace-nowrap"
             >
               <ArrowLeft className="w-3.5 h-3.5 text-zinc-500" />
               <span>Back</span>
@@ -405,13 +405,13 @@ export function ProposeEventModal({
             type="button"
             onClick={currentStep === 1 ? handleNextFromStep1 : currentStep === 2 ? handleNextFromStep2 : handleSubmit}
             disabled={submitting}
-            className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center gap-2 shadow-2xs cursor-pointer active:scale-[0.98]"
+            className="px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium text-xs transition-all flex items-center gap-1.5 sm:gap-2 shadow-2xs cursor-pointer active:scale-[0.98] whitespace-nowrap"
           >
             {submitting ? (
               <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
             ) : (
               <>
-                <span>
+                <span className="hidden sm:inline">
                   {currentStep === 1
                     ? "Continue to Schedule"
                     : currentStep === 2
@@ -419,6 +419,15 @@ export function ProposeEventModal({
                     : isEditMode
                     ? "Resubmit Event Proposal"
                     : "Submit Event Proposal"}
+                </span>
+                <span className="sm:hidden">
+                  {currentStep === 1
+                    ? "Next: Schedule"
+                    : currentStep === 2
+                    ? "Next: Poster"
+                    : isEditMode
+                    ? "Resubmit"
+                    : "Submit"}
                 </span>
                 {currentStep === 3 ? (
                   <Check className="w-3.5 h-3.5" />

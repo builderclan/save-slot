@@ -49,8 +49,8 @@ export function StepSchedule({
   onClearErrors,
 }: StepScheduleProps) {
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
         {/* Target Campus Venue */}
         <div>
           <Select
@@ -77,32 +77,33 @@ export function StepSchedule({
           />
         </div>
 
-        {/* Start Time */}
-        <div>
-          <TimePicker
-            label="Start Time"
-            value={startTimeStr}
-            onChange={(val) => setStartTimeStr(val)}
-          />
-        </div>
+        {/* Start & End Times in 2 columns */}
+        <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-2 sm:gap-4">
+          <div>
+            <TimePicker
+              label="Start Time"
+              value={startTimeStr}
+              onChange={(val) => setStartTimeStr(val)}
+            />
+          </div>
 
-        {/* End Time */}
-        <div>
-          <TimePicker
-            label="End Time"
-            badge={
-              isOvernight ? (
-                <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200/70 px-1.5 py-0.5 rounded-md">
-                  Overnight (+1 day)
-                </span>
-              ) : undefined
-            }
-            value={endTimeStr}
-            onChange={(val) => {
-              setEndTimeStr(val);
-              onClearErrors();
-            }}
-          />
+          <div>
+            <TimePicker
+              label="End Time"
+              badge={
+                isOvernight ? (
+                  <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200/70 px-1 py-0.2 rounded-md">
+                    +1d
+                  </span>
+                ) : undefined
+              }
+              value={endTimeStr}
+              onChange={(val) => {
+                setEndTimeStr(val);
+                onClearErrors();
+              }}
+            />
+          </div>
         </div>
       </div>
 

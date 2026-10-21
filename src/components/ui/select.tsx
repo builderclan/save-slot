@@ -94,11 +94,14 @@ export function Select<T extends string = string>({
     const availableSpace = openUpward ? spaceAbove : spaceBelow;
     const maxHeight = Math.min(240, Math.max(120, availableSpace));
 
+    const popoverWidth = Math.min(rect.width, window.innerWidth - 24);
+    const popoverLeft = Math.max(12, Math.min(rect.left, window.innerWidth - popoverWidth - 12));
+
     setCoords({
       top: openUpward ? undefined : rect.bottom + 6,
       bottom: openUpward ? window.innerHeight - rect.top + 6 : undefined,
-      left: rect.left,
-      width: rect.width,
+      left: popoverLeft,
+      width: popoverWidth,
       maxHeight,
     });
   }, []);

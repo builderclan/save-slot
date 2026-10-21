@@ -107,11 +107,19 @@ export function DatePicker({
     const spaceAbove = rect.top - 12;
     const openUpward = spaceBelow < 340 && spaceAbove > spaceBelow;
 
+    const isMobile = window.innerWidth < 440;
+    const popoverWidth = isMobile
+      ? Math.min(320, window.innerWidth - 24)
+      : Math.max(280, Math.min(360, rect.width));
+    const popoverLeft = isMobile
+      ? Math.max(12, Math.round((window.innerWidth - popoverWidth) / 2))
+      : Math.max(12, Math.min(rect.left, window.innerWidth - popoverWidth - 12));
+
     setCoords({
       top: openUpward ? undefined : rect.bottom + 6,
       bottom: openUpward ? window.innerHeight - rect.top + 6 : undefined,
-      left: Math.max(12, Math.min(rect.left, window.innerWidth - 300)),
-      width: Math.max(280, rect.width),
+      left: popoverLeft,
+      width: popoverWidth,
     });
   }, []);
 

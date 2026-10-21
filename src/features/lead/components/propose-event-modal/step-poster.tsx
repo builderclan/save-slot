@@ -44,7 +44,7 @@ export function StepPoster({
   setRegistrationUrl,
 }: StepPosterProps) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* Preset Cover Selector */}
       <div>
         <label className="block text-xs font-semibold text-zinc-900 mb-1.5 flex items-center justify-between">
@@ -60,7 +60,7 @@ export function StepPoster({
               key={cov.url}
               type="button"
               onClick={() => setCoverImageUrl(cov.url)}
-              className={`relative h-18 rounded-xl overflow-hidden border transition-all cursor-pointer ${
+              className={`relative h-16 sm:h-18 rounded-xl overflow-hidden border transition-all cursor-pointer ${
                 coverImageUrl === cov.url
                   ? "border-indigo-600 ring-2 ring-indigo-600/30 shadow-xs"
                   : "border-zinc-200/90 hover:border-zinc-400 opacity-75 hover:opacity-100"
@@ -107,8 +107,8 @@ export function StepPoster({
       </div>
 
       {/* Proposal Summary Card */}
-      <div className="p-4 rounded-xl border border-zinc-200/90 bg-zinc-50/60 space-y-2.5 shadow-2xs">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+      <div className="p-3.5 sm:p-4 rounded-xl border border-zinc-200/90 bg-zinc-50/60 space-y-2.5 shadow-2xs">
+        <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
           Proposal Summary
         </div>
         <div className="flex items-start justify-between gap-3">
@@ -118,7 +118,7 @@ export function StepPoster({
           </div>
           <CategoryBadge category={category} size="sm" />
         </div>
-        <div className="pt-2 border-t border-zinc-200/80 flex items-center gap-4 text-xs text-zinc-600 flex-wrap">
+        <div className="pt-2 border-t border-zinc-200/80 flex items-center gap-2.5 sm:gap-4 text-xs text-zinc-600 flex-wrap">
           <div className="flex items-center gap-1.5">
             <Calendar className="w-3.5 h-3.5 text-zinc-400" />
             <span>
