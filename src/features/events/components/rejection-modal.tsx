@@ -67,7 +67,7 @@ export function RejectionModal({
       <form onSubmit={onSubmit} className="space-y-4">
         {presets.length > 0 && (
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
               Quick Preset Guidance
             </label>
             <div className="flex flex-wrap gap-1.5 mb-3">
@@ -76,7 +76,7 @@ export function RejectionModal({
                   key={preset}
                   type="button"
                   onClick={() => handlePresetClick(preset)}
-                  className="px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-50 hover:border-amber-200 text-[11px] text-slate-600 hover:text-amber-900 transition-colors cursor-pointer text-left active:scale-[0.98]"
+                  className="px-2.5 py-1 rounded-lg border border-zinc-200 bg-zinc-50 hover:bg-amber-50/70 hover:border-amber-200 text-[11px] text-zinc-600 hover:text-amber-900 transition-colors cursor-pointer text-left active:scale-[0.98]"
                 >
                   + {preset}
                 </button>
@@ -86,7 +86,7 @@ export function RejectionModal({
         )}
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+          <label className="block text-xs font-semibold text-zinc-700 mb-1.5">
             Administrative Reason / Feedback Guidance *
           </label>
           <textarea
@@ -95,22 +95,22 @@ export function RejectionModal({
             value={rejectionNote}
             onChange={(e) => onRejectionNoteChange(e.target.value)}
             placeholder="e.g. The Main Auditorium is undergoing stage maintenance. Please re-submit your proposal for Seminar Hall A or select next Tuesday."
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-indigo-500 resize-none transition-colors"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-zinc-50/50 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:bg-white focus:border-zinc-400 resize-none transition-colors shadow-2xs"
           />
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-100">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer active:scale-95"
+            className="px-4 py-2 rounded-xl border border-zinc-200 bg-white text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors cursor-pointer active:scale-95 shadow-2xs"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting || !rejectionNote.trim()}
-            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold text-xs shadow-xs transition-all cursor-pointer active:scale-95"
+            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-semibold text-xs shadow-2xs transition-all cursor-pointer active:scale-95"
           >
             {isSubmitting ? submittingLabel : submitLabel}
           </button>
