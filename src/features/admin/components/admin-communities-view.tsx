@@ -44,9 +44,9 @@ const CATEGORY_STYLES: Record<string, { bg: string; text: string; border: string
 
 function getCategoryBadge(category: string) {
   const style = CATEGORY_STYLES[category] || {
-    bg: "bg-slate-50",
-    text: "text-slate-700",
-    border: "border-slate-200/80",
+    bg: "bg-zinc-50",
+    text: "text-zinc-700",
+    border: "border-zinc-200/80",
   };
   return (
     <span
@@ -82,7 +82,7 @@ function getStatusBadge(status?: "pending" | "approved" | "rejected") {
       );
     default:
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/80">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-100 text-zinc-700 border border-zinc-200/80">
           Active
         </span>
       );
@@ -131,40 +131,40 @@ export function AdminCommunitiesView({
   }, [communities, selectedCategory, selectedStatus, searchQuery]);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/50 relative">
+    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-zinc-50/50 relative">
       <div className="flex-1 overflow-y-auto">
         {/* Sticky Header Toolbar */}
-        <div className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs flex flex-col gap-2.5">
+        <div className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs flex flex-col gap-2.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+              <h3 className="text-sm font-bold text-zinc-900 tracking-tight">
                 Clubs & Societies
               </h3>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium tabular-nums border border-slate-200/60">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-medium tabular-nums border border-zinc-200/60">
                 {filteredCommunities.length}{" "}
                 {filteredCommunities.length === 1 ? "organization" : "organizations"}
               </span>
-              <span className="hidden sm:inline-block text-slate-300">•</span>
-              <p className="hidden sm:block text-xs text-slate-500">
+              <span className="hidden sm:inline-block text-zinc-300">•</span>
+              <p className="hidden sm:block text-xs text-zinc-500">
                 Authorized campus bodies & organizers
               </p>
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-60">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search clubs, leads, category..."
-                  className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors h-7.5"
+                  className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-zinc-900 transition-colors h-7.5"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-0.5 cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -188,10 +188,10 @@ export function AdminCommunitiesView({
               <button
                 type="button"
                 onClick={() => setSelectedCategory("all")}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
                   selectedCategory === "all"
-                    ? "bg-slate-900 text-white"
-                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80"
+                    ? "bg-zinc-900 text-white shadow-2xs"
+                    : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
                 }`}
               >
                 All Categories
@@ -201,10 +201,10 @@ export function AdminCommunitiesView({
                   key={cat}
                   type="button"
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
                     selectedCategory === cat
-                      ? "bg-slate-900 text-white"
-                      : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200/80"
+                      ? "bg-zinc-900 text-white shadow-2xs"
+                      : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
                   }`}
                 >
                   {cat}
@@ -212,7 +212,7 @@ export function AdminCommunitiesView({
               ))}
             </div>
 
-            <div className="h-4 w-px bg-slate-200 shrink-0" />
+            <div className="h-4 w-px bg-zinc-200 shrink-0" />
 
             <div className="flex items-center gap-1 shrink-0">
               <button
@@ -220,8 +220,8 @@ export function AdminCommunitiesView({
                 onClick={() => setSelectedStatus("all")}
                 className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${
                   selectedStatus === "all"
-                    ? "bg-indigo-100 text-indigo-800 font-bold"
-                    : "text-slate-500 hover:text-slate-900"
+                    ? "bg-zinc-900 text-white font-semibold"
+                    : "text-zinc-500 hover:text-zinc-900"
                 }`}
               >
                 Any Status
@@ -231,8 +231,8 @@ export function AdminCommunitiesView({
                 onClick={() => setSelectedStatus("approved")}
                 className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${
                   selectedStatus === "approved"
-                    ? "bg-indigo-100 text-indigo-800 font-bold"
-                    : "text-slate-500 hover:text-slate-900"
+                    ? "bg-zinc-900 text-white font-semibold"
+                    : "text-zinc-500 hover:text-zinc-900"
                 }`}
               >
                 Active
@@ -242,8 +242,8 @@ export function AdminCommunitiesView({
                 onClick={() => setSelectedStatus("pending")}
                 className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${
                   selectedStatus === "pending"
-                    ? "bg-indigo-100 text-indigo-800 font-bold"
-                    : "text-slate-500 hover:text-slate-900"
+                    ? "bg-zinc-900 text-white font-semibold"
+                    : "text-zinc-500 hover:text-zinc-900"
                 }`}
               >
                 Pending
@@ -253,8 +253,8 @@ export function AdminCommunitiesView({
                 onClick={() => setSelectedStatus("rejected")}
                 className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-all cursor-pointer ${
                   selectedStatus === "rejected"
-                    ? "bg-indigo-100 text-indigo-800 font-bold"
-                    : "text-slate-500 hover:text-slate-900"
+                    ? "bg-zinc-900 text-white font-semibold"
+                    : "text-zinc-500 hover:text-zinc-900"
                 }`}
               >
                 Rejected
@@ -266,14 +266,14 @@ export function AdminCommunitiesView({
         {/* Content View */}
         <div className="p-4 sm:p-5 lg:p-6 max-w-7xl mx-auto">
           {filteredCommunities.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl border border-dashed border-slate-300 bg-white flex flex-col items-center justify-center">
+            <div className="p-12 text-center rounded-2xl border border-dashed border-zinc-200 bg-white flex flex-col items-center justify-center">
               <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mb-3 text-indigo-600">
                 <Compass className="w-6 h-6" />
               </div>
-              <h4 className="text-sm font-bold text-slate-800 mb-1">
+              <h4 className="text-sm font-bold text-zinc-800 mb-1">
                 No campus clubs match your criteria
               </h4>
-              <p className="text-xs text-slate-500 max-w-xs mb-4">
+              <p className="text-xs text-zinc-500 max-w-xs mb-4">
                 {searchQuery || selectedCategory !== "all" || selectedStatus !== "all"
                   ? "Try clearing filters or adjusting your search term."
                   : "No official campus communities are registered yet. Create the first club below."}
@@ -295,7 +295,7 @@ export function AdminCommunitiesView({
                 return (
                   <div
                     key={comm.id}
-                    className="p-4 sm:p-5 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 hover:shadow-sm transition-all flex flex-col justify-between group"
+                    className="p-4 sm:p-5 rounded-2xl border border-zinc-200/90 bg-white hover:border-zinc-300 hover:shadow-xs transition-all flex flex-col justify-between group"
                   >
                     <div>
                       {/* Top Bar: Monogram/Logo, Category, Status */}
@@ -306,7 +306,7 @@ export function AdminCommunitiesView({
                             <img
                               src={comm.logo_url}
                               alt={comm.name}
-                              className="w-10 h-10 rounded-xl object-cover border border-slate-200/80 shrink-0 bg-slate-50"
+                              className="w-10 h-10 rounded-xl object-cover border border-zinc-200/80 shrink-0 bg-zinc-50"
                               onError={(e) => {
                                 (e.target as HTMLElement).style.display = "none";
                               }}
@@ -318,10 +318,10 @@ export function AdminCommunitiesView({
                           )}
 
                           <div>
-                            <h4 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                            <h4 className="text-sm font-bold text-zinc-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
                               {comm.name}
                             </h4>
-                            <span className="text-[10px] font-mono text-slate-400">
+                            <span className="text-[10px] font-mono text-zinc-400">
                               /@{comm.slug}
                             </span>
                           </div>
@@ -334,23 +334,23 @@ export function AdminCommunitiesView({
                       </div>
 
                       {/* Description */}
-                      <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed mb-3.5 min-h-[2rem]">
+                      <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed mb-3.5 min-h-[2rem]">
                         {comm.description || (
-                          <span className="text-slate-400 italic">No description provided.</span>
+                          <span className="text-zinc-400 italic">No description provided.</span>
                         )}
                       </p>
 
                       {/* Lead Organizer Pill */}
-                      <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between gap-2 mb-3">
+                      <div className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-100 flex items-center justify-between gap-2 mb-3">
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 text-[10px] font-bold">
                             <Shield className="w-3.5 h-3.5 text-indigo-600" />
                           </div>
                           <div className="min-w-0">
-                            <div className="text-[11px] font-semibold text-slate-800 truncate">
+                            <div className="text-[11px] font-semibold text-zinc-800 truncate">
                               {comm.lead_name || "Unassigned Lead"}
                             </div>
-                            <div className="text-[10px] text-slate-400 truncate">
+                            <div className="text-[10px] text-zinc-400 truncate">
                               {comm.lead_email || "No lead organizer linked"}
                             </div>
                           </div>
@@ -358,29 +358,29 @@ export function AdminCommunitiesView({
                       </div>
 
                       {/* Metrics Row */}
-                      <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50/60 border border-slate-100 text-xs mb-3.5">
-                        <div className="flex items-center gap-1.5 text-slate-600">
-                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                          <span className="font-bold text-slate-800 tabular-nums">
+                      <div className="flex items-center justify-between py-2 px-3 rounded-xl bg-zinc-50/60 border border-zinc-100 text-xs mb-3.5">
+                        <div className="flex items-center gap-1.5 text-zinc-600">
+                          <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                          <span className="font-bold text-zinc-800 tabular-nums">
                             {comm.event_count}
                           </span>
-                          <span className="text-[10px] text-slate-500">Scheduled Events</span>
+                          <span className="text-[10px] text-zinc-500">Scheduled Events</span>
                         </div>
-                        <span className="text-[10px] font-medium text-slate-400">
+                        <span className="text-[10px] font-medium text-zinc-400">
                           {comm.status === "approved" ? "Active Booking" : "Notice Only"}
                         </span>
                       </div>
                     </div>
 
                     {/* Footer Actions */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 text-slate-400 text-xs">
+                    <div className="pt-3 border-t border-zinc-100 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-zinc-400 text-xs">
                         {comm.website && /^https?:\/\//i.test(comm.website) && (
                           <a
                             href={comm.website}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-1 rounded-md hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                            className="p-1 rounded-md hover:text-indigo-600 hover:bg-zinc-100 transition-colors cursor-pointer"
                             title="Visit website"
                           >
                             <Globe className="w-3.5 h-3.5" />
@@ -388,7 +388,7 @@ export function AdminCommunitiesView({
                         )}
                         {comm.instagram && (
                           <span
-                            className="text-[10px] text-slate-500 font-mono truncate max-w-[90px]"
+                            className="text-[10px] text-zinc-500 font-mono truncate max-w-[90px]"
                             title={comm.instagram}
                           >
                             {comm.instagram}
@@ -401,9 +401,9 @@ export function AdminCommunitiesView({
                           type="button"
                           onClick={() => onEditCommunityClick(comm)}
                           disabled={isOperating}
-                          className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
+                          className="px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer active:scale-95"
                         >
-                          <Edit2 className="w-3 h-3 text-slate-500" />
+                          <Edit2 className="w-3 h-3 text-zinc-500" />
                           <span>Edit</span>
                         </button>
                         <button
@@ -415,7 +415,7 @@ export function AdminCommunitiesView({
                               ? "Cannot delete community with active or pending events"
                               : "Archive or remove community"
                           }
-                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-slate-400 text-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 text-zinc-400 text-xs transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

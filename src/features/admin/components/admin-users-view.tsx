@@ -80,8 +80,8 @@ export function AdminUsersView({
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border bg-slate-50 border-slate-200 text-slate-800">
-            <UserCheck className="w-3 h-3 text-slate-500" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold border bg-zinc-50 border-zinc-200 text-zinc-800">
+            <UserCheck className="w-3 h-3 text-zinc-500" />
             <span>Community Lead</span>
           </span>
         );
@@ -89,37 +89,37 @@ export function AdminUsersView({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/50 relative">
+    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-zinc-50/50 relative">
       <div className="flex-1 overflow-y-auto">
         {/* Sticky Header Toolbar */}
-        <div className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs flex flex-col gap-2.5">
+        <div className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs flex flex-col gap-2.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight">User Accounts</h3>
-              <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium tabular-nums border border-slate-200/60">
+              <h3 className="text-sm font-bold text-zinc-900 tracking-tight">User Accounts</h3>
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-medium tabular-nums border border-zinc-200/60">
                 {filteredUsers.length} {filteredUsers.length === 1 ? "account" : "accounts"}
               </span>
-              <span className="hidden sm:inline-block text-slate-300">•</span>
-              <p className="hidden sm:block text-xs text-slate-500">
+              <span className="hidden sm:inline-block text-zinc-300">•</span>
+              <p className="hidden sm:block text-xs text-zinc-500">
                 Staff & organizer permissions
               </p>
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-60">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search name, email, club..."
-                  className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors h-7.5"
+                  className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-zinc-900 transition-colors h-7.5"
                 />
                 {searchQuery && (
                   <button
                     type="button"
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-0.5 cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -154,8 +154,8 @@ export function AdminUsersView({
                   onClick={() => setRoleFilter(role.id)}
                   className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
                     isSelected
-                      ? "bg-slate-900 text-white shadow-2xs font-semibold"
-                      : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900"
+                      ? "bg-zinc-900 text-white shadow-2xs font-semibold"
+                      : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
                   }`}
                 >
                   {role.label}
@@ -168,55 +168,55 @@ export function AdminUsersView({
         {/* Content Area */}
         <div className="p-0 md:p-5">
           {filteredUsers.length === 0 ? (
-            <div className="text-center py-16 p-6 rounded-xl border border-dashed border-slate-200 bg-white m-4 md:m-0">
-              <p className="text-sm font-semibold text-slate-800">No user accounts found</p>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            <div className="text-center py-16 p-6 rounded-xl border border-dashed border-zinc-200 bg-white m-4 md:m-0">
+              <p className="text-sm font-semibold text-zinc-800">No user accounts found</p>
+              <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
                 Try adjusting your search query or role filter.
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               {/* Mobile View (< md) */}
-              <div className="md:hidden divide-y divide-slate-100 bg-white border-y border-slate-200">
+              <div className="md:hidden divide-y divide-zinc-100 bg-white border-y border-zinc-200">
                 {filteredUsers.map((u) => {
                   const isSelf = currentUserId === u.id;
                   return (
                     <div key={u.id} className="p-4 space-y-2">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                          <div className="font-bold text-zinc-900 text-sm flex items-center gap-1.5">
                             <span>{u.full_name}</span>
                             {isSelf && (
-                              <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded-md font-semibold">
+                              <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-md font-semibold">
                                 You
                               </span>
                             )}
                           </div>
-                          <div className="text-slate-400 font-mono text-xs">{u.email}</div>
+                          <div className="text-zinc-400 font-mono text-xs">{u.email}</div>
                         </div>
                         {getRoleBadge(u.role)}
                       </div>
 
-                      <div className="text-xs text-slate-600 flex items-center justify-between pt-1">
+                      <div className="text-xs text-zinc-600 flex items-center justify-between pt-1">
                         <span>
-                          <strong className="text-slate-700 font-medium">Assignment:</strong>{" "}
+                          <strong className="text-zinc-700 font-medium">Assignment:</strong>{" "}
                           {u.community_name ||
                             (u.role === "admin" || u.role === "principal" || u.role === "vice_principal"
                               ? "All Campus"
                               : "Unassigned")}
                         </span>
-                        <span className="text-slate-400 text-[11px]">
+                        <span className="text-zinc-400 text-[11px]">
                           {u.created_at ? format(parseISO(u.created_at), "MMM d, yyyy") : "Pre-seeded"}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-50">
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100">
                         <button
                           type="button"
                           onClick={() => onEditUserClick(u)}
-                          className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                          className="px-3 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
                         >
-                          <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                          <Edit2 className="w-3.5 h-3.5 text-zinc-500" />
                           <span>Edit</span>
                         </button>
                         {!isSelf && (
@@ -224,7 +224,7 @@ export function AdminUsersView({
                             type="button"
                             disabled={actionInProgress === u.id}
                             onClick={() => onDeleteUserClick(u)}
-                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-xs font-medium text-rose-600 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
+                            className="px-3 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-xs font-medium text-rose-600 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 disabled:opacity-50"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             <span>Delete</span>
@@ -237,10 +237,10 @@ export function AdminUsersView({
               </div>
 
               {/* Desktop Table (md+) */}
-              <div className="hidden md:block rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs">
+              <div className="hidden md:block rounded-xl border border-zinc-200/90 bg-white overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-700">
-                    <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs text-slate-600 text-[11px] font-semibold tracking-wide border-b border-slate-200 select-none">
+                  <table className="w-full text-left text-xs text-zinc-700">
+                    <thead className="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur-xs text-zinc-600 text-[11px] font-semibold tracking-wide border-b border-zinc-200 select-none">
                       <tr>
                         <th className="py-2.5 px-4">User Identity</th>
                         <th className="py-2.5 px-4">System Role</th>
@@ -249,30 +249,30 @@ export function AdminUsersView({
                         <th className="py-2.5 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-zinc-100">
                       {filteredUsers.map((u) => {
                         const isSelf = currentUserId === u.id;
                         return (
-                          <tr key={u.id} className="hover:bg-slate-50/90 transition-colors">
+                          <tr key={u.id} className="hover:bg-zinc-50/90 transition-colors">
                             <td className="py-3 px-4">
-                              <div className="font-semibold text-slate-900 text-sm flex items-center gap-1.5">
+                              <div className="font-semibold text-zinc-900 text-sm flex items-center gap-1.5">
                                 <span>{u.full_name}</span>
                                 {isSelf && (
-                                  <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded-md font-semibold">
+                                  <span className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-md font-semibold">
                                     You
                                   </span>
                                 )}
                               </div>
-                              <div className="text-slate-400 font-mono text-[11px]">{u.email}</div>
+                              <div className="text-zinc-400 font-mono text-[11px]">{u.email}</div>
                             </td>
                             <td className="py-3 px-4">{getRoleBadge(u.role)}</td>
-                            <td className="py-3 px-4 font-medium text-slate-800">
+                            <td className="py-3 px-4 font-medium text-zinc-800">
                               {u.community_name ||
                                 (u.role === "admin" || u.role === "principal" || u.role === "vice_principal"
                                   ? "All Campus"
                                   : "Unassigned")}
                             </td>
-                            <td className="py-3 px-4 text-slate-500">
+                            <td className="py-3 px-4 text-zinc-500">
                               {u.created_at ? format(parseISO(u.created_at), "MMM d, yyyy") : "Pre-seeded"}
                             </td>
                             <td className="py-3 px-4 text-right">
@@ -280,7 +280,7 @@ export function AdminUsersView({
                                 <button
                                   type="button"
                                   onClick={() => onEditUserClick(u)}
-                                  className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-indigo-600 transition-colors cursor-pointer shadow-2xs active:scale-95"
+                                  className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-500 hover:text-indigo-600 transition-colors cursor-pointer shadow-2xs active:scale-95"
                                   title="Edit User"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
@@ -290,7 +290,7 @@ export function AdminUsersView({
                                     type="button"
                                     disabled={actionInProgress === u.id}
                                     onClick={() => onDeleteUserClick(u)}
-                                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
+                                    className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-zinc-400 hover:text-rose-600 transition-colors cursor-pointer shadow-2xs active:scale-95 disabled:opacity-50"
                                     title="Delete Account"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />

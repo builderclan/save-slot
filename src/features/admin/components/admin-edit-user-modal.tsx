@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Modal } from "@/components/ui/modal";
+import { Select } from "@/components/ui/select";
 import type { AdminUserRow } from "./admin-users-view";
 
 export interface EditUserData {
@@ -18,6 +19,13 @@ export interface AdminEditUserModalProps {
   communities: Array<{ id: string; name: string }>;
   isSubmitting?: boolean;
 }
+
+const ROLE_OPTIONS = [
+  { value: "organizer", label: "Community Lead (Club Organizer)" },
+  { value: "principal", label: "College Principal (Final Sign-off Authority)" },
+  { value: "vice_principal", label: "Vice Principal (Academic Review)" },
+  { value: "admin", label: "Campus Administrator (Full Operations Access)" },
+];
 
 export function AdminEditUserModal({
   isOpen,
@@ -42,6 +50,14 @@ export function AdminEditUserModal({
       setError(null);
     }
   }, [user, isOpen]);
+
+  const communityOptions = useMemo(
+    () => [
+      { value: "", label: "-- Select a recognized club / society --" },
+      ...communities.map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [communities]
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,66 +91,51 @@ export function AdminEditUserModal({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+          <label className="block text-xs font-semibold text-zinc-900 mb-1">Full Name *</label>
           <input
             type="text"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500"
+            className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Role *</label>
-          <select
+          <Select
+            label="Role *"
             value={role}
-            onChange={(e) =>
-              setRole(e.target.value as "admin" | "principal" | "vice_principal" | "organizer")
+            onChange={(val) =>
+              setRole(val as "admin" | "principal" | "vice_principal" | "organizer")
             }
-            className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 cursor-pointer"
-          >
-            <option value="organizer">Community Lead (Club Organizer)</option>
-            <option value="principal">College Principal (Final Sign-off Authority)</option>
-            <option value="vice_principal">Vice Principal (Academic Review)</option>
-            <option value="admin">Campus Administrator (Full Operations Access)</option>
-          </select>
+            options={ROLE_OPTIONS}
+          />
         </div>
 
         {role === "organizer" && (
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Assigned Student Community *
-            </label>
-            <select
-              required
+            <Select
+              label="Assigned Student Community *"
               value={communityId}
-              onChange={(e) => setCommunityId(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-900 focus:outline-none focus:bg-white focus:border-indigo-500 cursor-pointer"
-            >
-              <option value="">-- Select a recognized club / society --</option>
-              {communities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              onChange={(val) => setCommunityId(val)}
+              options={communityOptions}
+            />
           </div>
         )}
 
-        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-zinc-100">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+            className="px-4 py-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+            className="px-4.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-medium text-white shadow-2xs transition-colors cursor-pointer disabled:opacity-50 active:scale-[0.98]"
           >
             {isSubmitting ? "Saving Changes..." : "Save Changes"}
           </button>

@@ -106,7 +106,7 @@ function AdminConsoleContent() {
           <button
             type="button"
             onClick={() => setAdminNotice(null)}
-            className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+            className="text-zinc-400 hover:text-zinc-600 cursor-pointer p-1"
           >
             ✕
           </button>
