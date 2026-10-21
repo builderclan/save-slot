@@ -29,12 +29,12 @@ export function LeadWithdrawModal({
       description={`Are you sure you want to withdraw "${event.title}"? This will remove the proposal from the administrative triage queue. This action cannot be undone.`}
       maxWidth="md"
     >
-      <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+      <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-zinc-100">
         <button
           type="button"
           onClick={onClose}
           disabled={isWithdrawing}
-          className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+          className="px-4 py-2 rounded-xl border border-zinc-200/90 hover:bg-zinc-50 text-xs font-semibold text-zinc-700 transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
         >
           Cancel
         </button>
