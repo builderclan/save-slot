@@ -101,9 +101,9 @@ export function MiniCalendar({ currentDate, onSelectDate }: MiniCalendarProps) {
               onClick={() => handleSelectDate(day)}
               className={`h-6.5 w-6.5 mx-auto rounded-md text-xs font-medium tabular-nums flex items-center justify-center transition-all cursor-pointer ${
                 isSelected
-                  ? "bg-zinc-900 text-white shadow-2xs"
+                  ? "bg-indigo-600 text-white font-semibold shadow-2xs"
                   : isDayToday
-                  ? "ring-1 ring-zinc-900/30 font-semibold text-zinc-900 bg-zinc-50 hover:bg-zinc-100"
+                  ? "border border-indigo-200 font-bold text-indigo-600 bg-indigo-50/70 hover:bg-indigo-100/70"
                   : isCurrentMonth
                   ? "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
                   : "text-zinc-300 hover:bg-zinc-50 hover:text-zinc-500"
