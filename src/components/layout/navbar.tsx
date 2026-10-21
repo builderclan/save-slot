@@ -13,8 +13,11 @@ import {
   Menu,
   X,
   GraduationCap,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { useCalendar } from "@/context/calendar-context";
 import { formatDisplayName } from "@/lib/utils";
 import {
   CalendarDateControls,
@@ -25,6 +28,7 @@ import { UserAvatar } from "@/components/ui";
 export function Navbar() {
   const pathname = usePathname();
   const { user, loading, logout, isLoggingOut } = useAuth();
+  const calendar = useCalendar();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isCalendarHome = pathname === "/";
@@ -47,8 +51,25 @@ export function Navbar() {
       </h1>
 
       <div className="w-full px-3 sm:px-6 h-full relative flex items-center justify-between gap-2 sm:gap-4">
-        {/* Left: Brand + Date Controls if on Calendar Home */}
-        <div className="flex items-center gap-1.5 sm:gap-4 min-w-0 shrink">
+        {/* Left: Sidebar Toggle + Brand + Date Controls if on Calendar Home */}
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
+          {/* Desktop Sidebar Toggle Button (Only on Calendar Home) */}
+          {isCalendarHome && calendar && (
+            <button
+              type="button"
+              onClick={calendar.toggleSidebar}
+              title={calendar.isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              aria-label={calendar.isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer active:scale-95 shrink-0"
+            >
+              {calendar.isSidebarOpen ? (
+                <PanelLeftClose className="w-4 h-4" />
+              ) : (
+                <PanelLeftOpen className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
           {/* Brand & Campus Badge */}
           <Link href="/" className="flex items-center gap-2.5 group shrink-0">
             <div className="relative w-8 h-8 rounded-xl overflow-hidden shrink-0 shadow-2xs ring-1 ring-zinc-900/10 transition-transform group-hover:scale-105 bg-white">
