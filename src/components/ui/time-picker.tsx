@@ -1,0 +1,261 @@
+"use client";
+
+import React, { useState, useRef, useEffect, useId, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { Clock, ChevronDown, Check } from "lucide-react";
+
+export interface TimePickerProps {
+  value: string; // "HH:mm" e.g. "14:00"
+  onChange: (timeStr: string) => void;
+  label?: string;
+  badge?: React.ReactNode;
+  hint?: string;
+  error?: string;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+  id?: string;
+  name?: string;
+}
+
+// Generate half-hour time slots from 06:00 to 23:30
+function generateTimeSlots(): Array<{ value: string; label: string; sublabel: string }> {
+  const slots: Array<{ value: string; label: string; sublabel: string }> = [];
+  for (let h = 6; h <= 23; h++) {
+    for (const m of [0, 30]) {
+      const hh = h.toString().padStart(2, "0");
+      const mm = m.toString().padStart(2, "0");
+      const val = `${hh}:${mm}`;
+
+      const period = h >= 12 ? "PM" : "AM";
+      const displayH = h % 12 === 0 ? 12 : h % 12;
+      const displayStr = `${displayH.toString().padStart(2, "0")}:${mm} ${period}`;
+
+      slots.push({
+        value: val,
+        label: displayStr,
+        sublabel: val,
+      });
+    }
+  }
+  return slots;
+}
+
+const TIME_SLOTS = generateTimeSlots();
+
+export function TimePicker({
+  value,
+  onChange,
+  label,
+  badge,
+  hint,
+  error,
+  disabled = false,
+  placeholder = "Select time...",
+  className = "",
+  id,
+  name,
+}: TimePickerProps) {
+  const reactId = useId();
+  const timePickerId = id || reactId;
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const selectedItemRef = useRef<HTMLDivElement>(null);
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [coords, setCoords] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
+
+  // Format display text for value
+  const displayLabel = useMemo(() => {
+    if (!value) return null;
+    const match = TIME_SLOTS.find((s) => s.value === value);
+    if (match) return match.label;
+
+    // Handle custom non-standard time format gracefully
+    const [hStr, mStr] = value.split(":");
+    const h = parseInt(hStr, 10);
+    if (isNaN(h)) return value;
+    const period = h >= 12 ? "PM" : "AM";
+    const displayH = h % 12 === 0 ? 12 : h % 12;
+    return `${displayH.toString().padStart(2, "0")}:${mStr || "00"} ${period}`;
+  }, [value]);
+
+  // Position calculation with auto-flip
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      setIsOpen(false);
+      return;
+    }
+
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+    const openUpward = spaceBelow < 220 && spaceAbove > spaceBelow;
+    const availableSpace = openUpward ? spaceAbove : spaceBelow;
+    const maxHeight = Math.min(240, Math.max(120, availableSpace));
+
+    setCoords({
+      top: openUpward ? undefined : rect.bottom + 6,
+      bottom: openUpward ? window.innerHeight - rect.top + 6 : undefined,
+      left: rect.left,
+      width: rect.width,
+      maxHeight,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCoords(null);
+      return;
+    }
+
+    updatePosition();
+
+    const handleScrollOrResize = () => updatePosition();
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(target) &&
+        menuRef.current &&
+        !menuRef.current.contains(target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleScrollOrResize);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      window.removeEventListener("resize", handleScrollOrResize);
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, updatePosition]);
+
+  // Scroll active item into view when popover opens
+  useEffect(() => {
+    if (isOpen && selectedItemRef.current) {
+      selectedItemRef.current.scrollIntoView({ block: "center" });
+    }
+  }, [isOpen]);
+
+  const handleSelectTime = (val: string) => {
+    onChange(val);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className={`relative w-full ${className}`}>
+      {name && <input type="hidden" name={name} value={value} />}
+
+      {label && (
+        <div className="flex items-center justify-between mb-1.5">
+          <label
+            htmlFor={timePickerId}
+            className="block text-xs font-semibold text-zinc-900"
+          >
+            {label}
+          </label>
+          {badge}
+        </div>
+      )}
+
+      {/* Trigger Button */}
+      <button
+        ref={triggerRef}
+        id={timePickerId}
+        type="button"
+        disabled={disabled}
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        className={`w-full flex items-center justify-between text-left py-2 px-3.5 text-xs font-medium rounded-xl border cursor-pointer select-none transition-all duration-150 min-h-[38px] ${
+          isOpen
+            ? "border-indigo-600 ring-2 ring-indigo-500/10 bg-white"
+            : error
+            ? "border-rose-400 bg-rose-50/30 text-rose-900 hover:border-rose-500"
+            : "border-zinc-200/90 bg-white text-zinc-900 hover:border-zinc-300 shadow-2xs"
+        } ${disabled ? "opacity-50 cursor-not-allowed bg-zinc-100" : ""}`}
+      >
+        <div className="flex items-center gap-2 min-w-0 pr-2">
+          <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+          <span className="truncate">
+            {displayLabel || <span className="text-zinc-400 font-normal">{placeholder}</span>}
+          </span>
+        </div>
+
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 shrink-0 ${
+            isOpen ? "rotate-180 text-indigo-600" : ""
+          }`}
+        />
+      </button>
+
+      {/* Popover List of Time Slots via Portal */}
+      {isOpen &&
+        coords &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="listbox"
+            tabIndex={-1}
+            style={{
+              position: "fixed",
+              top: coords.top !== undefined ? `${coords.top}px` : undefined,
+              bottom: coords.bottom !== undefined ? `${coords.bottom}px` : undefined,
+              left: `${coords.left}px`,
+              width: `${coords.width}px`,
+              maxHeight: `${coords.maxHeight}px`,
+              zIndex: 99999,
+            }}
+            className="rounded-xl border border-zinc-200/90 bg-white shadow-2xl py-1 px-1 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-100 select-none"
+          >
+            {TIME_SLOTS.map((slot) => {
+              const isSelected = slot.value === value;
+              return (
+                <div
+                  key={slot.value}
+                  ref={isSelected ? selectedItemRef : undefined}
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => handleSelectTime(slot.value)}
+                  className={`px-3 py-2 rounded-lg text-xs cursor-pointer flex items-center justify-between transition-colors select-none ${
+                    isSelected
+                      ? "bg-indigo-50 text-indigo-900 font-semibold shadow-2xs"
+                      : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{slot.label}</span>
+                    <span className="text-[10px] text-zinc-400 font-normal font-mono">
+                      ({slot.sublabel})
+                    </span>
+                  </div>
+
+                  {isSelected && (
+                    <Check className="w-3.5 h-3.5 text-indigo-600 stroke-[2.5] shrink-0" />
+                  )}
+                </div>
+              );
+            })}
+          </div>,
+          document.body
+        )}
+
+      {error && <p className="text-[11px] text-rose-600 mt-1">{error}</p>}
+      {hint && !error && <p className="text-[11px] text-zinc-400 mt-1">{hint}</p>}
+    </div>
+  );
+}

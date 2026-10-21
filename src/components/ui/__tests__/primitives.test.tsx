@@ -9,6 +9,9 @@ import { Input } from "../input";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "../card";
 import { Tabs } from "../tabs";
 import { UserAvatar } from "../avatar";
+import { Select } from "../select";
+import { DatePicker } from "../date-picker";
+import { TimePicker } from "../time-picker";
 import { RejectionModal } from "@/features/events";
 import { AdminRejectionModal } from "@/features/admin";
 import { PrincipalRejectionModal } from "@/features/principal";
@@ -320,6 +323,96 @@ describe("UI Design System Primitives", () => {
       const { renderToString } = await import("react-dom/server");
       const html = renderToString(<UserAvatar email="test@example.com" />);
       expect(html).toContain("<img");
+    });
+  });
+
+  describe("Select (src/components/ui/select.tsx)", () => {
+    it("renders select trigger with selected option label", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(
+        <Select
+          label="Category"
+          value="Tech"
+          onChange={() => {}}
+          options={[
+            { value: "Tech", label: "Technology" },
+            { value: "Arts", label: "Creative Arts" },
+          ]}
+        />
+      );
+      expect(html).toContain("Category");
+      expect(html).toContain("Technology");
+      expect(html).toContain('aria-haspopup="listbox"');
+    });
+
+    it("renders placeholder when no option matches value", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(
+        <Select
+          value=""
+          onChange={() => {}}
+          options={["Tech", "Arts"]}
+          placeholder="Pick a track..."
+        />
+      );
+      expect(html).toContain("Pick a track...");
+    });
+  });
+
+  describe("DatePicker (src/components/ui/date-picker.tsx)", () => {
+    it("renders formatted date string on trigger", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(
+        <DatePicker
+          label="Event Date"
+          value="2026-10-29"
+          onChange={() => {}}
+        />
+      );
+      expect(html).toContain("Event Date");
+      expect(html).toContain("Oct 29, 2026");
+      expect(html).toContain('aria-haspopup="dialog"');
+    });
+
+    it("renders placeholder when no value is provided", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(
+        <DatePicker
+          value=""
+          onChange={() => {}}
+          placeholder="Choose event date..."
+        />
+      );
+      expect(html).toContain("Choose event date...");
+    });
+  });
+
+  describe("TimePicker (src/components/ui/time-picker.tsx)", () => {
+    it("renders formatted 12-hour time string on trigger", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(
+        <TimePicker
+          label="Start Time"
+          value="14:00"
+          onChange={() => {}}
+        />
+      );
+      expect(html).toContain("Start Time");
+      expect(html).toContain("02:00 PM");
+      expect(html).toContain('aria-haspopup="listbox"');
+    });
+
+    it("renders badge when provided", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(
+        <TimePicker
+          label="End Time"
+          badge={<span>Overnight (+1 day)</span>}
+          value="02:00"
+          onChange={() => {}}
+        />
+      );
+      expect(html).toContain("Overnight (+1 day)");
     });
   });
 });
