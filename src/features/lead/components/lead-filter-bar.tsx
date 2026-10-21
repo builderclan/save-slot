@@ -1,8 +1,16 @@
 "use client";
 
-import { Calendar, RotateCcw, Search, SlidersHorizontal, ArrowUpDown, X } from "lucide-react";
+import { Calendar, RotateCcw, Search, X } from "lucide-react";
+import { Select } from "@/components/ui/select";
 
 export type SortOption = "date-asc" | "date-desc" | "created-desc" | "title-asc";
+
+const SORT_OPTIONS: Array<{ label: string; value: SortOption }> = [
+  { label: "Date: Earliest First", value: "date-asc" },
+  { label: "Date: Furthest First", value: "date-desc" },
+  { label: "Recently Submitted", value: "created-desc" },
+  { label: "Title: A to Z", value: "title-asc" },
+];
 
 export const LEAD_CATEGORIES: Array<{ label: string; value: string }> = [
   { label: "All Categories", value: "all" },
@@ -41,15 +49,15 @@ export function LeadFilterBar({
   onResetFilters,
 }: LeadFilterBarProps) {
   return (
-    <div className="p-4 sm:p-5 border-b border-slate-200 bg-white space-y-3.5">
+    <div className="p-4 sm:p-5 border-b border-zinc-200/80 bg-white space-y-3.5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-indigo-600" />
-          <h2 className="text-sm font-bold text-slate-900 tracking-tight">
+          <h2 className="text-sm font-semibold text-zinc-900 tracking-tight">
             Event Proposals ({totalCount})
           </h2>
           {hasActiveFilters && (
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-medium border border-zinc-200/70">
               Showing {filteredCount}
             </span>
           )}
@@ -59,7 +67,7 @@ export function LeadFilterBar({
           <button
             type="button"
             onClick={onResetFilters}
-            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+            className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Filters</span>
@@ -71,19 +79,19 @@ export function LeadFilterBar({
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 pt-1">
         {/* Search Input */}
         <div className="sm:col-span-5 relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search by event title, venue, or description..."
-            className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            className="w-full pl-9 pr-8 py-2 rounded-xl border border-zinc-200/90 bg-zinc-50/60 hover:bg-white focus:bg-white text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => onSearchChange("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 cursor-pointer p-0.5"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -91,34 +99,23 @@ export function LeadFilterBar({
         </div>
 
         {/* Category Filter */}
-        <div className="sm:col-span-4 relative">
-          <select
+        <div className="sm:col-span-4">
+          <Select
+            size="sm"
             value={categoryFilter}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer appearance-none pr-8"
-          >
-            {LEAD_CATEGORIES.map((cat) => (
-              <option key={cat.value} value={cat.value}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
-          <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            onChange={(val) => onCategoryChange(val)}
+            options={LEAD_CATEGORIES}
+          />
         </div>
 
         {/* Sort Dropdown */}
-        <div className="sm:col-span-3 relative">
-          <select
+        <div className="sm:col-span-3">
+          <Select
+            size="sm"
             value={sortBy}
-            onChange={(e) => onSortChange(e.target.value as SortOption)}
-            className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-white focus:bg-white text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer appearance-none pr-8"
-          >
-            <option value="date-asc">Event Date: Earliest</option>
-            <option value="date-desc">Event Date: Furthest</option>
-            <option value="created-desc">Recently Submitted</option>
-            <option value="title-asc">Title: Alphabetical</option>
-          </select>
-          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            onChange={(val) => onSortChange(val as SortOption)}
+            options={SORT_OPTIONS}
+          />
         </div>
       </div>
     </div>
