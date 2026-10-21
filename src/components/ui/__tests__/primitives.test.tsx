@@ -4,6 +4,11 @@ import { StatusBadge } from "../status-badge";
 import { NotificationBanner } from "../notification-banner";
 import { EmptyState } from "../empty-state";
 import { Modal } from "../modal";
+import { Button } from "../button";
+import { Input } from "../input";
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "../card";
+import { Tabs } from "../tabs";
+import { UserAvatar } from "../avatar";
 import { RejectionModal } from "@/features/events";
 import { AdminRejectionModal } from "@/features/admin";
 import { PrincipalRejectionModal } from "@/features/principal";
@@ -218,4 +223,105 @@ describe("UI Design System Primitives", () => {
       expect(el!.props.submitLabel).toBe("Confirm Decline");
     });
   });
+
+  describe("Button (src/components/ui/button.tsx)", () => {
+    it("renders primary button variant with default md sizing", () => {
+      const el = Button({ children: "Save changes" });
+      expect(el).toBeTruthy();
+      expect(el.props.className).toContain("bg-zinc-900");
+      expect(el.props.className).toContain("h-9");
+      expect(el.props.children).toBeDefined();
+    });
+
+    it("renders secondary button variant and sm size", () => {
+      const el = Button({ variant: "secondary", size: "sm", children: "Cancel" });
+      expect(el).toBeTruthy();
+      expect(el.props.className).toContain("bg-white");
+      expect(el.props.className).toContain("h-8");
+    });
+
+    it("renders loading spinner state and disables interaction", () => {
+      const el = Button({ isLoading: true, children: "Submitting" });
+      expect(el).toBeTruthy();
+      expect(el.props.disabled).toBe(true);
+    });
+  });
+
+  describe("Input (src/components/ui/input.tsx)", () => {
+    it("renders input with label and placeholder", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(<Input label="Venue Name" placeholder="e.g. Auditorium" />);
+      expect(html).toContain("Venue Name");
+      expect(html).toContain('placeholder="e.g. Auditorium"');
+    });
+
+    it("renders error state with aria-invalid and aria-describedby", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(<Input error="Title is required" />);
+      expect(html).toContain("border-rose-400");
+      expect(html).toContain('aria-invalid="true"');
+      expect(html).toContain("Title is required");
+    });
+  });
+
+  describe("Card (src/components/ui/card.tsx)", () => {
+    it("renders card container with header, content, and footer", () => {
+      const card = Card({ children: "Card body" });
+      expect(card).toBeTruthy();
+      expect(card.props.className).toContain("bg-white");
+      expect(card.props.className).toContain("rounded-2xl");
+
+      const header = CardHeader({ children: CardTitle({ children: "Header Title" }) });
+      expect(header.props.className).toContain("border-b");
+
+      const content = CardContent({ children: "Main body" });
+      expect(content.props.className).toContain("p-5");
+
+      const footer = CardFooter({ children: "Footer info" });
+      expect(footer.props.className).toContain("bg-zinc-50/60");
+    });
+
+    it("renders card with keyboard semantics when onClick is provided", () => {
+      const onClick = vi.fn();
+      const card = Card({ onClick, children: "Clickable card" });
+      expect(card.props.role).toBe("button");
+      expect(card.props.tabIndex).toBe(0);
+    });
+  });
+
+  describe("Tabs (src/components/ui/tabs.tsx)", () => {
+    it("renders segmented tabs with active state and roving tabIndex", () => {
+      const onSelect = vi.fn();
+      const items = [
+        { id: "month", label: "Month", count: 12 },
+        { id: "week", label: "Week" },
+      ];
+      const el = Tabs({ items, activeId: "month", onChange: onSelect });
+      expect(el).toBeTruthy();
+      expect(el.props.role).toBe("tablist");
+      expect(el.props.children.length).toBe(2);
+      expect(el.props.children[0].props["aria-selected"]).toBe(true);
+      expect(el.props.children[0].props.tabIndex).toBe(0);
+      expect(el.props.children[1].props["aria-selected"]).toBe(false);
+      expect(el.props.children[1].props.tabIndex).toBe(-1);
+    });
+  });
+
+  describe("UserAvatar (src/components/ui/avatar.tsx)", () => {
+    it("renders blobatar with name as seed", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(<UserAvatar name="Alex Rivera" role="admin" />);
+      expect(html).toContain("ring-amber-300");
+      expect(html).toContain('title="Alex Rivera"');
+      expect(html).toContain("<img");
+    });
+
+    it("falls back to 'User' seed when name is not provided", async () => {
+      const { renderToString } = await import("react-dom/server");
+      const html = renderToString(<UserAvatar email="test@example.com" />);
+      expect(html).toContain("<img");
+    });
+  });
 });
+
+
