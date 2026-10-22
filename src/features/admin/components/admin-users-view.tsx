@@ -12,7 +12,6 @@ import {
   GraduationCap,
   Sparkles,
   UserCheck,
-  ChevronDown,
 } from "lucide-react";
 
 import type { AdminUserRow } from "@/types/database";

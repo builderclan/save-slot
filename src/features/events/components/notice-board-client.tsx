@@ -17,7 +17,7 @@ import { CampusEvent, Venue, EventCategory } from "@/types/database";
 import { Button, Input } from "@/components/ui";
 import { MiniCalendar } from "./mini-calendar";
 import { SidebarCategoryFilter } from "./sidebar-category-filter";
-import { SidebarHorizonFilter, type TimeHorizon } from "./sidebar-horizon-filter";
+import { SidebarHorizonFilter } from "./sidebar-horizon-filter";
 import { MonthView } from "./month-view";
 import { WeekView } from "./week-view";
 import { EventCard } from "./event-card";
@@ -154,14 +154,15 @@ export function NoticeBoardClient({
       }
     };
 
+    const triggerEl = mobileFiltersTriggerRef.current;
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       clearTimeout(focusTimer);
       window.removeEventListener("keydown", handleKeyDown);
       if (previousActiveElement && typeof previousActiveElement.focus === "function") {
         previousActiveElement.focus();
-      } else if (mobileFiltersTriggerRef.current) {
-        mobileFiltersTriggerRef.current.focus();
+      } else if (triggerEl) {
+        triggerEl.focus();
       }
     };
   }, [mobileFiltersOpen, setMobileFiltersOpen]);

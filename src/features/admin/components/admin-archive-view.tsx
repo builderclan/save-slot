@@ -16,7 +16,6 @@ import {
   ArrowUp,
   ArrowDown,
   CheckCircle2,
-  ChevronDown,
 } from "lucide-react";
 import { CampusEvent, EventCategory } from "@/types/database";
 import { CategoryBadge } from "@/features/events";

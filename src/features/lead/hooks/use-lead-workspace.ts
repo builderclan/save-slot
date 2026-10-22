@@ -89,7 +89,7 @@ export function useLeadWorkspace() {
       const qs = params.toString();
       router.replace(qs ? `/lead?${qs}` : "/lead", { scroll: false });
     },
-    [router, searchParams]
+    [router, searchParams, setStatusFilter]
   );
 
   // Data Fetchers
@@ -210,7 +210,7 @@ export function useLeadWorkspace() {
     setCategoryFilter("all");
     setSearchQuery("");
     setSortBy("date-desc");
-  }, [handleStatusFilterChange]);
+  }, [handleStatusFilterChange, setCategoryFilter, setSearchQuery, setSortBy]);
 
   return {
     user,

@@ -58,7 +58,9 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   const isOpen = Boolean(event);
 

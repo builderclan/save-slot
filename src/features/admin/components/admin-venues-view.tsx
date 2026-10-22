@@ -11,7 +11,6 @@ import {
   AlertCircle,
   CheckCircle2,
   X,
-  ChevronDown,
 } from "lucide-react";
 import { Venue } from "@/types/database";
 import { Select } from "@/components/ui/select";

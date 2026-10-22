@@ -11,7 +11,6 @@ import {
   Shield,
   X,
   Compass,
-  ChevronDown,
 } from "lucide-react";
 import { AdminCommunityRow, EventCategory } from "@/types/database";
 import { Select } from "@/components/ui/select";
