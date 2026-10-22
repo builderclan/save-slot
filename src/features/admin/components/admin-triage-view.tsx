@@ -207,6 +207,7 @@ export function AdminTriageView({
               onChange={setSelectedCommunity}
               options={communityOptions}
               size="sm"
+              aria-label="Filter inbox by student club"
               leftIcon={<Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
               triggerClassName="w-full bg-zinc-50 border-zinc-200/90 text-xs text-zinc-700 h-8 rounded-xl shadow-2xs"
             />

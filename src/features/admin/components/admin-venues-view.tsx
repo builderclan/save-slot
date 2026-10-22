@@ -119,6 +119,7 @@ export function AdminVenuesView({
                 onChange={(val) => setStatusFilter(val as "all" | "active" | "maintenance")}
                 options={statusOptions}
                 size="sm"
+                aria-label="Filter facilities by status"
                 triggerClassName="bg-zinc-100/90 hover:bg-zinc-200/70 text-zinc-800 text-xs font-semibold h-7.5 py-1 px-2.5 rounded-lg border-zinc-200/80"
               />
             </div>

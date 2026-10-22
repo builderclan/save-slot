@@ -30,6 +30,8 @@ export interface SelectProps<T extends string = string> {
   menuClassName?: string;
   id?: string;
   name?: string;
+  ariaLabel?: string;
+  "aria-label"?: string;
 }
 
 export function Select<T extends string = string>({
@@ -48,9 +50,12 @@ export function Select<T extends string = string>({
   menuClassName = "",
   id,
   name,
+  ariaLabel,
+  "aria-label": ariaLabelProp,
 }: SelectProps<T>) {
   const reactId = useId();
   const selectId = id || reactId;
+  const effectiveAriaLabel = ariaLabelProp || ariaLabel;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -240,7 +245,8 @@ export function Select<T extends string = string>({
         onKeyDown={handleKeyDown}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-labelledby={label ? selectId : undefined}
+        aria-label={effectiveAriaLabel}
+        aria-labelledby={!effectiveAriaLabel && label ? selectId : undefined}
         className={`w-full flex items-center justify-between text-left transition-all duration-150 border cursor-pointer select-none ${
           sizeClasses[size]
         } ${
@@ -270,6 +276,7 @@ export function Select<T extends string = string>({
       <select
         tabIndex={-1}
         aria-hidden="true"
+        aria-label={effectiveAriaLabel || label || placeholder}
         name={name}
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
