@@ -16,6 +16,7 @@ import {
   AdminEditVenueModal,
   AdminAddCommunityModal,
   AdminEditCommunityModal,
+  AdminConfirmDeleteModal,
   useAdminDashboard,
 } from "@/features/admin";
 import { RejectionModal, EventDetailModal } from "@/features/events";
@@ -76,6 +77,10 @@ function AdminConsoleContent() {
     handleCreateCommunity,
     handleSaveEditCommunity,
     handleDeleteCommunity,
+    deleteTarget,
+    setDeleteTarget,
+    isDeleting,
+    handleConfirmDelete,
     nowTimestamp,
   } = useAdminDashboard();
 
@@ -106,7 +111,7 @@ function AdminConsoleContent() {
           <button
             type="button"
             onClick={() => setAdminNotice(null)}
-            className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+            className="text-zinc-400 hover:text-zinc-600 cursor-pointer p-1"
           >
             ✕
           </button>
@@ -268,6 +273,15 @@ function AdminConsoleContent() {
         community={editingCommunity}
         eligibleUsers={eligibleUsers}
         isSubmitting={actionInProgress === editingCommunity?.id}
+      />
+
+      {/* CONFIRM DELETION MODAL */}
+      <AdminConfirmDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        target={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
       />
     </div>
   );

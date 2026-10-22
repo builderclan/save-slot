@@ -40,6 +40,16 @@
    Centralized Design System UI Utility Classes
    ========================================================================== */
 
+.no-scrollbar::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar,
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 .focus-ring {
   outline: none;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;

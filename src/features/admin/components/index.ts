@@ -3,6 +3,7 @@ export * from "./admin-add-user-modal";
 export * from "./admin-add-venue-modal";
 export * from "./admin-archive-view";
 export * from "./admin-communities-view";
+export * from "./admin-confirm-delete-modal";
 export * from "./admin-edit-community-modal";
 export * from "./admin-edit-user-modal";
 export * from "./admin-edit-venue-modal";

@@ -17,6 +17,7 @@ export interface AuthUser {
   email: string;
   fullName: string;
   role: string;
+  avatarUrl?: string | null;
   isAdmin: boolean;
   isPrincipal: boolean;
   isVicePrincipal?: boolean;

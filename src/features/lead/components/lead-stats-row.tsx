@@ -38,13 +38,13 @@ export function LeadStatsRow({
         onClick={() => onStatusFilterChange("all")}
         className={`p-4 rounded-2xl border text-left transition-all cursor-pointer active:scale-[0.98] ${
           statusFilter === "all"
-            ? "bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-900/20"
-            : "bg-white text-slate-900 border-slate-200/90 hover:border-slate-300 hover:bg-slate-50/50 shadow-2xs"
+            ? "bg-zinc-900 text-white border-zinc-900 shadow-md ring-2 ring-zinc-900/15"
+            : "bg-white text-zinc-900 border-zinc-200/90 hover:border-zinc-300 hover:bg-zinc-50/60 shadow-2xs"
         }`}
       >
         <div
           className={`text-[11px] font-semibold uppercase tracking-wider mb-1 ${
-            statusFilter === "all" ? "text-slate-300" : "text-slate-400"
+            statusFilter === "all" ? "text-zinc-300" : "text-zinc-400"
           }`}
         >
           Total Submissions
@@ -52,7 +52,7 @@ export function LeadStatsRow({
         <div className="text-2xl font-bold tracking-tight">{communityEvents.length}</div>
         <div
           className={`text-[11px] mt-1 ${
-            statusFilter === "all" ? "text-slate-300 font-medium" : "text-slate-400"
+            statusFilter === "all" ? "text-zinc-300 font-medium" : "text-zinc-400"
           }`}
         >
           {statusFilter === "all" ? "• Showing all" : "Click to view all"}

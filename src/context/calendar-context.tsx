@@ -15,6 +15,9 @@ interface CalendarContextType {
   handlePrev: () => void;
   handleNext: () => void;
   handleToday: () => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (open: boolean | ((prev: boolean) => boolean)) => void;
+  toggleSidebar: () => void;
 }
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
@@ -23,6 +26,7 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
   const [activeDate, setActiveDate] = useState<Date>(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [search, setSearch] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const handlePrev = useCallback(() => {
     setActiveDate((prev) => (viewMode === "week" ? subWeeks(prev, 1) : subMonths(prev, 1)));
@@ -36,6 +40,10 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     setActiveDate(new Date());
   }, []);
 
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarOpen((prev) => !prev);
+  }, []);
+
   const value = useMemo(
     () => ({
       activeDate,
@@ -47,8 +55,11 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
       handlePrev,
       handleNext,
       handleToday,
+      isSidebarOpen,
+      setIsSidebarOpen,
+      toggleSidebar,
     }),
-    [activeDate, viewMode, search, handlePrev, handleNext, handleToday]
+    [activeDate, viewMode, search, handlePrev, handleNext, handleToday, isSidebarOpen, toggleSidebar]
   );
 
   return <CalendarContext.Provider value={value}>{children}</CalendarContext.Provider>;
