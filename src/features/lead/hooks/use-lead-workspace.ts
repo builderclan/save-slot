@@ -11,6 +11,9 @@ import { useAuth } from "@/context/auth-context";
 const isValidStatus = (s: string | null): s is StatusFilter =>
   s === "published" || s === "pending" || s === "rejected" || s === "all";
 
+const isValidSort = (s: string | null): s is SortOption =>
+  s === "date-desc" || s === "date-asc" || s === "created-desc" || s === "title-asc";
+
 export interface ActionNotice {
   type: "success" | "error";
   message: string;
@@ -30,13 +33,16 @@ export function useLeadWorkspace() {
 
   // Filter & Search states with URL sync
   const initialStatusParam = searchParams.get("status");
+  const initialSortParam = searchParams.get("sort");
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(
     isValidStatus(initialStatusParam) ? initialStatusParam : "all"
   );
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("date-asc");
+  const [sortBy, setSortBy] = useState<SortOption>(
+    isValidSort(initialSortParam) ? initialSortParam : "date-desc"
+  );
 
   // Dialog & Modal states
   const [isProposeOpen, setIsProposeOpen] = useState(false);
@@ -180,16 +186,16 @@ export function useLeadWorkspace() {
       const createdB = new Date(b.created_at || b.start_time).getTime();
 
       switch (sortBy) {
-        case "date-asc":
-          return startA - startB;
         case "date-desc":
-          return startB - startA;
+          return startB - startA || createdB - createdA;
+        case "date-asc":
+          return startA - startB || createdA - createdB;
         case "created-desc":
-          return createdB - createdA;
+          return createdB - createdA || startB - startA;
         case "title-asc":
           return a.title.localeCompare(b.title);
         default:
-          return startA - startB;
+          return startB - startA || createdB - createdA;
       }
     });
 
@@ -203,7 +209,7 @@ export function useLeadWorkspace() {
     handleStatusFilterChange("all");
     setCategoryFilter("all");
     setSearchQuery("");
-    setSortBy("date-asc");
+    setSortBy("date-desc");
   }, [handleStatusFilterChange]);
 
   return {

@@ -3,11 +3,11 @@
 import { Calendar, RotateCcw, Search, X } from "lucide-react";
 import { Select } from "@/components/ui/select";
 
-export type SortOption = "date-asc" | "date-desc" | "created-desc" | "title-asc";
+export type SortOption = "date-desc" | "date-asc" | "created-desc" | "title-asc";
 
 const SORT_OPTIONS: Array<{ label: string; value: SortOption }> = [
+  { label: "Date: Latest First", value: "date-desc" },
   { label: "Date: Earliest First", value: "date-asc" },
-  { label: "Date: Furthest First", value: "date-desc" },
   { label: "Recently Submitted", value: "created-desc" },
   { label: "Title: A to Z", value: "title-asc" },
 ];
@@ -105,6 +105,7 @@ export function LeadFilterBar({
             value={categoryFilter}
             onChange={(val) => onCategoryChange(val)}
             options={LEAD_CATEGORIES}
+            aria-label="Filter events by category"
           />
         </div>
 
@@ -115,6 +116,7 @@ export function LeadFilterBar({
             value={sortBy}
             onChange={(val) => onSortChange(val as SortOption)}
             options={SORT_OPTIONS}
+            aria-label="Sort events"
           />
         </div>
       </div>
