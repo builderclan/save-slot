@@ -8,6 +8,7 @@ export interface ModalProps {
   onClose: () => void;
   title: string;
   description?: string;
+  icon?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
   maxWidth?: "sm" | "md" | "lg" | "xl" | "2xl";
@@ -29,6 +30,7 @@ export function Modal({
   onClose,
   title,
   description,
+  icon,
   children,
   footer,
   maxWidth = "md",
@@ -115,15 +117,18 @@ export function Modal({
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-4">
-          <div className="min-w-0 flex-1">
-            <h3 id="modal-title" className="text-base font-semibold text-zinc-900 leading-snug">
-              {title}
-            </h3>
-            {description && (
-              <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
-                {description}
-              </p>
-            )}
+          <div className="flex items-start gap-3.5 min-w-0 flex-1">
+            {icon && <div className="shrink-0 pt-0.5">{icon}</div>}
+            <div className="min-w-0 flex-1">
+              <h3 id="modal-title" className="text-base font-semibold text-zinc-900 leading-snug">
+                {title}
+              </h3>
+              {description && (
+                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">
+                  {description}
+                </p>
+              )}
+            </div>
           </div>
           <button
             type="button"

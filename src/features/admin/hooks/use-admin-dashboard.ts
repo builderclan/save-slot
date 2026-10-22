@@ -11,6 +11,7 @@ import type {
   EditVenueData,
   NewCommunityData,
   EditCommunityData,
+  AdminDeleteTarget,
 } from "../components";
 import { adminApi } from "@/features/admin/api";
 import { venuesApi } from "@/features/venues/api";
@@ -79,6 +80,9 @@ export function useAdminDashboard() {
   const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
   const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
   const [rejectionNote, setRejectionNote] = useState("");
+
+  const [deleteTarget, setDeleteTarget] = useState<AdminDeleteTarget | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [adminNotice, setAdminNotice] = useState<AdminNotice | null>(null);
@@ -236,21 +240,18 @@ export function useAdminDashboard() {
   };
 
   // Event Deletion
-  const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm("Are you sure you want to permanently delete this event? This action cannot be undone.")) return;
-
-    setActionInProgress(eventId);
-    try {
-      await adminApi.deleteEvent(eventId);
-      setAllEvents((prev) => prev.filter((e) => e.id !== eventId));
-      showNotice("Event record permanently deleted from campus registry.", "success", 4000);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to delete event.";
-      showNotice(message, "error", 5000);
-    } finally {
-      setActionInProgress(null);
-    }
-  };
+  const handleDeleteEvent = useCallback(
+    (eventId: string) => {
+      const ev = allEvents.find((e) => e.id === eventId);
+      setDeleteTarget({
+        type: "event",
+        id: eventId,
+        title: ev?.title || "Untitled Event",
+        subtitle: ev?.venue?.name || ev?.location_name || undefined,
+      });
+    },
+    [allEvents]
+  );
 
   // User Handlers
   const handleCreateUser = async (data: NewUserData) => {
@@ -295,23 +296,14 @@ export function useAdminDashboard() {
     }
   };
 
-  const handleDeleteUser = async (userToDelete: AdminUserRow) => {
-    if (!confirm(`Are you sure you want to permanently delete user account: ${userToDelete.full_name} (${userToDelete.email})?`)) {
-      return;
-    }
-
-    setActionInProgress(userToDelete.id);
-    try {
-      await adminApi.deleteUser(userToDelete.id);
-      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
-      showNotice(`User ${userToDelete.email} removed from system.`, "success", 4000);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to delete user.";
-      showNotice(message, "error", 6000);
-    } finally {
-      setActionInProgress(null);
-    }
-  };
+  const handleDeleteUser = useCallback((userToDelete: AdminUserRow) => {
+    setDeleteTarget({
+      type: "user",
+      id: userToDelete.id,
+      title: userToDelete.full_name || userToDelete.email,
+      subtitle: userToDelete.email,
+    });
+  }, []);
 
   // Venue Handlers
   const handleCreateVenue = async (data: NewVenueData) => {
@@ -349,21 +341,16 @@ export function useAdminDashboard() {
     }
   };
 
-  const handleDeleteVenue = async (venueToDelete: Venue) => {
-    if (!confirm(`Are you sure you want to delete facility: "${venueToDelete.name}"?`)) return;
-
-    setActionInProgress(venueToDelete.id);
-    try {
-      await venuesApi.deleteVenue(venueToDelete.id);
-      setVenues((prev) => prev.filter((v) => v.id !== venueToDelete.id));
-      showNotice(`Facility "${venueToDelete.name}" deleted.`, "success", 4000);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to delete facility.";
-      showNotice(message, "error", 7000);
-    } finally {
-      setActionInProgress(null);
-    }
-  };
+  const handleDeleteVenue = useCallback((venueToDelete: Venue) => {
+    setDeleteTarget({
+      type: "venue",
+      id: venueToDelete.id,
+      title: venueToDelete.name,
+      subtitle: venueToDelete.building
+        ? `${venueToDelete.building} • Capacity ${venueToDelete.capacity}`
+        : `Capacity ${venueToDelete.capacity}`,
+    });
+  }, []);
 
   const handleToggleVenueActive = async (venueToToggle: Venue) => {
     try {
@@ -412,26 +399,56 @@ export function useAdminDashboard() {
     }
   };
 
-  const handleDeleteCommunity = async (commToDelete: AdminCommunityRow) => {
-    if (commToDelete.event_count > 0) {
-      showNotice(
-        `Cannot delete "${commToDelete.name}": ${commToDelete.event_count} active or pending event(s) exist.`,
-        "error",
-        5000
-      );
-      return;
-    }
-    if (!confirm(`Are you sure you want to delete community: "${commToDelete.name}"?`)) return;
+  const handleDeleteCommunity = useCallback(
+    (commToDelete: AdminCommunityRow) => {
+      if (commToDelete.event_count > 0) {
+        showNotice(
+          `Cannot delete "${commToDelete.name}": ${commToDelete.event_count} active or pending event(s) exist.`,
+          "error",
+          5000
+        );
+        return;
+      }
+      setDeleteTarget({
+        type: "community",
+        id: commToDelete.id,
+        title: commToDelete.name,
+        subtitle: commToDelete.lead_name ? `Lead: ${commToDelete.lead_name}` : undefined,
+      });
+    },
+    [showNotice]
+  );
 
-    setActionInProgress(commToDelete.id);
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    setIsDeleting(true);
+    setActionInProgress(deleteTarget.id);
+
     try {
-      await adminApi.deleteCommunity(commToDelete.id);
-      showNotice(`Community "${commToDelete.name}" deleted.`, "success", 4000);
-      await loadCommunities();
+      if (deleteTarget.type === "event") {
+        await adminApi.deleteEvent(deleteTarget.id);
+        setAllEvents((prev) => prev.filter((e) => e.id !== deleteTarget.id));
+        showNotice(`Event "${deleteTarget.title}" permanently deleted.`, "success", 4000);
+      } else if (deleteTarget.type === "user") {
+        await adminApi.deleteUser(deleteTarget.id);
+        setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
+        showNotice(`User "${deleteTarget.title}" removed from system.`, "success", 4000);
+      } else if (deleteTarget.type === "venue") {
+        await venuesApi.deleteVenue(deleteTarget.id);
+        setVenues((prev) => prev.filter((v) => v.id !== deleteTarget.id));
+        showNotice(`Facility "${deleteTarget.title}" deleted.`, "success", 4000);
+      } else if (deleteTarget.type === "community") {
+        await adminApi.deleteCommunity(deleteTarget.id);
+        showNotice(`Community "${deleteTarget.title}" deleted.`, "success", 4000);
+        await loadCommunities();
+      }
+      setDeleteTarget(null);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to delete community.";
-      showNotice(message, "error", 7000);
+      const message = err instanceof Error ? err.message : `Failed to delete ${deleteTarget.type}.`;
+      showNotice(message, "error", 6000);
     } finally {
+      setIsDeleting(false);
       setActionInProgress(null);
     }
   };
@@ -486,6 +503,10 @@ export function useAdminDashboard() {
     handleCreateCommunity,
     handleSaveEditCommunity,
     handleDeleteCommunity,
+    deleteTarget,
+    setDeleteTarget,
+    isDeleting,
+    handleConfirmDelete,
     nowTimestamp,
   };
 }

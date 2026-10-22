@@ -7,6 +7,7 @@ import { AdminAddVenueModal } from "../admin-add-venue-modal";
 import { AdminEditVenueModal } from "../admin-edit-venue-modal";
 import { AdminAddCommunityModal } from "../admin-add-community-modal";
 import { AdminEditCommunityModal } from "../admin-edit-community-modal";
+import { AdminConfirmDeleteModal } from "../admin-confirm-delete-modal";
 import type { AdminUserRow } from "../admin-users-view";
 import type { Venue, AdminCommunityRow } from "@/types/database";
 
@@ -168,6 +169,76 @@ describe("Admin Modular Components & Modals", () => {
       expect(html).toContain("Robotics Chapter");
       expect(html).toContain("robotics-chapter");
       expect(html).toContain("Approved &amp; Active");
+    });
+  });
+
+  describe("AdminConfirmDeleteModal", () => {
+    it("renders nothing when target is null or isOpen is false", () => {
+      const htmlClosed = renderToString(
+        <AdminConfirmDeleteModal
+          isOpen={false}
+          target={{ type: "event", id: "ev-1", title: "Hackathon" }}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+      expect(htmlClosed).toBe("");
+
+      const htmlNull = renderToString(
+        <AdminConfirmDeleteModal
+          isOpen={true}
+          target={null}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+      expect(htmlNull).toBe("");
+    });
+
+    it("renders entity-aware destructive confirmation for events", () => {
+      const html = renderToString(
+        <AdminConfirmDeleteModal
+          isOpen={true}
+          target={{ type: "event", id: "ev-1", title: "Autonomous Drone Expo", subtitle: "Auditorium A" }}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+      expect(html).toContain('Delete &quot;Autonomous Drone Expo&quot;?');
+      expect(html).toContain("Auditorium A");
+      expect(html).toContain("Event");
+      expect(html).toContain("Delete Event");
+      expect(html).toContain("This action cannot be undone.");
+    });
+
+    it("renders entity-aware destructive confirmation for users", () => {
+      const html = renderToString(
+        <AdminConfirmDeleteModal
+          isOpen={true}
+          target={{ type: "user", id: "u-1", title: "Dr. Victor Stone", subtitle: "victor@campus.edu" }}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+      expect(html).toContain('Delete &quot;Dr. Victor Stone&quot;?');
+      expect(html).toContain("victor@campus.edu");
+      expect(html).toContain("User");
+      expect(html).toContain("Delete User");
+    });
+
+    it("renders entity-aware destructive confirmation for facilities", () => {
+      const html = renderToString(
+        <AdminConfirmDeleteModal
+          isOpen={true}
+          target={{ type: "venue", id: "v-1", title: "Central Amphitheatre", subtitle: "Building B • Capacity 450" }}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+        />
+      );
+      expect(html).toContain('Delete &quot;Central Amphitheatre&quot;?');
+      expect(html).toContain("Building B • Capacity 450");
+      expect(html).toContain("Facility");
+      expect(html).toContain("Delete Facility");
     });
   });
 });
