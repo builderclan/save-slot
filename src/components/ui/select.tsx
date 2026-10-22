@@ -94,7 +94,8 @@ export function Select<T extends string = string>({
     const availableSpace = openUpward ? spaceAbove : spaceBelow;
     const maxHeight = Math.min(240, Math.max(120, availableSpace));
 
-    const popoverWidth = Math.min(rect.width, window.innerWidth - 24);
+    const minMenuWidth = Math.max(rect.width, 180);
+    const popoverWidth = Math.min(minMenuWidth, window.innerWidth - 24);
     const popoverLeft = Math.max(12, Math.min(rect.left, window.innerWidth - popoverWidth - 12));
 
     setCoords({
@@ -211,7 +212,7 @@ export function Select<T extends string = string>({
   };
 
   const sizeClasses = {
-    sm: "py-1.5 px-3 text-xs rounded-lg min-h-[34px]",
+    sm: "py-1.5 px-2.5 text-xs rounded-lg min-h-[30px]",
     md: "py-2 px-3.5 text-xs font-medium rounded-xl min-h-[38px]",
   };
 

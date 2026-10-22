@@ -19,6 +19,7 @@ import {
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "@/features/events";
 import { doAudiencesOverlap } from "@/lib/conflicts/audience";
+import { Select } from "@/components/ui/select";
 
 export const CATEGORY_DEFAULT_IMAGES: Record<string, string> = {
   Tech: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
@@ -138,6 +139,17 @@ export function AdminTriageView({
     return pendingEvents.find((e) => e.id === selectedEventId) || filteredEvents[0] || null;
   }, [pendingEvents, filteredEvents, selectedEventId]);
 
+  const communityOptions = useMemo(() => {
+    const list = [{ value: "all", label: `All Student Clubs (${pendingEvents.length})` }];
+    for (const c of communities) {
+      const count = pendingEvents.filter((e) => e.community_id === c.id).length;
+      if (count > 0) {
+        list.push({ value: c.id, label: `${c.name} (${count})` });
+      }
+    }
+    return list;
+  }, [communities, pendingEvents]);
+
   if (pendingEvents.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 bg-zinc-50/50">
@@ -190,25 +202,14 @@ export function AdminTriageView({
           </div>
 
           {communities.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-              <select
-                value={selectedCommunity}
-                onChange={(e) => setSelectedCommunity(e.target.value)}
-                className="w-full px-2.5 py-1.5 rounded-xl border border-zinc-200/90 bg-zinc-50 text-xs text-zinc-700 focus:outline-none focus:bg-white focus:border-indigo-600 cursor-pointer shadow-2xs transition-all"
-              >
-                <option value="all">All Student Clubs ({pendingEvents.length})</option>
-                {communities.map((c) => {
-                  const count = pendingEvents.filter((e) => e.community_id === c.id).length;
-                  if (count === 0) return null;
-                  return (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({count})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+            <Select
+              value={selectedCommunity}
+              onChange={setSelectedCommunity}
+              options={communityOptions}
+              size="sm"
+              leftIcon={<Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+              triggerClassName="w-full bg-zinc-50 border-zinc-200/90 text-xs text-zinc-700 h-8 rounded-xl shadow-2xs"
+            />
           )}
         </div>
 

@@ -88,9 +88,9 @@ export function AdminSidebar({
 
   return (
     <aside
-      className="w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-200/80 bg-white lg:bg-zinc-50/60 p-2 sm:p-3 lg:p-4 flex flex-col justify-between"
+      className="w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-200/80 bg-white lg:bg-zinc-50/60 p-1.5 sm:p-3 lg:p-4 flex flex-col justify-between"
     >
-      <div className="space-y-2 lg:space-y-4">
+      <div className="space-y-1.5 lg:space-y-4">
         <div className="hidden lg:flex items-center justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2.5 px-2">
           <span>Desk Views</span>
           {currentUserName && (
@@ -103,7 +103,7 @@ export function AdminSidebar({
           )}
         </div>
 
-        <nav className="flex overflow-x-auto lg:flex-col gap-1 p-1 lg:bg-transparent rounded-xl lg:rounded-none w-full scrollbar-none">
+        <nav className="flex overflow-x-auto lg:flex-col gap-1 p-0.5 lg:p-1 lg:bg-transparent rounded-xl lg:rounded-none w-full scrollbar-none no-scrollbar">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;

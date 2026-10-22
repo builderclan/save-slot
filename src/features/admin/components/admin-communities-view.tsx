@@ -11,8 +11,10 @@ import {
   Shield,
   X,
   Compass,
+  ChevronDown,
 } from "lucide-react";
 import { AdminCommunityRow, EventCategory } from "@/types/database";
+import { Select } from "@/components/ui/select";
 
 interface AdminCommunitiesViewProps {
   communities: AdminCommunityRow[];
@@ -100,6 +102,22 @@ export function AdminCommunitiesView({
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
 
+  const categoryOptions = useMemo(() => {
+    return [
+      { value: "all", label: "All Categories" },
+      ...CATEGORIES.map((cat) => ({ value: cat, label: cat })),
+    ];
+  }, []);
+
+  const statusOptions = useMemo(() => {
+    return [
+      { value: "all", label: "Any Status" },
+      { value: "approved", label: "Active" },
+      { value: "pending", label: "Pending" },
+      { value: "rejected", label: "Rejected" },
+    ];
+  }, []);
+
   const filteredCommunities = useMemo(() => {
     return communities.filter((comm) => {
       if (selectedCategory !== "all" && comm.category !== selectedCategory) return false;
@@ -182,8 +200,48 @@ export function AdminCommunitiesView({
             </div>
           </div>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+          {/* Mobile Filter Control Bar (< md) */}
+          <div className="flex md:hidden items-center gap-1.5 pt-0.5">
+            {/* Category Select */}
+            <div className="flex-1 min-w-0">
+              <Select
+                value={selectedCategory}
+                onChange={setSelectedCategory}
+                options={categoryOptions}
+                size="sm"
+                triggerClassName="bg-zinc-100/90 hover:bg-zinc-200/70 text-zinc-800 text-xs font-semibold h-7.5 py-1 px-2.5 rounded-lg border-zinc-200/80"
+              />
+            </div>
+
+            {/* Status Select */}
+            <div className="flex-1 min-w-0">
+              <Select
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                options={statusOptions}
+                size="sm"
+                triggerClassName="bg-zinc-100/90 hover:bg-zinc-200/70 text-zinc-800 text-xs font-semibold h-7.5 py-1 px-2.5 rounded-lg border-zinc-200/80"
+              />
+            </div>
+
+            {/* Clear Button */}
+            {(selectedCategory !== "all" || selectedStatus !== "all" || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategory("all");
+                  setSelectedStatus("all");
+                  setSearchQuery("");
+                }}
+                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 whitespace-nowrap px-1 cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Desktop Filter Pills (md+) */}
+          <div className="hidden md:flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs">
             <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"

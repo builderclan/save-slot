@@ -11,8 +11,10 @@ import {
   AlertCircle,
   CheckCircle2,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { Venue } from "@/types/database";
+import { Select } from "@/components/ui/select";
 
 interface AdminVenuesViewProps {
   venues: Venue[];
@@ -33,6 +35,14 @@ export function AdminVenuesView({
 }: AdminVenuesViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "maintenance">("all");
+
+  const statusOptions = useMemo(() => {
+    return [
+      { value: "all", label: `All Facilities (${venues.length})` },
+      { value: "active", label: `Active (${venues.filter((v) => v.is_active).length})` },
+      { value: "maintenance", label: `Under Maintenance (${venues.filter((v) => !v.is_active).length})` },
+    ];
+  }, [venues]);
 
   const filteredVenues = useMemo(() => {
     return venues.filter((v) => {
@@ -101,8 +111,34 @@ export function AdminVenuesView({
             </div>
           </div>
 
-          {/* Status Filter Strip */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {/* Mobile Status Filter (< md) */}
+          <div className="flex md:hidden items-center gap-1.5 pt-0.5">
+            <div className="flex-1 min-w-0">
+              <Select
+                value={statusFilter}
+                onChange={(val) => setStatusFilter(val as "all" | "active" | "maintenance")}
+                options={statusOptions}
+                size="sm"
+                triggerClassName="bg-zinc-100/90 hover:bg-zinc-200/70 text-zinc-800 text-xs font-semibold h-7.5 py-1 px-2.5 rounded-lg border-zinc-200/80"
+              />
+            </div>
+
+            {(statusFilter !== "all" || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter("all");
+                  setSearchQuery("");
+                }}
+                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 whitespace-nowrap px-1 cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Desktop Status Filter Strip (md+) */}
+          <div className="hidden md:flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             {[
               { id: "all", label: `All Facilities (${venues.length})` },
               { id: "active", label: `Active (${venues.filter((v) => v.is_active).length})` },

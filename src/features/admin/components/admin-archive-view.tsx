@@ -16,9 +16,11 @@ import {
   ArrowUp,
   ArrowDown,
   CheckCircle2,
+  ChevronDown,
 } from "lucide-react";
 import { CampusEvent, EventCategory } from "@/types/database";
 import { CategoryBadge } from "@/features/events";
+import { Select } from "@/components/ui/select";
 
 interface AdminArchiveViewProps {
   events: CampusEvent[];
@@ -64,6 +66,13 @@ export function AdminArchiveView({
     }
     return events.filter((ev) => new Date(ev.end_time).getTime() < nowTimestamp);
   }, [events, nowTimestamp]);
+
+  const categoryOptions = useMemo(() => {
+    return [
+      { value: "all", label: `All Categories (${pastEvents.length})` },
+      ...CATEGORIES.map((c) => ({ value: c, label: c })),
+    ];
+  }, [pastEvents.length]);
 
   const handleSort = (field: ArchiveSortField) => {
     if (sortField === field) {
@@ -173,8 +182,34 @@ export function AdminArchiveView({
             </div>
           </div>
 
-          {/* Category Filter Strip */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          {/* Mobile Category Dropdown (< md) */}
+          <div className="flex md:hidden items-center gap-1.5 pt-0.5">
+            <div className="flex-1 min-w-0">
+              <Select
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+                options={categoryOptions}
+                size="sm"
+                triggerClassName="bg-zinc-100/90 hover:bg-zinc-200/70 text-zinc-800 text-xs font-semibold h-7.5 py-1 px-2.5 rounded-lg border-zinc-200/80"
+              />
+            </div>
+
+            {(categoryFilter !== "all" || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryFilter("all");
+                  setSearchQuery("");
+                }}
+                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 whitespace-nowrap px-1 cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Desktop Category Filter Strip (md+) */}
+          <div className="hidden md:flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
             <button
               type="button"
               onClick={() => setCategoryFilter("all")}

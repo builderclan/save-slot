@@ -17,9 +17,11 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  ChevronDown,
 } from "lucide-react";
 import { CampusEvent, EventCategory } from "@/types/database";
 import { CategoryBadge } from "@/features/events";
+import { Select } from "@/components/ui/select";
 
 interface AdminEventsViewProps {
   allEvents: CampusEvent[];
@@ -92,6 +94,22 @@ export function AdminEventsView({
       rejected: pool.filter((e) => e.status === "rejected").length,
     };
   }, [allEvents, hideCompleted, nowTimestamp]);
+
+  const categoryOptions = useMemo(() => {
+    return [
+      { value: "all", label: "All Categories" },
+      ...CATEGORIES.map((c) => ({ value: c, label: c })),
+    ];
+  }, []);
+
+  const statusOptions = useMemo(() => {
+    return [
+      { value: "all", label: `All Status (${counts.all})` },
+      { value: "published", label: `Published (${counts.published})` },
+      { value: "pending", label: `Pending (${counts.pending})` },
+      { value: "rejected", label: `Declined (${counts.rejected})` },
+    ];
+  }, [counts]);
 
   // Toggle sort direction or change column
   const handleSort = (field: EventSortField) => {
@@ -224,140 +242,222 @@ export function AdminEventsView({
             </div>
           </div>
 
-          {/* Category Filter Strip */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            <button
-              type="button"
-              onClick={() => setCategoryFilter("all")}
-              className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                categoryFilter === "all"
-                  ? "bg-zinc-900 text-white shadow-2xs font-semibold"
-                  : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
-              }`}
-            >
-              All Categories
-            </button>
-            {CATEGORIES.map((cat) => {
-              const isSelected = categoryFilter === cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                    isSelected
-                      ? "bg-zinc-900 text-white shadow-2xs font-semibold"
-                      : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
-                  }`}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Status Tabs & Completed Toggle Strip */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-t border-zinc-100 pt-2 gap-2 pb-0.5">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-              <button
-                type="button"
-                onClick={() => setStatusFilter("all")}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                  statusFilter === "all"
-                    ? "bg-zinc-900 text-white font-semibold shadow-2xs"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                }`}
-              >
-                All ({counts.all})
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("published")}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  statusFilter === "published"
-                    ? "bg-emerald-600 text-white font-semibold shadow-2xs"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                }`}
-              >
-                <span>Published</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  statusFilter === "published" ? "bg-emerald-700 text-white" : "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
-                }`}>
-                  {counts.published}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("pending")}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  statusFilter === "pending"
-                    ? "bg-amber-500 text-white font-semibold shadow-2xs"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                }`}
-              >
-                <span>Pending Review</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  statusFilter === "pending" ? "bg-amber-600 text-white" : "bg-amber-50 text-amber-700 border border-amber-200/80"
-                }`}>
-                  {counts.pending}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setStatusFilter("rejected")}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
-                  statusFilter === "rejected"
-                    ? "bg-rose-600 text-white font-semibold shadow-2xs"
-                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
-                }`}
-              >
-                <span>Declined</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
-                  statusFilter === "rejected" ? "bg-rose-700 text-white" : "bg-rose-50 text-rose-700 border border-rose-200/80"
-                }`}>
-                  {counts.rejected}
-                </span>
-              </button>
+          {/* Mobile Compact Control Bar (< md) */}
+          <div className="flex md:hidden items-center gap-1.5 pt-0.5">
+            {/* Category Filter Select */}
+            <div className="flex-1 min-w-0">
+              <Select
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+                options={categoryOptions}
+                size="sm"
+                triggerClassName="bg-zinc-100/90 hover:bg-zinc-200/70 text-zinc-800 text-xs font-semibold h-7.5 py-1 px-2.5 rounded-lg border-zinc-200/80"
+              />
             </div>
 
-            {/* Completed Events Filter Toggle */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Status Filter Select */}
+            <div className="flex-1 min-w-0">
+              <Select
+                value={statusFilter}
+                onChange={(val) => setStatusFilter(val as any)}
+                options={statusOptions}
+                size="sm"
+                triggerClassName="bg-zinc-100/90 hover:bg-zinc-200/70 text-zinc-800 text-xs font-semibold h-7.5 py-1 px-2.5 rounded-lg border-zinc-200/80"
+              />
+            </div>
+
+            {/* Completed Events Toggle Icon Pill */}
+            <button
+              type="button"
+              onClick={() => setHideCompleted((prev) => !prev)}
+              className={`h-7.5 px-2.5 rounded-lg border text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 active:scale-95 cursor-pointer ${
+                hideCompleted
+                  ? "bg-zinc-900 text-white border-zinc-900 shadow-2xs"
+                  : "bg-white text-zinc-600 border-zinc-200/90 hover:bg-zinc-100"
+              }`}
+              title={
+                hideCompleted
+                  ? "Completed events hidden. Tap to show."
+                  : "Completed events visible. Tap to hide."
+              }
+            >
+              {hideCompleted ? (
+                <EyeOff className="w-3.5 h-3.5" />
+              ) : (
+                <Eye className="w-3.5 h-3.5 text-indigo-600" />
+              )}
+              {completedCount > 0 && (
+                <span className="text-[10px] tabular-nums font-bold">
+                  {completedCount}
+                </span>
+              )}
+            </button>
+
+            {/* Clear shortcut */}
+            {(categoryFilter !== "all" || statusFilter !== "all" || searchQuery) && (
               <button
                 type="button"
-                onClick={() => setHideCompleted((prev) => !prev)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border active:scale-[0.98] ${
-                  hideCompleted
-                    ? "bg-zinc-100 text-zinc-700 border-zinc-200/90 hover:bg-zinc-200/80"
-                    : "bg-indigo-50 text-indigo-700 border-indigo-200/90 hover:bg-indigo-100/80 font-semibold"
-                }`}
-                title={
-                  hideCompleted
-                    ? "Completed events are hidden. Click to show."
-                    : "Completed events are visible. Click to hide."
-                }
+                onClick={() => {
+                  setCategoryFilter("all");
+                  setStatusFilter("all");
+                  setSearchQuery("");
+                }}
+                className="text-[11px] font-semibold text-indigo-600 hover:text-indigo-700 whitespace-nowrap px-1 cursor-pointer"
               >
-                {hideCompleted ? (
-                  <>
-                    <EyeOff className="w-3.5 h-3.5 text-zinc-500" />
-                    <span>Hide Completed</span>
-                    {completedCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-zinc-200 text-zinc-700 tabular-nums">
-                        {completedCount}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Showing Completed</span>
-                    {completedCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-indigo-200/70 text-indigo-800 tabular-nums">
-                        {completedCount}
-                      </span>
-                    )}
-                  </>
-                )}
+                Clear
               </button>
+            )}
+          </div>
+
+          {/* Desktop Filter Strips (md+) */}
+          <div className="hidden md:flex flex-col gap-2.5">
+            {/* Category Filter Strip */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <button
+                type="button"
+                onClick={() => setCategoryFilter("all")}
+                className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                  categoryFilter === "all"
+                    ? "bg-zinc-900 text-white shadow-2xs font-semibold"
+                    : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
+                }`}
+              >
+                All Categories
+              </button>
+              {CATEGORIES.map((cat) => {
+                const isSelected = categoryFilter === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategoryFilter(cat)}
+                    className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                      isSelected
+                        ? "bg-zinc-900 text-white shadow-2xs font-semibold"
+                        : "bg-zinc-100/80 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Status Tabs & Completed Toggle Strip */}
+            <div className="flex items-center justify-between border-t border-zinc-100 pt-2 gap-2 pb-0.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("all")}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
+                    statusFilter === "all"
+                      ? "bg-zinc-900 text-white font-semibold shadow-2xs"
+                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                  }`}
+                >
+                  All ({counts.all})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("published")}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                    statusFilter === "published"
+                      ? "bg-emerald-600 text-white font-semibold shadow-2xs"
+                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                  }`}
+                >
+                  <span>Published</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      statusFilter === "published"
+                        ? "bg-emerald-700 text-white"
+                        : "bg-emerald-50 text-emerald-700 border border-emerald-200/80"
+                    }`}
+                  >
+                    {counts.published}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("pending")}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                    statusFilter === "pending"
+                      ? "bg-amber-500 text-white font-semibold shadow-2xs"
+                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                  }`}
+                >
+                  <span>Pending Review</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      statusFilter === "pending"
+                        ? "bg-amber-600 text-white"
+                        : "bg-amber-50 text-amber-700 border border-amber-200/80"
+                    }`}
+                  >
+                    {counts.pending}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("rejected")}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                    statusFilter === "rejected"
+                      ? "bg-rose-600 text-white font-semibold shadow-2xs"
+                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                  }`}
+                >
+                  <span>Declined</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      statusFilter === "rejected"
+                        ? "bg-rose-700 text-white"
+                        : "bg-rose-50 text-rose-700 border border-rose-200/80"
+                    }`}
+                  >
+                    {counts.rejected}
+                  </span>
+                </button>
+              </div>
+
+              {/* Completed Events Filter Toggle */}
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setHideCompleted((prev) => !prev)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border active:scale-[0.98] ${
+                    hideCompleted
+                      ? "bg-zinc-100 text-zinc-700 border-zinc-200/90 hover:bg-zinc-200/80"
+                      : "bg-indigo-50 text-indigo-700 border-indigo-200/90 hover:bg-indigo-100/80 font-semibold"
+                  }`}
+                  title={
+                    hideCompleted
+                      ? "Completed events are hidden. Click to show."
+                      : "Completed events are visible. Click to hide."
+                  }
+                >
+                  {hideCompleted ? (
+                    <>
+                      <EyeOff className="w-3.5 h-3.5 text-zinc-500" />
+                      <span>Hide Completed</span>
+                      {completedCount > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-zinc-200 text-zinc-700 tabular-nums">
+                          {completedCount}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Showing Completed</span>
+                      {completedCount > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-indigo-200/70 text-indigo-800 tabular-nums">
+                          {completedCount}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
