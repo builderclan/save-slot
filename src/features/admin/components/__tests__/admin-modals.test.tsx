@@ -240,5 +240,26 @@ describe("Admin Modular Components & Modals", () => {
       expect(html).toContain("Facility");
       expect(html).toContain("Delete Facility");
     });
+
+    it("reflects deleting pending state with spinner and disabled buttons", () => {
+      const html = renderToString(
+        <AdminConfirmDeleteModal
+          isOpen={true}
+          target={{ type: "community", id: "c-1", title: "Robotics Club" }}
+          onClose={vi.fn()}
+          onConfirm={vi.fn()}
+          isDeleting={true}
+        />
+      );
+      expect(html).toContain("Deleting...");
+      expect(html).toContain("animate-spin");
+
+      // Verify all rendered buttons (close X, cancel, confirm) carry the disabled HTML attribute
+      const buttonTags = html.match(/<button[^>]*>/g) || [];
+      expect(buttonTags.length).toBeGreaterThanOrEqual(3);
+      for (const btn of buttonTags) {
+        expect(btn).toMatch(/\bdisabled(?:=""|(?=[\s>]))/);
+      }
+    });
   });
 });

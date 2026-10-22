@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 
@@ -25,9 +25,27 @@ export function AdminConfirmDeleteModal({
   target,
   onClose,
   onConfirm,
-  isDeleting = false,
+  isDeleting: externalIsDeleting = false,
 }: AdminConfirmDeleteModalProps) {
+  const [internalIsDeleting, setInternalIsDeleting] = useState(false);
+  const isDeleting = externalIsDeleting || internalIsDeleting;
+
   if (!target) return null;
+
+  const handleGuardedClose = () => {
+    if (isDeleting) return;
+    onClose();
+  };
+
+  const handleConfirm = async () => {
+    if (isDeleting) return;
+    setInternalIsDeleting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setInternalIsDeleting(false);
+    }
+  };
 
   const typeConfig: Record<
     AdminDeleteTarget["type"],
@@ -60,7 +78,8 @@ export function AdminConfirmDeleteModal({
   return (
     <Modal
       isOpen={isOpen && Boolean(target)}
-      onClose={onClose}
+      onClose={handleGuardedClose}
+      disabled={isDeleting}
       title={`Delete "${target.title}"?`}
       description={config.prompt}
       maxWidth="sm"
@@ -85,17 +104,17 @@ export function AdminConfirmDeleteModal({
         <div className="grid grid-cols-2 gap-2.5 pt-2 border-t border-zinc-100">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleGuardedClose}
             disabled={isDeleting}
-            className="h-10 px-4 rounded-xl border border-zinc-200/90 bg-white hover:bg-zinc-100 active:bg-zinc-200 text-xs font-semibold text-zinc-700 transition-all cursor-pointer shadow-2xs disabled:opacity-50 flex items-center justify-center active:scale-[0.98]"
+            className="h-10 px-4 rounded-xl border border-zinc-200/90 bg-white hover:bg-zinc-100 active:bg-zinc-200 text-xs font-semibold text-zinc-700 transition-all cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center active:scale-[0.98]"
           >
             Cancel
           </button>
           <button
             type="button"
-            onClick={onConfirm}
+            onClick={handleConfirm}
             disabled={isDeleting}
-            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-semibold text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50"
+            className="h-10 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white font-semibold text-xs transition-all cursor-pointer shadow-xs flex items-center justify-center gap-1.5 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isDeleting ? (
               <>
