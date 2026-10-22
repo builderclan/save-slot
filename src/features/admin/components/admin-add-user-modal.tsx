@@ -63,6 +63,10 @@ export function AdminAddUserModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (role === "organizer" && !communityId) {
+      setError("Please select a recognized student community for this organizer.");
+      return;
+    }
     try {
       await onSubmit({
         fullName: name.trim(),
@@ -141,7 +145,7 @@ export function AdminAddUserModal({
         {role === "organizer" && (
           <div>
             <Select
-              label="Assigned Community"
+              label="Assigned Community *"
               value={communityId}
               onChange={(val) => setCommunityId(val)}
               options={communityOptions}

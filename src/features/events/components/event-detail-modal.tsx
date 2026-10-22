@@ -60,7 +60,11 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  const isOpen = Boolean(event);
+
   useEffect(() => {
+    if (!isOpen) return;
+
     previousActiveElementRef.current = document.activeElement as HTMLElement | null;
 
     const focusTimer = setTimeout(() => {
@@ -74,6 +78,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (e.defaultPrevented) return;
         e.preventDefault();
         onCloseRef.current();
         return;
@@ -107,9 +112,10 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         typeof previousActiveElementRef.current.focus === "function"
       ) {
         previousActiveElementRef.current.focus();
+        previousActiveElementRef.current = null;
       }
     };
-  }, []);
+  }, [isOpen]);
 
   if (!event) return null;
 

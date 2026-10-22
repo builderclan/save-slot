@@ -63,6 +63,10 @@ export function AdminEditUserModal({
     e.preventDefault();
     if (!user) return;
     setError(null);
+    if (role === "organizer" && !communityId) {
+      setError("Please select a recognized student community for this organizer.");
+      return;
+    }
     try {
       await onSubmit(user.id, {
         fullName: name.trim(),

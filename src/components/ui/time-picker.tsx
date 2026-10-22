@@ -18,10 +18,10 @@ export interface TimePickerProps {
   name?: string;
 }
 
-// Generate half-hour time slots from 06:00 to 23:30
+// Generate half-hour time slots from 00:00 to 23:30 (all 48 slots)
 function generateTimeSlots(): Array<{ value: string; label: string; sublabel: string }> {
   const slots: Array<{ value: string; label: string; sublabel: string }> = [];
-  for (let h = 6; h <= 23; h++) {
+  for (let h = 0; h <= 23; h++) {
     for (const m of [0, 30]) {
       const hh = h.toString().padStart(2, "0");
       const mm = m.toString().padStart(2, "0");

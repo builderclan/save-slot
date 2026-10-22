@@ -260,7 +260,9 @@ export function AdminEventsView({
             <div className="flex-1 min-w-0">
               <Select
                 value={statusFilter}
-                onChange={(val) => setStatusFilter(val as any)}
+                onChange={(val) =>
+                  setStatusFilter(val as "all" | "published" | "pending" | "rejected")
+                }
                 options={statusOptions}
                 size="sm"
                 aria-label="Filter events by status"

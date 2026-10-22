@@ -64,6 +64,13 @@ export function Modal({
     };
   }, []);
 
+  const onCloseRef = useRef(onClose);
+  const disabledRef = useRef(disabled);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    disabledRef.current = disabled;
+  });
+
   // Trap focus and handle Escape
   useEffect(() => {
     if (!isOpen) return;
@@ -84,9 +91,9 @@ export function Modal({
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        if (disabled) return;
+        if (disabledRef.current || e.defaultPrevented) return;
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -120,7 +127,7 @@ export function Modal({
       clearTimeout(focusTimer);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isOpen, onClose, disabled]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

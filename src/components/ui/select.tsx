@@ -246,7 +246,6 @@ export function Select<T extends string = string>({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
         aria-label={effectiveAriaLabel}
-        aria-labelledby={!effectiveAriaLabel && label ? selectId : undefined}
         className={`w-full flex items-center justify-between text-left transition-all duration-150 border cursor-pointer select-none ${
           sizeClasses[size]
         } ${
