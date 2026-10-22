@@ -60,6 +60,7 @@ export function RejectionModal({
     <Modal
       isOpen={Boolean(rejectingEvent)}
       onClose={onClose}
+      disabled={isSubmitting}
       title={title}
       description={resolvedDescription}
       maxWidth="md"

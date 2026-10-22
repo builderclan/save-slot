@@ -273,7 +273,7 @@ export function PrincipalHistoryView({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/50 relative">
+    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-zinc-50/40 relative">
       {/* Scrollable Container with onScroll listener */}
       <div
         ref={scrollContainerRef}
@@ -282,15 +282,15 @@ export function PrincipalHistoryView({
       >
         {/* Sticky Header Toolbar: Slides up on scroll down, slides down on scroll up */}
         <div
-          className={`sticky top-0 z-30 transition-transform duration-300 ease-out border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs ${
+          className={`sticky top-0 z-30 transition-transform duration-300 ease-out border-b border-zinc-200/90 bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs ${
             toolbarVisible ? "translate-y-0" : "-translate-y-full"
           }`}
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900 tracking-tight">Decision History</h3>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium tabular-nums border border-slate-200/60">
+                <h3 className="text-sm font-bold text-zinc-900 tracking-tight">Decision History</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-medium tabular-nums border border-zinc-200/60">
                   {totalRecords} {totalRecords === 1 ? "record" : "records"}
                 </span>
                 {hasActiveFilters && (
@@ -299,33 +299,33 @@ export function PrincipalHistoryView({
                   </span>
                 )}
               </div>
-              <p className="hidden md:block text-xs text-slate-500 mt-0.5">
+              <p className="hidden md:block text-xs text-zinc-500 mt-0.5">
                 Audit trail of approved and declined campus proposals
               </p>
             </div>
 
             {/* Toolbar Controls */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              {/* Status Filter Buttons with Live Counts */}
-              <div className="grid grid-cols-3 p-0.5 rounded-lg bg-slate-100 border border-slate-200/80 text-xs shrink-0 w-full sm:w-auto">
+              {/* Standalone Status Filter Pills (Matching Calendar Category Pills Style) */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
                     onStatusFilterChange("all");
                     setCurrentPage(1);
                   }}
-                  className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 active:scale-[0.98] ${
                     historyStatusFilter === "all"
-                      ? "bg-white text-slate-900 shadow-2xs font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-zinc-900 text-white shadow-2xs font-semibold"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
                   }`}
                 >
                   <span>All</span>
                   <span
-                    className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full ${
+                    className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full font-bold ${
                       historyStatusFilter === "all"
-                        ? "bg-slate-100 text-slate-800"
-                        : "bg-slate-200/60 text-slate-500"
+                        ? "bg-white/20 text-white"
+                        : "bg-zinc-200/80 text-zinc-600"
                     }`}
                   >
                     {historyCounts.all}
@@ -337,18 +337,23 @@ export function PrincipalHistoryView({
                     onStatusFilterChange("published");
                     setCurrentPage(1);
                   }}
-                  className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 active:scale-[0.98] ${
                     historyStatusFilter === "published"
-                      ? "bg-white text-emerald-800 shadow-2xs font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-zinc-900 text-white shadow-2xs font-semibold"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
                   }`}
                 >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      historyStatusFilter === "published" ? "bg-emerald-400" : "bg-emerald-500"
+                    }`}
+                  />
                   <span>Approved</span>
                   <span
-                    className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full ${
+                    className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full font-bold ${
                       historyStatusFilter === "published"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-slate-200/60 text-slate-500"
+                        ? "bg-white/20 text-white"
+                        : "bg-zinc-200/80 text-zinc-600"
                     }`}
                   >
                     {historyCounts.published}
@@ -360,18 +365,23 @@ export function PrincipalHistoryView({
                     onStatusFilterChange("rejected");
                     setCurrentPage(1);
                   }}
-                  className={`px-2.5 py-1 rounded-md font-medium text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 active:scale-[0.98] ${
                     historyStatusFilter === "rejected"
-                      ? "bg-white text-rose-800 shadow-2xs font-semibold"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-zinc-900 text-white shadow-2xs font-semibold"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
                   }`}
                 >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      historyStatusFilter === "rejected" ? "bg-rose-400" : "bg-rose-500"
+                    }`}
+                  />
                   <span>Declined</span>
                   <span
-                    className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full ${
+                    className={`text-[10px] tabular-nums px-1.5 py-0.2 rounded-full font-bold ${
                       historyStatusFilter === "rejected"
-                        ? "bg-rose-50 text-rose-700"
-                        : "bg-slate-200/60 text-slate-500"
+                        ? "bg-white/20 text-white"
+                        : "bg-zinc-200/80 text-zinc-600"
                     }`}
                   >
                     {historyCounts.rejected}
@@ -386,27 +396,27 @@ export function PrincipalHistoryView({
                     <button
                       type="button"
                       onClick={() => setIsDropdownOpen((prev) => !prev)}
-                      className={`w-full sm:w-auto h-7.5 pl-2.5 pr-2 rounded-lg border text-xs font-medium inline-flex items-center justify-between gap-2 cursor-pointer transition-all shadow-2xs ${
+                      className={`w-full sm:w-auto h-8 pl-3 pr-2.5 rounded-xl border text-xs font-medium inline-flex items-center justify-between gap-2 cursor-pointer transition-all shadow-2xs ${
                         isDropdownOpen
-                          ? "border-slate-900 bg-white text-slate-900 ring-2 ring-slate-900/10"
-                          : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                          ? "border-zinc-900 bg-white text-zinc-900 ring-2 ring-zinc-900/10"
+                          : "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
                       }`}
                     >
                       <div className="flex items-center gap-1.5 truncate">
-                        <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <UserCheck className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                         <span className="truncate max-w-[120px]">{selectedReviewerLabel}</span>
                       </div>
                       <ChevronDown
-                        className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${
-                          isDropdownOpen ? "rotate-180 text-slate-700" : ""
+                        className={`w-3.5 h-3.5 text-zinc-400 shrink-0 transition-transform duration-200 ${
+                          isDropdownOpen ? "rotate-180 text-zinc-700" : ""
                         }`}
                       />
                     </button>
 
                     {/* Popover Menu */}
                     {isDropdownOpen && (
-                      <div className="absolute left-0 top-full mt-1.5 w-60 z-50 rounded-xl bg-white border border-slate-200/90 shadow-xl shadow-slate-900/10 p-1.5 animate-in fade-in-0 zoom-in-95 duration-100">
-                        <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      <div className="absolute left-0 top-full mt-1.5 w-60 z-50 rounded-2xl bg-white border border-zinc-200/90 shadow-xl shadow-zinc-900/10 p-1.5 animate-in fade-in-0 zoom-in-95 duration-100">
+                        <div className="px-2 py-1 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
                           Filter by Decision Author
                         </div>
                         <div className="space-y-0.5 mt-0.5 max-h-56 overflow-y-auto">
@@ -418,10 +428,10 @@ export function PrincipalHistoryView({
                               setCurrentPage(1);
                               setIsDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                            className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
                               authorFilter === "all"
-                                ? "bg-slate-900 text-white font-semibold"
-                                : "text-slate-700 hover:bg-slate-100"
+                                ? "bg-zinc-900 text-white font-semibold"
+                                : "text-zinc-700 hover:bg-zinc-100"
                             }`}
                           >
                             <div className="flex items-center gap-2">
@@ -429,7 +439,7 @@ export function PrincipalHistoryView({
                                 className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold ${
                                   authorFilter === "all"
                                     ? "bg-white/20 text-white"
-                                    : "bg-slate-100 text-slate-600"
+                                    : "bg-zinc-100 text-zinc-600"
                                 }`}
                               >
                                 All
@@ -451,10 +461,10 @@ export function PrincipalHistoryView({
                                   setCurrentPage(1);
                                   setIsDropdownOpen(false);
                                 }}
-                                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
+                                className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs font-medium flex items-center justify-between transition-colors cursor-pointer ${
                                   isSelected
-                                    ? "bg-slate-900 text-white font-semibold"
-                                    : "text-slate-700 hover:bg-slate-100"
+                                    ? "bg-zinc-900 text-white font-semibold"
+                                    : "text-zinc-700 hover:bg-zinc-100"
                                 }`}
                               >
                                 <div className="flex items-center gap-2 min-w-0">
@@ -462,7 +472,7 @@ export function PrincipalHistoryView({
                                     className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${
                                       isSelected
                                         ? "bg-white/20 text-white"
-                                        : "bg-slate-100 text-slate-700 border border-slate-200"
+                                        : "bg-zinc-100 text-zinc-700 border border-zinc-200"
                                     }`}
                                   >
                                     {getInitials(rev.displayName)}
@@ -471,7 +481,7 @@ export function PrincipalHistoryView({
                                     <div className="truncate text-xs leading-snug">{rev.displayName}</div>
                                     <div
                                       className={`text-[10px] leading-tight ${
-                                        isSelected ? "text-slate-300" : "text-slate-400"
+                                        isSelected ? "text-zinc-300" : "text-zinc-400"
                                       }`}
                                     >
                                       {rev.roleLabel}
@@ -490,7 +500,7 @@ export function PrincipalHistoryView({
 
                 {/* Search Input */}
                 <div className="relative flex-1 sm:w-44 md:w-52">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
                     value={historySearch}
@@ -499,7 +509,7 @@ export function PrincipalHistoryView({
                       setCurrentPage(1);
                     }}
                     placeholder="Search..."
-                    className="w-full pl-8 pr-7 py-1 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors h-7.5"
+                    className="w-full pl-8 pr-7 py-1 rounded-xl border border-zinc-200/90 bg-zinc-50/60 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-zinc-400 transition-colors h-8"
                   />
                   {historySearch && (
                     <button
@@ -508,7 +518,7 @@ export function PrincipalHistoryView({
                         onSearchChange("");
                         setCurrentPage(1);
                       }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-0.5 cursor-pointer"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -521,7 +531,7 @@ export function PrincipalHistoryView({
                     type="button"
                     onClick={handleResetFilters}
                     title="Reset all filters"
-                    className="h-7.5 px-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-slate-800 text-xs font-medium inline-flex items-center gap-1 cursor-pointer transition-colors shrink-0 shadow-2xs"
+                    className="h-8 px-2.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 hover:text-zinc-900 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer transition-colors shrink-0 shadow-2xs active:scale-[0.98]"
                   >
                     <RotateCcw className="w-3 h-3" />
                     <span className="hidden lg:inline">Reset</span>
@@ -535,10 +545,10 @@ export function PrincipalHistoryView({
         {/* Content Area */}
         <div className="p-0 md:p-5">
           {totalRecords === 0 ? (
-            <div className="text-center py-16 p-6 rounded-xl border border-dashed border-slate-200 bg-white m-4 md:m-0">
-              <Clock className="w-9 h-9 text-slate-300 mx-auto mb-2.5" />
-              <p className="text-sm font-semibold text-slate-800">No decision records found</p>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            <div className="text-center py-16 p-6 rounded-2xl border border-dashed border-zinc-200 bg-white m-4 md:m-0">
+              <Clock className="w-9 h-9 text-zinc-300 mx-auto mb-2.5" />
+              <p className="text-sm font-semibold text-zinc-800">No decision records found</p>
+              <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
                 {hasActiveFilters
                   ? "No past decisions matched your active search, reviewer, or verdict filter."
                   : "No recorded executive decisions yet."}
@@ -547,7 +557,7 @@ export function PrincipalHistoryView({
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="mt-3.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-black transition-colors cursor-pointer active:scale-95 shadow-xs"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   Clear All Filters
@@ -557,7 +567,7 @@ export function PrincipalHistoryView({
           ) : (
             <div className="flex flex-col gap-3">
               {/* MOBILE AUDIT LIST (< md) */}
-              <div className="md:hidden divide-y divide-slate-100 bg-white border-y border-slate-200">
+              <div className="md:hidden divide-y divide-zinc-100 bg-white border-y border-zinc-200/90">
                 {paginatedEvents.map((ev) => {
                   const isApproved = ev.status === "published";
                   const decisionDate = ev.updated_at || ev.created_at || ev.start_time;
@@ -566,7 +576,7 @@ export function PrincipalHistoryView({
                       key={ev.id}
                       type="button"
                       onClick={() => onSelectEvent(ev)}
-                      className="w-full text-left px-4 py-3 hover:bg-slate-50 active:bg-slate-100/80 transition-colors flex items-start gap-3 group cursor-pointer"
+                      className="w-full text-left px-4 py-3 hover:bg-zinc-50 active:bg-zinc-100/80 transition-colors flex items-start gap-3 group cursor-pointer"
                     >
                       {/* Left Verdict Pill */}
                       <div
@@ -589,47 +599,47 @@ export function PrincipalHistoryView({
                       {/* Center Event Details */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                          <span className="text-[11px] font-medium text-slate-500 truncate max-w-[140px]">
+                          <span className="text-[11px] font-medium text-zinc-500 truncate max-w-[140px]">
                             {ev.community?.name || "Campus Community"}
                           </span>
                           <CategoryBadge category={ev.category} size="sm" showDot />
                         </div>
-                        <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug">
+                        <h4 className="text-xs font-semibold text-zinc-900 group-hover:text-indigo-600 transition-colors leading-snug">
                           {ev.title}
                         </h4>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
                           <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                            <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
+                            <Calendar className="w-3 h-3 text-zinc-400 shrink-0" />
                             <span>{format(parseISO(ev.start_time), "MMM d, h:mm a")}</span>
                           </span>
                           <span className="inline-flex items-center gap-1 truncate max-w-[140px]">
-                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                            <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
                             <span className="truncate">{ev.venue?.name || "Venue"}</span>
                           </span>
                         </div>
 
                         {/* Reviewer line */}
-                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-slate-600">
-                          <span className="text-slate-400">By</span>
-                          <span className="font-medium text-slate-800">
+                        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] text-zinc-600">
+                          <span className="text-zinc-400">By</span>
+                          <span className="font-medium text-zinc-800">
                             {formatDisplayName(ev.reviewer?.full_name) || "Campus Executive"}
                           </span>
-                          <span className="text-slate-300">•</span>
-                          <span className="text-slate-400 text-[10px]">
+                          <span className="text-zinc-300">•</span>
+                          <span className="text-zinc-400 text-[10px]">
                             {format(parseISO(decisionDate), "MMM d")}
                           </span>
                         </div>
 
                         {/* Rejection Remarks - Full width block below the reviewer line */}
                         {ev.status === "rejected" && ev.rejection_reason && (
-                          <div className="mt-2 p-2 rounded-lg bg-rose-50/80 border border-rose-200/60 text-[11px] text-rose-800 leading-relaxed italic break-words w-full">
+                          <div className="mt-2 p-2 rounded-xl bg-rose-50/80 border border-rose-200/60 text-[11px] text-rose-800 leading-relaxed italic break-words w-full">
                             &ldquo;{ev.rejection_reason}&rdquo;
                           </div>
                         )}
                       </div>
 
                       {/* Right Chevron */}
-                      <div className="shrink-0 flex items-center self-center pl-1 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all">
+                      <div className="shrink-0 flex items-center self-center pl-1 text-zinc-300 group-hover:text-zinc-500 group-hover:translate-x-0.5 transition-all">
                         <ChevronRight className="w-4 h-4" />
                       </div>
                     </button>
@@ -638,15 +648,15 @@ export function PrincipalHistoryView({
               </div>
 
               {/* DESKTOP ELEVATED DATA TABLE (md+) */}
-              <div className="hidden md:block rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs">
+              <div className="hidden md:block rounded-2xl border border-zinc-200/90 bg-white overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-700">
-                    <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs text-slate-600 text-[11px] font-semibold tracking-wide border-b border-slate-200 select-none">
+                  <table className="w-full text-left text-xs text-zinc-700">
+                    <thead className="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur-xs text-zinc-600 text-[11px] font-semibold tracking-wide border-b border-zinc-200/90 select-none">
                       <tr>
                         <th
                           scope="col"
                           onClick={() => handleSort("title")}
-                          className="py-2.5 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group/th"
+                          className="py-2.5 px-4 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Event & Category</span>
@@ -656,7 +666,7 @@ export function PrincipalHistoryView({
                         <th
                           scope="col"
                           onClick={() => handleSort("club")}
-                          className="py-2.5 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group/th whitespace-nowrap"
+                          className="py-2.5 px-4 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th whitespace-nowrap"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Host Club</span>
@@ -666,7 +676,7 @@ export function PrincipalHistoryView({
                         <th
                           scope="col"
                           onClick={() => handleSort("scheduled")}
-                          className="py-2.5 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group/th whitespace-nowrap"
+                          className="py-2.5 px-4 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th whitespace-nowrap"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Scheduled For</span>
@@ -676,7 +686,7 @@ export function PrincipalHistoryView({
                         <th
                           scope="col"
                           onClick={() => handleSort("verdict")}
-                          className="py-2.5 px-3 cursor-pointer hover:bg-slate-100/70 transition-colors group/th whitespace-nowrap"
+                          className="py-2.5 px-3 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th whitespace-nowrap"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Verdict</span>
@@ -686,7 +696,7 @@ export function PrincipalHistoryView({
                         <th
                           scope="col"
                           onClick={() => handleSort("reviewer")}
-                          className="py-2.5 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group/th whitespace-nowrap"
+                          className="py-2.5 px-4 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th whitespace-nowrap"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Decision Author</span>
@@ -696,7 +706,7 @@ export function PrincipalHistoryView({
                         <th
                           scope="col"
                           onClick={() => handleSort("decision_date")}
-                          className="py-2.5 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group/th min-w-[280px]"
+                          className="py-2.5 px-4 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th min-w-[280px]"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Decision & Remarks</span>
@@ -708,7 +718,7 @@ export function PrincipalHistoryView({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-zinc-100">
                       {paginatedEvents.map((ev) => {
                         const isApproved = ev.status === "published";
                         const decisionTimestamp = ev.updated_at || ev.created_at || ev.start_time;
@@ -717,12 +727,12 @@ export function PrincipalHistoryView({
                           <tr
                             key={ev.id}
                             onClick={() => onSelectEvent(ev)}
-                            className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
+                            className="hover:bg-zinc-50/90 transition-colors cursor-pointer group"
                           >
                             {/* 1. Event & Category */}
                             <td className="py-2.5 px-4 max-w-xs">
                               <div
-                                className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate text-xs"
+                                className="font-semibold text-zinc-900 group-hover:text-indigo-600 transition-colors truncate text-xs"
                                 title={ev.title}
                               >
                                 {ev.title}
@@ -735,11 +745,11 @@ export function PrincipalHistoryView({
                             {/* 2. Host Club */}
                             <td className="py-2.5 px-4 whitespace-nowrap">
                               <div className="flex items-center gap-2">
-                                <div className="w-5 h-5 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-600 shrink-0">
+                                <div className="w-5 h-5 rounded-md bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[9px] font-bold text-zinc-600 shrink-0">
                                   {getClubInitials(ev.community?.name)}
                                 </div>
                                 <span
-                                  className="font-medium text-slate-700 truncate max-w-[150px]"
+                                  className="font-medium text-zinc-700 truncate max-w-[150px]"
                                   title={ev.community?.name || "Campus Community"}
                                 >
                                   {ev.community?.name || "Campus Community"}
@@ -749,16 +759,16 @@ export function PrincipalHistoryView({
 
                             {/* 3. Scheduled For */}
                             <td className="py-2.5 px-4 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5 text-slate-800 font-medium text-xs">
-                                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <div className="flex items-center gap-1.5 text-zinc-800 font-medium text-xs">
+                                <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                                 <span>{format(parseISO(ev.start_time), "MMM d, yyyy")}</span>
                               </div>
-                              <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
-                                <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                              <div className="mt-0.5 flex items-center gap-1 text-[11px] text-zinc-500">
+                                <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
                                 <span className="truncate max-w-[120px]" title={ev.venue?.name || "Venue"}>
                                   {ev.venue?.name || "Campus Venue"}
                                 </span>
-                                <span className="text-slate-300">•</span>
+                                <span className="text-zinc-300">•</span>
                                 <span>{format(parseISO(ev.start_time), "h:mm a")}</span>
                               </div>
                             </td>
@@ -789,17 +799,17 @@ export function PrincipalHistoryView({
                             {/* 5. Decision Author */}
                             <td className="py-2.5 px-4 whitespace-nowrap">
                               <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700 shrink-0">
+                                <div className="w-6 h-6 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[10px] font-bold text-zinc-700 shrink-0">
                                   {getInitials(ev.reviewer?.full_name)}
                                 </div>
                                 <div className="min-w-0">
                                   <div
-                                    className="font-medium text-slate-900 text-xs truncate max-w-[130px]"
+                                    className="font-medium text-zinc-900 text-xs truncate max-w-[130px]"
                                     title={formatDisplayName(ev.reviewer?.full_name) || "Campus Executive"}
                                   >
                                     {formatDisplayName(ev.reviewer?.full_name) || "Campus Executive"}
                                   </div>
-                                  <div className="text-[10px] text-slate-400 leading-tight">
+                                  <div className="text-[10px] text-zinc-400 leading-tight">
                                     {getRoleLabel(ev.reviewer?.role)}
                                   </div>
                                 </div>
@@ -808,7 +818,7 @@ export function PrincipalHistoryView({
 
                             {/* 6. Decision Date & Remarks */}
                             <td className="py-2.5 px-4 min-w-[280px] max-w-lg">
-                              <div className="text-[11px] font-medium text-slate-500">
+                              <div className="text-[11px] font-medium text-zinc-500">
                                 {format(parseISO(decisionTimestamp), "MMM d, yyyy")}
                               </div>
                               <div className="mt-0.5 text-[11px] leading-relaxed">
@@ -820,7 +830,7 @@ export function PrincipalHistoryView({
                                     &ldquo;{ev.rejection_reason || "Declined without remarks"}&rdquo;
                                   </p>
                                 ) : (
-                                  <span className="text-slate-400">
+                                  <span className="text-zinc-400">
                                     Published to calendar
                                   </span>
                                 )}
@@ -829,7 +839,7 @@ export function PrincipalHistoryView({
 
                             {/* 7. Action Arrow */}
                             <td className="py-2.5 px-3 text-right">
-                              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all inline-block" />
+                              <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all inline-block" />
                             </td>
                           </tr>
                         );
@@ -840,16 +850,16 @@ export function PrincipalHistoryView({
               </div>
 
               {/* Bottom Pagination & Records Counter Bar */}
-              <div className="px-4 py-2.5 border border-slate-200/80 bg-white rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-slate-600 shadow-2xs">
+              <div className="px-4 py-2.5 border border-zinc-200/80 bg-white rounded-xl flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-zinc-600 shadow-2xs">
                 <div className="flex items-center gap-2">
                   <span>
-                    Showing <strong className="text-slate-900 font-semibold">{startRecord}</strong> to{" "}
-                    <strong className="text-slate-900 font-semibold">{endRecord}</strong> of{" "}
-                    <strong className="text-slate-900 font-semibold">{totalRecords}</strong> decisions
+                    Showing <strong className="text-zinc-900 font-semibold">{startRecord}</strong> to{" "}
+                    <strong className="text-zinc-900 font-semibold">{endRecord}</strong> of{" "}
+                    <strong className="text-zinc-900 font-semibold">{totalRecords}</strong> decisions
                   </span>
-                  <span className="text-slate-300">•</span>
+                  <span className="text-zinc-300">•</span>
                   <div className="inline-flex items-center gap-1.5">
-                    <span className="text-[11px] text-slate-400">Rows:</span>
+                    <span className="text-[11px] text-zinc-400">Rows:</span>
                     <select
                       value={pageSize}
                       onChange={(e) => {
@@ -857,7 +867,7 @@ export function PrincipalHistoryView({
                         setCurrentPage(1);
                       }}
                       aria-label="Records per page"
-                      className="h-6 px-1.5 rounded border border-slate-200 bg-white text-[11px] font-medium text-slate-700 cursor-pointer focus:outline-none focus:border-slate-900"
+                      className="h-7 px-2 rounded-lg border border-zinc-200 bg-white text-xs font-medium text-zinc-700 cursor-pointer focus:outline-none focus:border-zinc-400"
                     >
                       <option value={10}>10</option>
                       <option value={25}>25</option>
@@ -873,13 +883,13 @@ export function PrincipalHistoryView({
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={safeCurrentPage <= 1}
-                      className="p-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none text-slate-600 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:pointer-events-none text-zinc-600 transition-colors cursor-pointer"
                       aria-label="Previous page"
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
 
-                    <span className="px-2 text-xs font-medium text-slate-700">
+                    <span className="px-2 text-xs font-medium text-zinc-700">
                       Page {safeCurrentPage} of {totalPages}
                     </span>
 
@@ -887,7 +897,7 @@ export function PrincipalHistoryView({
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={safeCurrentPage >= totalPages}
-                      className="p-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none text-slate-600 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 disabled:opacity-40 disabled:pointer-events-none text-zinc-600 transition-colors cursor-pointer"
                       aria-label="Next page"
                     >
                       <ChevronRight className="w-3.5 h-3.5" />

@@ -165,7 +165,7 @@ export function PrincipalScheduleView({
   const hasActiveFilters = Boolean(calendarSearch) || calendarCategoryFilter !== "all";
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-slate-50/50 relative">
+    <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-zinc-50/40 relative">
       {/* Scrollable Container with onScroll */}
       <div
         ref={scrollContainerRef}
@@ -174,15 +174,16 @@ export function PrincipalScheduleView({
       >
         {/* Sticky Compact Header Toolbar: Slides up on scroll down, slides down on scroll up */}
         <div
-          className={`sticky top-0 z-30 transition-transform duration-300 ease-out border-b border-slate-200/80 bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs flex flex-col gap-2.5 ${
+          className={`sticky top-0 z-30 transition-transform duration-300 ease-out border-b border-zinc-200/90 bg-white/95 backdrop-blur-md px-4 py-3 sm:px-5 sm:py-3.5 shadow-2xs flex flex-col gap-2.5 ${
             toolbarVisible ? "translate-y-0" : "-translate-y-full"
           }`}
         >
+          {/* Top Line: Title & Count + Mobile Past Toggle + Desktop Search */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center justify-between sm:justify-start gap-2">
+            <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-2">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900 tracking-tight">Campus Schedule</h3>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium tabular-nums border border-slate-200/60">
+                <h3 className="text-sm font-bold text-zinc-900 tracking-tight">Campus Schedule</h3>
+                <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 font-medium tabular-nums border border-zinc-200/60">
                   {sortedEvents.length}{" "}
                   {sortedEvents.length === 1 ? "event" : "events"}
                 </span>
@@ -192,26 +193,57 @@ export function PrincipalScheduleView({
                   </span>
                 )}
               </div>
-              <span className="hidden sm:inline-block text-slate-300">•</span>
-              <p className="hidden sm:block text-xs text-slate-500">
+              <span className="hidden sm:inline-block text-zinc-300">•</span>
+              <p className="hidden sm:block text-xs text-zinc-500">
                 Approved & published campus events
               </p>
+
+              {/* Mobile Past Events Toggle (Right-aligned in top header row) */}
+              <button
+                type="button"
+                onClick={() => setHideCompleted((prev) => !prev)}
+                className={`sm:hidden px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border active:scale-[0.98] ${
+                  hideCompleted
+                    ? "bg-zinc-100 text-zinc-700 border-zinc-200/90 hover:bg-zinc-200/80"
+                    : "bg-indigo-50 text-indigo-700 border-indigo-200/90 hover:bg-indigo-100/80 font-semibold"
+                }`}
+                aria-label={hideCompleted ? "Show completed events" : "Hide completed events"}
+              >
+                {hideCompleted ? (
+                  <EyeOff className="w-3.5 h-3.5 text-zinc-500" />
+                ) : (
+                  <Eye className="w-3.5 h-3.5 text-indigo-600" />
+                )}
+                <span>{hideCompleted ? "Past" : "Past"}</span>
+                {completedCount > 0 && (
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold tabular-nums ${
+                      hideCompleted
+                        ? "bg-zinc-200 text-zinc-700"
+                        : "bg-indigo-200/70 text-indigo-800"
+                    }`}
+                  >
+                    {completedCount}
+                  </span>
+                )}
+              </button>
             </div>
 
+            {/* Search Input */}
             <div className="relative w-full sm:w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={calendarSearch}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Search events, clubs, venues..."
-                className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-slate-900 transition-colors h-7.5"
+                className="w-full pl-8.5 pr-8 py-1.5 rounded-xl border border-zinc-200/90 bg-zinc-50/60 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-zinc-400 transition-colors h-8"
               />
               {calendarSearch && (
                 <button
                   type="button"
                   onClick={() => onSearchChange("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 p-0.5 cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -219,38 +251,48 @@ export function PrincipalScheduleView({
             </div>
           </div>
 
-          {/* Horizontal Category Filter Strip & Completed Toggle */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-100 pt-1.5 -mx-4 px-4 sm:mx-0 sm:px-0">
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 shrink-0">
-              {availableCategories.map((cat) => {
-                const isSelected = calendarCategoryFilter.toLowerCase() === cat.toLowerCase();
-                const label = cat === "all" ? "All Categories" : cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => onCategoryFilterChange(cat)}
-                    className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                      isSelected
-                        ? "bg-slate-900 text-white shadow-2xs font-semibold"
-                        : "bg-slate-100/80 text-slate-600 hover:bg-slate-200/70 hover:text-slate-900"
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
+          {/* Horizontal Category Filter Strip & Desktop Completed Toggle */}
+          <div className="flex items-center justify-between gap-3 border-t border-zinc-100 pt-2">
+            <div className="relative flex-1 min-w-0 -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scroll-smooth overscroll-x-contain py-0.5">
+                {availableCategories.map((cat) => {
+                  const isSelected = calendarCategoryFilter.toLowerCase() === cat.toLowerCase();
+                  const label = cat === "all" ? "All Categories" : cat;
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => onCategoryFilterChange(cat)}
+                      className={`shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap active:scale-[0.98] ${
+                        isSelected
+                          ? "bg-zinc-900 text-white shadow-2xs font-semibold"
+                          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                {/* Trailing edge spacer so last chip isn't clipped flush */}
+                <div className="w-4 shrink-0 sm:hidden" aria-hidden="true" />
+              </div>
+
+              {/* Edge Gradient Scroll Cue (Mobile) */}
+              <div
+                className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white via-white/80 to-transparent sm:hidden"
+                aria-hidden="true"
+              />
             </div>
 
-            {/* Completed Events Toggle */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Desktop Completed Events Toggle */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setHideCompleted((prev) => !prev)}
-                className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border active:scale-[0.98] ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border active:scale-[0.98] ${
                   hideCompleted
-                    ? "bg-slate-100 text-slate-700 border-slate-200/90 hover:bg-slate-200/80"
-                    : "bg-purple-50 text-purple-700 border-purple-200/90 hover:bg-purple-100/80 font-semibold"
+                    ? "bg-zinc-100 text-zinc-700 border-zinc-200/90 hover:bg-zinc-200/80"
+                    : "bg-indigo-50 text-indigo-700 border-indigo-200/90 hover:bg-indigo-100/80 font-semibold"
                 }`}
                 title={
                   hideCompleted
@@ -260,20 +302,20 @@ export function PrincipalScheduleView({
               >
                 {hideCompleted ? (
                   <>
-                    <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+                    <EyeOff className="w-3.5 h-3.5 text-zinc-500" />
                     <span>Hide Completed</span>
                     {completedCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-slate-200 text-slate-700 tabular-nums">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-zinc-200 text-zinc-700 tabular-nums">
                         {completedCount}
                       </span>
                     )}
                   </>
                 ) : (
                   <>
-                    <Eye className="w-3.5 h-3.5 text-purple-600" />
+                    <Eye className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Showing Completed</span>
                     {completedCount > 0 && (
-                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-purple-200/70 text-purple-800 tabular-nums">
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-indigo-200/70 text-indigo-800 tabular-nums">
                         {completedCount}
                       </span>
                     )}
@@ -287,10 +329,10 @@ export function PrincipalScheduleView({
         {/* Content Area: Full-screen List on Mobile, Data Table on Desktop */}
         <div className="p-0 md:p-5">
           {sortedEvents.length === 0 ? (
-            <div className="text-center py-16 p-6 rounded-xl border border-dashed border-slate-200 bg-white m-4 md:m-0">
-              <Calendar className="w-9 h-9 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-800">No scheduled events found</p>
-              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+            <div className="text-center py-16 p-6 rounded-2xl border border-dashed border-zinc-200 bg-white m-4 md:m-0">
+              <Calendar className="w-9 h-9 text-zinc-300 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-zinc-800">No scheduled events found</p>
+              <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
                 {hideCompleted && completedCount > 0 ? (
                   <>
                     {completedCount} concluded {completedCount === 1 ? "event is" : "events are"} hidden from the master calendar.
@@ -306,7 +348,7 @@ export function PrincipalScheduleView({
                   <button
                     type="button"
                     onClick={() => setHideCompleted(false)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 text-zinc-700 transition-colors cursor-pointer active:scale-95"
                   >
                     <Eye className="w-3.5 h-3.5" />
                     Show completed events ({completedCount})
@@ -317,7 +359,7 @@ export function PrincipalScheduleView({
           ) : (
             <div className="flex flex-col gap-3">
               {/* MOBILE FULL-SCREEN DATE-RAIL LIST (< md) */}
-              <div className="md:hidden divide-y divide-slate-100 bg-white border-y border-slate-200">
+              <div className="md:hidden divide-y divide-zinc-100 bg-white border-y border-zinc-200/90">
                 {sortedEvents.map((ev) => {
                   const eventDate = parseISO(ev.start_time);
                   return (
@@ -325,17 +367,17 @@ export function PrincipalScheduleView({
                       key={ev.id}
                       type="button"
                       onClick={() => onSelectEvent(ev)}
-                      className="w-full text-left px-4 py-3 hover:bg-slate-50 active:bg-slate-100/80 transition-colors flex items-center gap-3.5 group cursor-pointer"
+                      className="w-full text-left px-4 py-3 hover:bg-zinc-50 active:bg-zinc-100/80 transition-colors flex items-center gap-3.5 group cursor-pointer"
                     >
                       {/* Left Date Block */}
-                      <div className="w-11 shrink-0 flex flex-col items-center justify-center rounded-lg bg-slate-100/80 border border-slate-200/70 py-1.5 group-hover:bg-indigo-50/70 group-hover:border-indigo-200/80 transition-colors">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-indigo-600 transition-colors leading-none">
+                      <div className="w-11 shrink-0 flex flex-col items-center justify-center rounded-lg bg-zinc-100/80 border border-zinc-200/70 py-1.5 group-hover:bg-indigo-50/70 group-hover:border-indigo-200/80 transition-colors">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-indigo-600 transition-colors leading-none">
                           {format(eventDate, "MMM")}
                         </span>
-                        <span className="text-base font-bold text-slate-800 group-hover:text-indigo-700 transition-colors tabular-nums leading-tight my-0.5">
+                        <span className="text-base font-bold text-zinc-800 group-hover:text-indigo-700 transition-colors tabular-nums leading-tight my-0.5">
                           {format(eventDate, "d")}
                         </span>
-                        <span className="text-[10px] font-medium text-slate-400 leading-none">
+                        <span className="text-[10px] font-medium text-zinc-400 leading-none">
                           {format(eventDate, "EEE")}
                         </span>
                       </div>
@@ -343,28 +385,28 @@ export function PrincipalScheduleView({
                       {/* Center Event Details */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                          <span className="text-[11px] font-medium text-slate-500 truncate max-w-[130px]">
+                          <span className="text-[11px] font-medium text-zinc-500 truncate max-w-[130px]">
                             {ev.community?.name || "Campus Community"}
                           </span>
                           <CategoryBadge category={ev.category} size="sm" showDot />
                         </div>
-                        <h4 className="text-xs font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-1">
+                        <h4 className="text-xs font-semibold text-zinc-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-1">
                           {ev.title}
                         </h4>
-                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
-                          <span className="inline-flex items-center gap-1 text-slate-600 whitespace-nowrap">
-                            <Clock className="w-3 h-3 text-slate-400 shrink-0" />
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-500">
+                          <span className="inline-flex items-center gap-1 text-zinc-600 whitespace-nowrap">
+                            <Clock className="w-3 h-3 text-zinc-400 shrink-0" />
                             <span>{format(eventDate, "h:mm a")}</span>
                           </span>
-                          <span className="inline-flex items-center gap-1 text-slate-500 truncate max-w-[140px]">
-                            <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="inline-flex items-center gap-1 text-zinc-500 truncate max-w-[140px]">
+                            <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
                             <span className="truncate">{ev.venue?.name || "Venue"}</span>
                           </span>
                         </div>
                       </div>
 
                       {/* Right Action Indicator */}
-                      <div className="shrink-0 self-center pl-1 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all">
+                      <div className="shrink-0 self-center pl-1 text-zinc-300 group-hover:text-zinc-500 group-hover:translate-x-0.5 transition-all">
                         <ChevronRight className="w-4 h-4" />
                       </div>
                     </button>
@@ -373,15 +415,15 @@ export function PrincipalScheduleView({
               </div>
 
               {/* DESKTOP TABLE VIEW (md+) */}
-              <div className="hidden md:block rounded-xl border border-slate-200/90 bg-white overflow-hidden shadow-2xs">
+              <div className="hidden md:block rounded-2xl border border-zinc-200/90 bg-white overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-700">
-                    <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-xs text-slate-600 text-[11px] font-semibold tracking-wide border-b border-slate-200 select-none">
+                  <table className="w-full text-left text-xs text-zinc-700">
+                    <thead className="sticky top-0 z-10 bg-zinc-50/95 backdrop-blur-xs text-zinc-600 text-[11px] font-semibold tracking-wide border-b border-zinc-200/90 select-none">
                       <tr>
                         <th
                           scope="col"
                           onClick={() => handleSort("title")}
-                          className="py-2.5 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group/th"
+                          className="py-2.5 px-4 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Event Title & Category</span>
@@ -391,7 +433,7 @@ export function PrincipalScheduleView({
                         <th
                           scope="col"
                           onClick={() => handleSort("club")}
-                          className="py-2.5 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group/th whitespace-nowrap"
+                          className="py-2.5 px-4 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th whitespace-nowrap"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Host Club</span>
@@ -401,7 +443,7 @@ export function PrincipalScheduleView({
                         <th
                           scope="col"
                           onClick={() => handleSort("venue")}
-                          className="py-2.5 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group/th whitespace-nowrap"
+                          className="py-2.5 px-4 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th whitespace-nowrap"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Venue</span>
@@ -411,7 +453,7 @@ export function PrincipalScheduleView({
                         <th
                           scope="col"
                           onClick={() => handleSort("time")}
-                          className="py-2.5 px-4 cursor-pointer hover:bg-slate-100/70 transition-colors group/th whitespace-nowrap"
+                          className="py-2.5 px-4 cursor-pointer hover:bg-zinc-100/70 transition-colors group/th whitespace-nowrap"
                         >
                           <div className="flex items-center gap-1.5">
                             <span>Date & Time</span>
@@ -426,16 +468,16 @@ export function PrincipalScheduleView({
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-zinc-100">
                       {sortedEvents.map((ev) => (
                         <tr
                           key={ev.id}
                           onClick={() => onSelectEvent(ev)}
-                          className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
+                          className="hover:bg-zinc-50/90 transition-colors cursor-pointer group"
                         >
                           {/* 1. Title & Category */}
                           <td className="py-2.5 px-4 max-w-xs">
-                            <div className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors truncate text-xs">
+                            <div className="font-semibold text-zinc-900 group-hover:text-indigo-600 transition-colors truncate text-xs">
                               {ev.title}
                             </div>
                             <div className="mt-1 flex items-center gap-1.5">
@@ -446,11 +488,11 @@ export function PrincipalScheduleView({
                           {/* 2. Host Club */}
                           <td className="py-2.5 px-4 whitespace-nowrap">
                             <div className="flex items-center gap-2">
-                              <div className="w-5 h-5 rounded-md bg-slate-100 border border-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-600 shrink-0">
+                              <div className="w-5 h-5 rounded-md bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[9px] font-bold text-zinc-600 shrink-0">
                                 {getClubInitials(ev.community?.name)}
                               </div>
                               <span
-                                className="font-medium text-slate-700 truncate max-w-[150px]"
+                                className="font-medium text-zinc-700 truncate max-w-[150px]"
                                 title={ev.community?.name || "Campus Community"}
                               >
                                 {ev.community?.name || "—"}
@@ -460,12 +502,12 @@ export function PrincipalScheduleView({
 
                           {/* 3. Venue */}
                           <td className="py-2.5 px-4 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 text-slate-800 font-medium text-xs">
-                              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <div className="flex items-center gap-1.5 text-zinc-800 font-medium text-xs">
+                              <MapPin className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                               <span className="truncate max-w-[140px]">{ev.venue?.name || "Campus Venue"}</span>
                             </div>
                             {ev.venue?.building && (
-                              <div className="text-[10px] text-slate-400 leading-tight pl-5">
+                              <div className="text-[10px] text-zinc-400 leading-tight pl-5">
                                 {ev.venue.building}
                               </div>
                             )}
@@ -473,11 +515,11 @@ export function PrincipalScheduleView({
 
                           {/* 4. Date & Time */}
                           <td className="py-2.5 px-4 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5 text-slate-800 font-medium text-xs">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <div className="flex items-center gap-1.5 text-zinc-800 font-medium text-xs">
+                              <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                               <span>{format(parseISO(ev.start_time), "MMM d, yyyy")}</span>
                             </div>
-                            <div className="mt-0.5 text-[11px] text-slate-500 pl-5">
+                            <div className="mt-0.5 text-[11px] text-zinc-500 pl-5">
                               {format(parseISO(ev.start_time), "h:mm a")} –{" "}
                               {format(parseISO(ev.end_time), "h:mm a")}
                             </div>
@@ -493,7 +535,7 @@ export function PrincipalScheduleView({
 
                           {/* 6. Action Arrow */}
                           <td className="py-2.5 px-3 text-right">
-                            <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all inline-block" />
+                            <ChevronRight className="w-4 h-4 text-zinc-300 group-hover:text-indigo-600 group-hover:translate-x-0.5 transition-all inline-block" />
                           </td>
                         </tr>
                       ))}
