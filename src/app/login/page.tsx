@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense, useCallback } from "react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { authApi } from "@/features/auth/api";
@@ -165,16 +165,16 @@ function LoginParamsHandler({
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
   const [customRedirect, setCustomRedirect] = useState<string | null>(null);
-  const { user, logout, isLoggingOut, refreshSession } = useAuth();
+  const { user, logout, isLoggingOut } = useAuth();
 
   const handleSignOutExisting = async () => {
     await logout();
@@ -188,15 +188,14 @@ export default function LoginPage() {
 
     try {
       const data = await authApi.login({ email: email.trim(), password });
+      setIsRedirecting(true);
 
-      await refreshSession(true);
       const destination = customRedirect || data.redirectUrl || "/";
-      router.push(destination);
-      router.refresh();
+      window.location.replace(destination);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Authentication error");
-    } finally {
       setLoading(false);
+      setIsRedirecting(false);
     }
   };
 
@@ -260,8 +259,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Existing Active Session Banner */}
-            {user && (
+            {/* Existing Active Session Banner (only when not actively navigating) */}
+            {user && !isRedirecting && (
               <div className="mb-5 p-3 rounded-xl border border-indigo-200/80 bg-indigo-50/50 text-xs flex items-center justify-between gap-3 shadow-2xs">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <UserAvatar
@@ -351,7 +350,7 @@ export default function LoginPage() {
                     type="email"
                     required
                     autoComplete="email"
-                    disabled={loading}
+                    disabled={loading || isRedirecting}
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -392,7 +391,7 @@ export default function LoginPage() {
                     type={showPassword ? "text" : "password"}
                     required
                     autoComplete="current-password"
-                    disabled={loading}
+                    disabled={loading || isRedirecting}
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
@@ -406,7 +405,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
-                    disabled={loading}
+                    disabled={loading || isRedirecting}
                     aria-label={showPassword ? "Hide password" : "Show password"}
                     className="absolute right-2.5 top-2.5 p-1 text-zinc-400 hover:text-zinc-700 focus:outline-none cursor-pointer disabled:opacity-50 transition-colors"
                   >
@@ -421,15 +420,27 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full mt-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs shadow-indigo-600/20 active:scale-[0.98]"
+                disabled={loading || isRedirecting}
+                className="w-full mt-2 py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs sm:text-sm font-semibold tracking-wide transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed shadow-2xs shadow-indigo-600/20 active:scale-[0.98]"
               >
-                {loading ? (
-                  <div
-                    className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
-                    role="status"
-                    aria-label="Signing in..."
-                  />
+                {isRedirecting ? (
+                  <>
+                    <div
+                      className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                      role="status"
+                      aria-label="Redirecting..."
+                    />
+                    <span>Redirecting to Workspace...</span>
+                  </>
+                ) : loading ? (
+                  <>
+                    <div
+                      className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"
+                      role="status"
+                      aria-label="Signing in..."
+                    />
+                    <span>Signing in...</span>
+                  </>
                 ) : (
                   <>
                     <span>Sign In to SaveSlot</span>
@@ -466,7 +477,7 @@ export default function LoginPage() {
                       <button
                         key={p.id}
                         type="button"
-                        disabled={loading}
+                        disabled={loading || isRedirecting}
                         onClick={() => selectPersona(p)}
                         className={`text-left p-2 rounded-xl border transition-all text-xs flex items-center justify-between gap-1.5 cursor-pointer active:scale-[0.98] ${
                           isSelected
