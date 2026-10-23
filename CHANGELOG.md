@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Database RPC Caller Identity Verification (SEC-01)**:
+  - Migration `011_harden_rpc_and_community_members_rls.sql` drops client-supplied `p_admin_id` in `approve_community()` and `reject_community()`, strictly enforcing server-side `auth.uid()` checks and revoking execute permissions from the `anon` role.
+- **Client-Side Privilege Escalation Prevention on Community Members (SEC-02)**:
+  - Hardened `community_members_insert` RLS policy to strictly require `role = 'member'`, preventing authenticated users from self-elevating into `lead` or `admin` roles.
+- **Stored XSS Protocol Whitelisting (SEC-03)**:
+  - Enforced `SafeUrlSchema` on `coverImageUrl` and `externalRegistrationUrl`, rejecting non-HTTP protocols (`javascript:`, `data:`, `vbscript:`) at the Zod validation layer.
+- **Vercel-Ready Distributed Auth Rate Limiting & Cooldown (SEC-11)**:
+  - Added migration `012_add_auth_rate_limits.sql` and `src/lib/rate-limit.ts` providing atomic PostgreSQL upserts (`auth_rate_limits`) and L1 memory caching across ephemeral Vercel serverless function instances (3 failed attempts -> 5-minute sliding cooldown with `HTTP 429` and `Retry-After`).
+- **Strict Multi-Tenant Campus Isolation (SEC-07)**:
+  - Enforced mandatory `campus_id` verification across `admin/events/[id]`, `admin/events/[id]/status`, and `admin/venues/[id]`, returning `403 Forbidden` if `campus_id` is absent and scoping all queries to the administrator's campus.
+- **Host Poisoning & Open Redirect Defense (SEC-06)**:
+  - Hardened `auth/callback/route.ts` against spoofed `X-Forwarded-Host` headers and enforced relative internal paths (`/` and not `//`).
+- **Public Data Leakage Protection (SEC-08)**:
+  - Restricted public `/api/communities` queries to `status = 'approved'` only.
+- **Defensive HTTP Headers (SEC-10)**:
+  - Added `Strict-Transport-Security` (`max-age=31536000; includeSubDomains; preload`) and `X-XSS-Protection` headers in `next.config.ts`.
+- **API Error Message Sanitization (SEC-09)**:
+  - Sanitized 500 error responses across all modified API route handlers to prevent database exception and stack trace leakage.
+
 ---
 
 ## [0.2.0] - 2026-10-19
