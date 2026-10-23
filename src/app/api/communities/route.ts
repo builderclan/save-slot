@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withDbRetry } from "@/lib/db";
 import { communities } from "@/db/schema";
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -17,6 +17,7 @@ export async function GET() {
           logo_url: communities.logoUrl,
         })
         .from(communities)
+        .where(eq(communities.status, "approved"))
         .orderBy(asc(communities.name))
     );
 
@@ -29,7 +30,7 @@ export async function GET() {
       }
     );
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load communities";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[GET /api/communities] Error:", err);
+    return NextResponse.json({ error: "Failed to load communities" }, { status: 500 });
   }
 }
