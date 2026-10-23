@@ -76,6 +76,27 @@ describe("GET /auth/callback", () => {
     expect(location).toBe("http://localhost:3000/reset-password");
   });
 
+  it("ignores untrusted x-forwarded-host and redirects to safe origin (SEC-06 Host Header Poisoning defense)", async () => {
+    mockExchangeCodeForSession.mockResolvedValueOnce({
+      data: { session: { user: { id: "user-123" } } },
+      error: null,
+    });
+
+    const request = new Request(
+      "http://localhost:3000/auth/callback?code=valid-auth-code&next=/reset-password",
+      {
+        headers: {
+          "x-forwarded-host": "attacker.com",
+        },
+      }
+    );
+
+    const res = await GET(request);
+    expect(res.status).toBe(307);
+    const location = res.headers.get("location");
+    expect(location).toBe("http://localhost:3000/reset-password");
+  });
+
   it("redirects to error state when neither code nor error is provided", async () => {
     const request = new Request("http://localhost:3000/auth/callback");
 
