@@ -62,10 +62,10 @@ DB_PORT=5432
     it("returns sorted SQL files from migrations directory", () => {
       const files = getMigrationFiles();
       expect(Array.isArray(files)).toBe(true);
-      expect(files.length).toBeGreaterThanOrEqual(10);
+      expect(files.length).toBeGreaterThanOrEqual(11);
       expect(files[0]).toBe("001_initial_schema.sql");
       expect(files[1]).toBe("002_optional_registration_url.sql");
-      expect(files[files.length - 1]).toBe("010_add_events_status_start_time_idx.sql");
+      expect(files[files.length - 1]).toBe("012_add_auth_rate_limits.sql");
 
       // Verify all items are .sql
       for (const file of files) {
@@ -202,6 +202,8 @@ DB_PORT=5432
               { name: "007_add_reviewed_by.sql", applied_at: "2026-10-08T12:00:00.000Z" },
               { name: "008_add_principal_and_vice_principal_roles.sql", applied_at: "2026-10-10T12:00:00.000Z" },
               { name: "009_add_target_audience.sql", applied_at: "2026-10-15T12:00:00.000Z" },
+              { name: "010_add_events_status_start_time_idx.sql", applied_at: "2026-10-18T12:00:00.000Z" },
+              { name: "011_harden_rpc_and_community_members_rls.sql", applied_at: "2026-10-23T12:00:00.000Z" },
             ],
           });
         }
@@ -211,7 +213,7 @@ DB_PORT=5432
       const mockClient = { query: mockQuery };
       const res = await runMigrations({ client: mockClient });
 
-      expect(res.appliedCount).toBe(1); // Only 010 was pending
+      expect(res.appliedCount).toBe(1); // Only 012 was pending
       expect(queryLog).toContain("BEGIN;");
       expect(queryLog).toContain("COMMIT;");
       expect(queryLog.some((q) => q.includes("pg_advisory_lock"))).toBe(true);
