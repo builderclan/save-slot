@@ -27,6 +27,14 @@ export const TARGET_AUDIENCE_OPTIONS = [
 
 export const TargetAudienceEnum = z.enum(TARGET_AUDIENCE_OPTIONS);
 
+export const SafeUrlSchema = z
+  .string()
+  .trim()
+  .url("Invalid URL format")
+  .refine((url) => /^https?:\/\//i.test(url), {
+    message: "URL must start with http:// or https://",
+  });
+
 export const ProposeEventSchema = z.object({
   title: z
     .string()
@@ -50,8 +58,8 @@ export const ProposeEventSchema = z.object({
     .trim()
     .min(10, "Description must be at least 10 characters"),
   communityId: z.string().uuid().optional(),
-  coverImageUrl: z.string().url().optional().nullable().or(z.literal("")),
-  externalRegistrationUrl: z.string().url().optional().nullable().or(z.literal("")),
+  coverImageUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  externalRegistrationUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
 }).refine(
   (data) => new Date(data.endTime).getTime() > new Date(data.startTime).getTime(),
   {
@@ -131,14 +139,6 @@ export const ResetPasswordSchema = z
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
     path: ["confirmPassword"],
-  });
-
-const SafeUrlSchema = z
-  .string()
-  .trim()
-  .url("Invalid URL format")
-  .refine((url) => /^https?:\/\//i.test(url), {
-    message: "URL must start with http:// or https://",
   });
 
 export const CreateCommunitySchema = z.object({

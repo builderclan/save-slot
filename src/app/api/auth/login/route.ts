@@ -6,6 +6,15 @@ import { eq, and, isNull, sql } from "drizzle-orm";
 import { formatUser } from "@/db/adapters";
 import { getPrimaryCampusId } from "@/lib/campus";
 import { LoginSchema } from "@/lib/validations";
+import {
+  getClientRateLimitKey,
+  checkAuthRateLimit,
+  recordFailedAuthAttempt,
+  clearAuthRateLimit,
+  clearRateLimitMemoryCacheForTesting,
+} from "@/lib/rate-limit";
+
+export { clearRateLimitMemoryCacheForTesting as clearLoginAttemptsForTesting };
 
 export async function POST(request: Request) {
   try {
@@ -18,19 +27,44 @@ export async function POST(request: Request) {
     }
 
     const { email, password } = parsed.data;
+    const normalizedEmail = email.toLowerCase();
+    const rateLimitKey = getClientRateLimitKey(request, normalizedEmail);
+
+    // 1. Check if user/IP is currently in cooldown period (SEC-11 Brute-Force & DoS defense)
+    const rateLimit = await checkAuthRateLimit(rateLimitKey);
+    if (rateLimit.isLocked) {
+      return NextResponse.json(
+        {
+          error: `Too many failed login attempts. Please wait ${rateLimit.remainingMinutes} minute${
+            rateLimit.remainingMinutes === 1 ? "" : "s"
+          } before trying again.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.remainingSeconds),
+          },
+        }
+      );
+    }
 
     const supabase = await createClient();
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password,
     });
 
     if (authError || !authData.user) {
+      await recordFailedAuthAttempt(rateLimitKey);
+
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }
       );
     }
+
+    // Clear failed attempt history upon successful authentication
+    await clearAuthRateLimit(rateLimitKey);
 
     // Fetch user profile from public.users via Drizzle
     const userRows = await withDbRetry((client) =>
@@ -114,7 +148,7 @@ export async function POST(request: Request) {
       redirectUrl,
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[POST /api/auth/login] Error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

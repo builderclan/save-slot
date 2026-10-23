@@ -22,15 +22,19 @@ export async function GET(request: Request) {
 
     if (!exchangeError) {
       const forwardedHost = request.headers.get("x-forwarded-host");
-      const isLocalEnv = process.env.NODE_ENV === "development";
+      const requestHost = new URL(request.url).host;
+      const trustedSiteHost = process.env.NEXT_PUBLIC_SITE_URL
+        ? new URL(process.env.NEXT_PUBLIC_SITE_URL).host
+        : null;
 
-      if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`);
-      } else if (forwardedHost) {
+      const isTrustedForwardedHost =
+        forwardedHost &&
+        (forwardedHost === requestHost || (trustedSiteHost && forwardedHost === trustedSiteHost));
+
+      if (isTrustedForwardedHost) {
         return NextResponse.redirect(`https://${forwardedHost}${next}`);
-      } else {
-        return NextResponse.redirect(`${origin}${next}`);
       }
+      return NextResponse.redirect(`${origin}${next}`);
     }
   }
 

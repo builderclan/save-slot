@@ -125,6 +125,34 @@ describe("Zod Validation Schemas", () => {
       }
     });
 
+    it("rejects javascript: and non-http(s) URLs in externalRegistrationUrl (SEC-03 Stored XSS defense)", () => {
+      const result = ProposeEventSchema.safeParse({
+        ...validProposal,
+        externalRegistrationUrl: "javascript:alert(document.cookie)",
+      });
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0]?.message).toContain("URL must start with http:// or https://");
+      }
+    });
+
+    it("rejects javascript: URLs in coverImageUrl", () => {
+      const result = ProposeEventSchema.safeParse({
+        ...validProposal,
+        coverImageUrl: "javascript:void(0)",
+      });
+      expect(result.success).toBe(false);
+    });
+
+    it("accepts valid https URLs for registration and cover image", () => {
+      const result = ProposeEventSchema.safeParse({
+        ...validProposal,
+        coverImageUrl: "https://example.com/poster.jpg",
+        externalRegistrationUrl: "https://forms.gle/event123",
+      });
+      expect(result.success).toBe(true);
+    });
+
     it("rejects empty targetAudience array", () => {
       const result = ProposeEventSchema.safeParse({
         ...validProposal,

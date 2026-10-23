@@ -3,7 +3,7 @@ import { safeRevalidatePath } from "@/lib/revalidate";
 import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
 import { events } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export async function DELETE(
   request: Request,
@@ -16,10 +16,20 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
+
     const deleted = await withDbRetry((client) =>
       client
         .delete(events)
-        .where(eq(events.id, id))
+        .where(
+          and(
+            eq(events.id, id),
+            eq(events.campusId, campusId)
+          )
+        )
         .returning({ id: events.id })
     );
 
@@ -33,7 +43,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to delete event";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[DELETE /api/admin/events/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to delete event" }, { status: 500 });
   }
 }

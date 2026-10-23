@@ -148,6 +148,7 @@ describe("DELETE /api/admin/events/[id]", () => {
     const res = await DELETE(req, { params: mockParams });
     expect(res.status).toBe(500);
     const data = await res.json();
-    expect(data.error).toBe("Database connection lost");
+    expect(data.error).toBe("Failed to delete event");
   });
 });
+
