@@ -5,3 +5,4 @@ export * from "./community-members";
 export * from "./users";
 export * from "./events";
 export * from "./relations";
+export * from "./auth-rate-limits";
