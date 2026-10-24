@@ -3,7 +3,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
 import { users, communityMembers, communities } from "@/db/schema";
 import { formatUser, formatAdminUser } from "@/db/adapters";
-import { getPrimaryCampusId } from "@/lib/campus";
 import { CreateUserSchema } from "@/lib/validations";
 import { eq, desc, sql } from "drizzle-orm";
 
@@ -12,6 +11,11 @@ export async function GET() {
     const session = await getCurrentUser();
     if (!session || !session.isAdmin) {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
+    }
+
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
     }
 
     const rows = await withDbRetry((client) => {
@@ -41,13 +45,14 @@ export async function GET() {
         })
         .from(users)
         .leftJoin(leadSubquery, eq(leadSubquery.userId, users.id))
+        .where(eq(users.campusId, campusId))
         .orderBy(desc(users.createdAt));
     });
 
     return NextResponse.json({ users: rows.map(formatAdminUser) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load users";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[GET /api/admin/users] Error:", err);
+    return NextResponse.json({ error: "Failed to load users" }, { status: 500 });
   }
 }
 
@@ -70,12 +75,9 @@ export async function POST(request: Request) {
     const { fullName, email, password, role, communityId } = parsed.data;
 
     const normalizedEmail = email.trim().toLowerCase();
-    const campusId = session.profile.campus_id || (await getPrimaryCampusId());
+    const campusId = session.profile.campus_id;
     if (!campusId) {
-      return NextResponse.json(
-        { error: "No active campus found in the system." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
     }
 
     // Check if user already exists
@@ -172,7 +174,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const message = err instanceof Error ? err.message : "Failed to create user";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[POST /api/admin/users] Error:", err);
+    return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
 }

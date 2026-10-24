@@ -7,7 +7,7 @@ export async function POST() {
     await supabase.auth.signOut();
     return NextResponse.json({ success: true, redirectUrl: "/" });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[POST /api/auth/logout] Error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

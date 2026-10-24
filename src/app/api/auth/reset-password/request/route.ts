@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       message: "If an account exists with this email, a password reset link has been sent.",
     });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Internal server error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[POST /api/auth/reset-password/request] Error:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

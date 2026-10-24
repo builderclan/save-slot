@@ -88,8 +88,8 @@ export async function GET() {
 
     return NextResponse.json({ events: rows.map(formatCampusEvent) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load lead events";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[GET /api/lead/events] Error:", err);
+    return NextResponse.json({ error: "Failed to load lead events" }, { status: 500 });
   }
 }
 
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, event: formatCampusEvent(inserted) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to submit event proposal";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[POST /api/lead/events] Error:", err);
+    return NextResponse.json({ error: "Failed to submit event proposal" }, { status: 500 });
   }
 }

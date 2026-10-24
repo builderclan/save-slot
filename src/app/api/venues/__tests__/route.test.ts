@@ -69,6 +69,6 @@ describe("GET /api/venues", () => {
     const res = await GET();
     expect(res.status).toBe(500);
     const data = await res.json();
-    expect(data.error).toBe("Connection refused");
+    expect(data.error).toBe("Failed to load venues");
   });
 });

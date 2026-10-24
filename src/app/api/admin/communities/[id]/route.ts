@@ -17,6 +17,9 @@ export async function GET(
     }
 
     const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
     const { id } = await params;
 
     const [community] = await withDbRetry(async (client) => {
@@ -56,7 +59,7 @@ export async function GET(
         .where(
           and(
             eq(communities.id, id),
-            campusId ? eq(communities.campusId, campusId) : undefined
+            eq(communities.campusId, campusId)
           )
         )
         .limit(1);
@@ -84,6 +87,9 @@ export async function PATCH(
     }
 
     const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
     const { id } = await params;
     const body = await request.json().catch(() => null);
     const parsed = UpdateCommunityFullSchema.safeParse(body);
@@ -103,7 +109,7 @@ export async function PATCH(
         .where(
           and(
             eq(communities.id, id),
-            campusId ? eq(communities.campusId, campusId) : undefined
+            eq(communities.campusId, campusId)
           )
         )
         .limit(1)
@@ -182,7 +188,12 @@ export async function PATCH(
           const [updated] = await tx
             .update(communities)
             .set(updateData)
-            .where(eq(communities.id, id))
+            .where(
+              and(
+                eq(communities.id, id),
+                eq(communities.campusId, campusId)
+              )
+            )
             .returning();
           comm = updated;
         }
@@ -308,6 +319,9 @@ export async function DELETE(
     }
 
     const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
     const { id } = await params;
 
     const result = await withDbRetry(async (client) => {
@@ -319,7 +333,7 @@ export async function DELETE(
           .where(
             and(
               eq(communities.id, id),
-              campusId ? eq(communities.campusId, campusId) : undefined
+              eq(communities.campusId, campusId)
             )
           )
           .for("update");
@@ -367,7 +381,12 @@ export async function DELETE(
         // 5. Delete community
         const deleted = await tx
           .delete(communities)
-          .where(eq(communities.id, id))
+          .where(
+            and(
+              eq(communities.id, id),
+              eq(communities.campusId, campusId)
+            )
+          )
           .returning({ id: communities.id });
 
         if (deleted.length === 0) {
