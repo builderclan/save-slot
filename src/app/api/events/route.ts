@@ -108,7 +108,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ events: formattedEvents }, { headers });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to fetch events";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[GET /api/events] Error:", err);
+    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
   }
 }

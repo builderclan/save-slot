@@ -184,7 +184,7 @@ describe("Lead Events API - GET /api/lead/events", () => {
     const res = await GET();
     expect(res.status).toBe(500);
     const data = await res.json();
-    expect(data.error).toBe("Database connection lost");
+    expect(data.error).toBe("Failed to load lead events");
   });
 });
 

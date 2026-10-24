@@ -118,8 +118,8 @@ export async function PUT(
 
     return NextResponse.json({ success: true, event: formatCampusEvent(updated) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to update event proposal";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[PUT /api/lead/events/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to update event proposal" }, { status: 500 });
   }
 }
 
@@ -191,7 +191,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to withdraw event proposal";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[DELETE /api/lead/events/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to withdraw event proposal" }, { status: 500 });
   }
 }
