@@ -13,6 +13,54 @@ if (typeof process.loadEnvFile === "function") {
 }
 
 async function seedDatabase() {
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {
+    throw new Error(
+      "SAFETY VIOLATION: scripts/seed.js cannot be executed in production environments (NODE_ENV=production or VERCEL=1)."
+    );
+  }
+
+  // Fail-closed verification: only explicitly approved local targets and non-production DB names are permitted without an override
+  let targetHost = process.env.DB_HOST || "";
+  let targetDatabase = process.env.DB_NAME || "";
+
+  if (process.env.DATABASE_URL) {
+    try {
+      const dummyClient = new Client({ connectionString: process.env.DATABASE_URL });
+      targetHost = dummyClient.connectionParameters.host || "";
+      targetDatabase = dummyClient.connectionParameters.database || "";
+    } catch {
+      targetHost = "";
+      targetDatabase = "";
+    }
+  }
+
+  const isLocalHost =
+    targetHost === "localhost" ||
+    targetHost === "127.0.0.1" ||
+    targetHost === "::1" ||
+    targetHost === "db" ||
+    targetHost === "postgres";
+
+  const prodLabelRegex = /(^|[_\W])(prod|production|live)($|[_\W])/i;
+  const isProductionNamedDb =
+    prodLabelRegex.test(targetDatabase) ||
+    prodLabelRegex.test(targetHost);
+
+  if (isProductionNamedDb) {
+    throw new Error(
+      `SAFETY VIOLATION: scripts/seed.js detected production database target (host: '${targetHost}', db: '${targetDatabase}'). ` +
+      `Seeding creates fixed demo passwords and can NEVER run against production databases.`
+    );
+  }
+
+  if (!isLocalHost && process.env.ALLOW_REMOTE_SEED !== "true") {
+    throw new Error(
+      `SAFETY VIOLATION: scripts/seed.js detected non-local database host '${targetHost}'. ` +
+      `Seeding creates fixed demo passwords and must not run against remote or production databases. ` +
+      `If you explicitly intend to seed a non-production remote staging database, set ALLOW_REMOTE_SEED=true.`
+    );
+  }
+
   const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
 
   let client;
@@ -46,6 +94,30 @@ async function seedDatabase() {
 
   await client.connect();
   console.log("Connected to PostgreSQL for Phase 1 Seeding...\n");
+
+  // Database-side pre-write safety check: verify target does not contain live non-demo accounts
+  try {
+    const tableCheck = await client.query(
+      "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users' LIMIT 1;"
+    );
+    if (tableCheck.rows.length > 0) {
+      const userCountRes = await client.query(
+        "SELECT COUNT(*)::int as count FROM users WHERE email NOT LIKE '%@aisat.edu' AND email NOT LIKE '%@demo.save-slot.internal';"
+      );
+      const nonDemoUserCount = userCountRes.rows[0]?.count || 0;
+      if (nonDemoUserCount > 0 && process.env.ALLOW_POPULATED_DB_SEED !== "true") {
+        throw new Error(
+          `SAFETY VIOLATION: Target database contains ${nonDemoUserCount} live/non-demo user account(s). ` +
+          `scripts/seed.js resets user credentials to fixed demo passwords and cannot execute against populated production databases (even via forwarded local ports). ` +
+          `If this is intentional in a local dev testbed, set ALLOW_POPULATED_DB_SEED=true.`
+        );
+      }
+    }
+  } catch (err) {
+    if (err && typeof err === "object" && "message" in err && String(err.message).startsWith("SAFETY VIOLATION:")) {
+      throw err;
+    }
+  }
 
   // 1. Campus: Albertian Institute of Science & Technology (AISAT)
   let campusId;
