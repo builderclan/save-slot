@@ -5,13 +5,10 @@ import {
   recordFailedAuthAttempt,
   clearAuthRateLimit,
   clearRateLimitMemoryCacheForTesting,
-  MAX_FAILED_ATTEMPTS,
-  COOLDOWN_DURATION_MS,
 } from "../rate-limit";
 
 const {
   mockSelect,
-  mockSelectWhere,
   mockSelectLimit,
   mockInsert,
   mockInsertValues,

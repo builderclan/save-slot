@@ -83,10 +83,9 @@ vi.mock("@/lib/db", () => {
 });
 
 import { getCurrentUser, type AuthSession } from "@/lib/auth";
-import { getPrimaryCampusId, resetCampusCache } from "@/lib/campus";
+import { resetCampusCache } from "@/lib/campus";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
-const mockGetPrimaryCampusId = vi.mocked(getPrimaryCampusId);
 
 describe("Admin Communities API (/api/admin/communities)", () => {
   const adminSession: AuthSession = {
