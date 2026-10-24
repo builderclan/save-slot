@@ -16,6 +16,10 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
     const { id } = await params;
 
     const [userRow] = await withDbRetry((client) => {
@@ -45,7 +49,7 @@ export async function GET(
         })
         .from(users)
         .leftJoin(leadSubquery, eq(leadSubquery.userId, users.id))
-        .where(eq(users.id, id))
+        .where(and(eq(users.id, id), eq(users.campusId, campusId)))
         .limit(1);
     });
 
@@ -55,8 +59,8 @@ export async function GET(
 
     return NextResponse.json({ user: formatAdminUser(userRow) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load user";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[GET /api/admin/users/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to load user" }, { status: 500 });
   }
 }
 
@@ -70,6 +74,10 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
     const { id } = await params;
     const body = await request.json().catch(() => null);
     const parsed = UpdateUserSchema.safeParse(body);
@@ -88,7 +96,7 @@ export async function PATCH(
       client
         .select({ id: users.id, role: users.role, email: users.email })
         .from(users)
-        .where(eq(users.id, id))
+        .where(and(eq(users.id, id), eq(users.campusId, campusId)))
         .limit(1)
     );
 
@@ -111,7 +119,7 @@ export async function PATCH(
           await tx
             .update(users)
             .set(userUpdates)
-            .where(eq(users.id, id));
+            .where(and(eq(users.id, id), eq(users.campusId, campusId)));
 
           // Update auth.users metadata if applicable
           const metaUpdates: Record<string, string> = {};
@@ -181,8 +189,8 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, id });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to update user";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[PATCH /api/admin/users/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
 
@@ -196,6 +204,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
     const { id } = await params;
 
     // Safety guard: Cannot delete self
@@ -210,7 +222,7 @@ export async function DELETE(
       client
         .select({ id: users.id, email: users.email })
         .from(users)
-        .where(eq(users.id, id))
+        .where(and(eq(users.id, id), eq(users.campusId, campusId)))
         .limit(1)
     );
 
@@ -223,7 +235,7 @@ export async function DELETE(
         // 1. Remove community memberships
         await tx.delete(communityMembers).where(eq(communityMembers.userId, id));
         // 2. Remove public.users profile
-        await tx.delete(users).where(eq(users.id, id));
+        await tx.delete(users).where(and(eq(users.id, id), eq(users.campusId, campusId)));
         // 3. Remove auth.identities & auth.users
         await tx.execute(sql`DELETE FROM auth.identities WHERE user_id = ${id}::uuid`);
         await tx.execute(sql`DELETE FROM auth.users WHERE id = ${id}::uuid`);
@@ -232,7 +244,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to delete user";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[DELETE /api/admin/users/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
   }
 }
