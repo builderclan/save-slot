@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.3.0] - 2026-10-24
 
-### Security
+### Security & Hardening
 
 - **Database RPC Caller Identity Verification (SEC-01)**:
   - Migration `011_harden_rpc_and_community_members_rls.sql` drops client-supplied `p_admin_id` in `approve_community()` and `reject_community()`, strictly enforcing server-side `auth.uid()` checks and revoking execute permissions from the `anon` role.
@@ -17,18 +17,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Hardened `community_members_insert` RLS policy to strictly require `role = 'member'`, preventing authenticated users from self-elevating into `lead` or `admin` roles.
 - **Stored XSS Protocol Whitelisting (SEC-03)**:
   - Enforced `SafeUrlSchema` on `coverImageUrl` and `externalRegistrationUrl`, rejecting non-HTTP protocols (`javascript:`, `data:`, `vbscript:`) at the Zod validation layer.
-- **Vercel-Ready Distributed Auth Rate Limiting & Cooldown (SEC-11)**:
-  - Added migration `012_add_auth_rate_limits.sql` and `src/lib/rate-limit.ts` providing atomic PostgreSQL upserts (`auth_rate_limits`) and L1 memory caching across ephemeral Vercel serverless function instances (3 failed attempts -> 5-minute sliding cooldown with `HTTP 429` and `Retry-After`).
-- **Strict Multi-Tenant Campus Isolation (SEC-07)**:
-  - Enforced mandatory `campus_id` verification across `admin/events/[id]`, `admin/events/[id]/status`, and `admin/venues/[id]`, returning `403 Forbidden` if `campus_id` is absent and scoping all queries to the administrator's campus.
+- **Next.js & Engine Dependency Hardening (SEC-04)**:
+  - Upgraded Next.js and `eslint-config-next` to `16.4.3` to eliminate Image Optimization remote execution / SSRF vulnerabilities (GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr, GHSA-cjq9-62q9-8jv4, GHSA-h694-7cp9-m8p3, GHSA-39w2-rjm5-chcv).
+  - Updated Vitest test runner to `5.0.5`.
+- **Production Seed Guard & Demo Account Gating (SEC-05)**:
+  - Added strict environment safeguard in `scripts/seed.js` forbidding execution when `NODE_ENV === "production"` or `process.env.VERCEL === "1"`.
+  - Configured `NEXT_PUBLIC_ENABLE_DEMO_LOGINS=false` in production environment configuration.
 - **Host Poisoning & Open Redirect Defense (SEC-06)**:
   - Hardened `auth/callback/route.ts` against spoofed `X-Forwarded-Host` headers and enforced relative internal paths (`/` and not `//`).
+- **Strict Multi-Tenant Campus Isolation & IDOR Prevention (SEC-07)**:
+  - Enforced mandatory `campus_id` verification and boundary enforcement across all administrative endpoints:
+    - `api/admin/events/[id]` & `api/admin/events/[id]/status`
+    - `api/admin/venues` & `api/admin/venues/[id]`
+    - `api/admin/communities` & `api/admin/communities/[id]`
+    - `api/admin/users` & `api/admin/users/[id]`
+  - Endpoints reject requests lacking an active campus association with `403 Forbidden` and restrict all queries, updates, and deletions to the administrator's designated campus.
 - **Public Data Leakage Protection (SEC-08)**:
   - Restricted public `/api/communities` queries to `status = 'approved'` only.
+- **API Error Message Sanitization & Info Leak Defense (SEC-09)**:
+  - Sanitized 500 internal server error responses across all administrative and public API handlers (`/api/admin/*`, `/api/venues`, `/api/events`, `/api/lead/*`, `/api/conflicts/*`, `/api/auth/*`), returning uniform client messages while retaining detailed logs on the server.
 - **Defensive HTTP Headers (SEC-10)**:
   - Added `Strict-Transport-Security` (`max-age=31536000; includeSubDomains; preload`) and `X-XSS-Protection` headers in `next.config.ts`.
-- **API Error Message Sanitization (SEC-09)**:
-  - Sanitized 500 error responses across all modified API route handlers to prevent database exception and stack trace leakage.
+- **Vercel-Ready Distributed Auth Rate Limiting & Cooldown (SEC-11)**:
+  - Added migration `012_add_auth_rate_limits.sql` and `src/lib/rate-limit.ts` providing atomic PostgreSQL upserts (`auth_rate_limits`) and L1 memory caching across ephemeral Vercel serverless function instances (3 failed attempts -> 5-minute sliding cooldown with `HTTP 429` and `Retry-After`).
 
 ---
 
