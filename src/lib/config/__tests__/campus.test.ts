@@ -35,6 +35,8 @@ describe("campusConfig", () => {
     delete process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN;
     delete process.env.CAMPUS_EMAIL_DOMAIN;
     delete process.env.NEXT_PUBLIC_SITE_URL;
+    delete process.env.NEXT_PUBLIC_APP_URL;
+    delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
 
     const { campusConfig } = await import("../campus");
 
@@ -82,6 +84,17 @@ describe("campusConfig", () => {
 
     await expect(import("../campus")).rejects.toThrow(
       /Missing required environment variable: NEXT_PUBLIC_CAMPUS_NAME/
+    );
+  });
+
+  it("throws an error when slug cannot be derived from a non-ASCII name in non-test environments", async () => {
+    process.env.NEXT_PUBLIC_CAMPUS_NAME = "東京大学";
+    delete process.env.NEXT_PUBLIC_CAMPUS_SHORT_NAME;
+    delete process.env.NEXT_PUBLIC_CAMPUS_SLUG;
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+
+    await expect(import("../campus")).rejects.toThrow(
+      /Unable to automatically derive a URL slug/
     );
   });
 });

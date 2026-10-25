@@ -72,10 +72,21 @@ const rawShortName =
     ? extractAcronym(rawName)
     : "CAMPUS");
 
-const rawSlug =
-  process.env.NEXT_PUBLIC_CAMPUS_SLUG ||
-  slugify(rawShortName || rawName) ||
-  "campus";
+const derivedSlug = slugify(rawShortName || rawName);
+
+if (
+  process.env.NEXT_PUBLIC_CAMPUS_NAME &&
+  !process.env.NEXT_PUBLIC_CAMPUS_SLUG &&
+  !derivedSlug &&
+  process.env.NODE_ENV !== "test"
+) {
+  throw new Error(
+    `[SaveSlot Config] Unable to automatically derive a URL slug from institutional name "${rawName}". ` +
+      "Please provide an explicit NEXT_PUBLIC_CAMPUS_SLUG in your environment or .env file."
+  );
+}
+
+const rawSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || derivedSlug || "campus";
 
 const rawDomain =
   process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||
