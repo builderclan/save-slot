@@ -11,14 +11,19 @@ export default async function PrincipalDeskPage() {
   const session = await getCurrentUser();
   if (!session || (!session.isPrincipal && !session.isVicePrincipal)) {
     redirect("/login?error=principal_required");
+    return null;
+  }
+
+  const campusId = session.profile?.campus_id;
+  if (!campusId) {
+    return <PrincipalClientDesk initialEvents={[]} user={session} />;
   }
 
   let initialEvents: CampusEvent[] = [];
   try {
-    const campusId = session.profile?.campus_id;
     const rows = await withDbRetry((client) =>
       client.query.events.findMany({
-        where: campusId ? eq(events.campusId, campusId) : undefined,
+        where: eq(events.campusId, campusId),
         orderBy: [desc(events.startTime)],
         with: {
           community: {

@@ -27,6 +27,13 @@ let mockCurrentUser: {
   isAdmin: boolean;
   isPrincipal: boolean;
   isVicePrincipal: boolean;
+  profile?: {
+    id: string;
+    email: string;
+    full_name: string;
+    role: string;
+    campus_id?: string;
+  };
 } | null = null;
 
 vi.mock("@/lib/auth", () => ({
@@ -108,6 +115,13 @@ describe("Principal Desk (RSC & Client Desk)", () => {
       isAdmin: false,
       isPrincipal: true,
       isVicePrincipal: false,
+      profile: {
+        id: "principal-1",
+        email: "principal@campus.edu",
+        full_name: "Dr. Mathew",
+        role: "principal",
+        campus_id: "campus-1",
+      },
     };
   });
 
@@ -132,6 +146,28 @@ describe("Principal Desk (RSC & Client Desk)", () => {
       expect(mockRedirect).toHaveBeenCalledWith("/login?error=principal_required");
     });
 
+    it("renders PrincipalClientDesk with empty events when principal has no campus association", async () => {
+      mockCurrentUser = {
+        id: "principal-1",
+        email: "principal@campus.edu",
+        fullName: "Dr. Mathew",
+        role: "principal",
+        isAdmin: false,
+        isPrincipal: true,
+        isVicePrincipal: false,
+        profile: {
+          id: "principal-1",
+          email: "principal@campus.edu",
+          full_name: "Dr. Mathew",
+          role: "principal",
+        },
+      };
+      const pageJsx = await PrincipalDeskPage();
+      const html = renderToString(pageJsx);
+      expect(html).toContain("data-user=\"Dr. Mathew\"");
+      expect(html).toContain("data-tab=\"inbox\"");
+    });
+
     it("renders PrincipalClientDesk when authorized as Principal", async () => {
       const pageJsx = await PrincipalDeskPage();
       const html = renderToString(pageJsx);
@@ -148,6 +184,13 @@ describe("Principal Desk (RSC & Client Desk)", () => {
         isAdmin: false,
         isPrincipal: false,
         isVicePrincipal: true,
+        profile: {
+          id: "vp-1",
+          email: "vp@campus.edu",
+          full_name: "Prof. Sarah",
+          role: "vice_principal",
+          campus_id: "campus-1",
+        },
       };
       const pageJsx = await PrincipalDeskPage();
       const html = renderToString(pageJsx);
