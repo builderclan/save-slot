@@ -78,8 +78,10 @@ describe("campusConfig", () => {
     expect(campusConfig.siteUrl).toBe("https://apex.edu/events");
   });
 
-  it("throws a descriptive error when NEXT_PUBLIC_CAMPUS_NAME is missing in non-test environments", async () => {
+  it("throws a descriptive error when NEXT_PUBLIC_CAMPUS_NAME is missing in standalone production environments", async () => {
     delete process.env.NEXT_PUBLIC_CAMPUS_NAME;
+    delete process.env.CI;
+    delete process.env.VERCEL;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
     await expect(import("../campus")).rejects.toThrow(
@@ -87,10 +89,22 @@ describe("campusConfig", () => {
     );
   });
 
-  it("throws an error when slug cannot be derived from a non-ASCII name in non-test environments", async () => {
+  it("gracefully falls back to default values in CI or Vercel preview environments when campus name is unset", async () => {
+    delete process.env.NEXT_PUBLIC_CAMPUS_NAME;
+    process.env.CI = "true";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+
+    const { campusConfig } = await import("../campus");
+    expect(campusConfig.name).toBe("Campus");
+    expect(campusConfig.slug).toBe("campus");
+  });
+
+  it("throws an error when slug cannot be derived from a non-ASCII name in standalone production environments", async () => {
     process.env.NEXT_PUBLIC_CAMPUS_NAME = "東京大学";
     delete process.env.NEXT_PUBLIC_CAMPUS_SHORT_NAME;
     delete process.env.NEXT_PUBLIC_CAMPUS_SLUG;
+    delete process.env.CI;
+    delete process.env.VERCEL;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
     await expect(import("../campus")).rejects.toThrow(
