@@ -6,6 +6,7 @@ import { events, venues } from "@/db/schema";
 import { eq, and, ne } from "drizzle-orm";
 import { formatCampusEvent } from "@/db/adapters";
 import { ProposeEventSchema } from "@/lib/validations";
+import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 export async function PUT(
   request: Request,
@@ -82,6 +83,26 @@ export async function PUT(
 
     if (!venue) {
       return NextResponse.json({ error: "Selected venue not found." }, { status: 404 });
+    }
+
+    // Server-side venue collision guard (excluding the current event)
+    const conflictCheck = await checkEventConflicts({
+      venueId,
+      startTime,
+      endTime,
+      category,
+      targetAudience: targetAudience || ["All Students"],
+      excludeEventId: id,
+    });
+
+    if (conflictCheck.hasVenueConflict) {
+      return NextResponse.json(
+        {
+          error: "Conflict: This venue is already booked for the selected time slot.",
+          conflict: conflictCheck,
+        },
+        { status: 409 }
+      );
     }
 
     // Resubmitting a rejected event resets status to 'pending' and clears rejection_reason

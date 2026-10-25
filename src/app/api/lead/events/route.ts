@@ -6,6 +6,7 @@ import { events, venues, communityMembers } from "@/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { formatCampusEvent } from "@/db/adapters";
 import { ProposeEventSchema } from "@/lib/validations";
+import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 function slugify(text: string): string {
   return text
@@ -155,6 +156,25 @@ export async function POST(request: Request) {
 
     if (!venue) {
       return NextResponse.json({ error: "Selected venue not found." }, { status: 404 });
+    }
+
+    // Server-side venue collision guard
+    const conflictCheck = await checkEventConflicts({
+      venueId,
+      startTime,
+      endTime,
+      category,
+      targetAudience: targetAudience || ["All Students"],
+    });
+
+    if (conflictCheck.hasVenueConflict) {
+      return NextResponse.json(
+        {
+          error: "Conflict: This venue is already booked for the selected time slot.",
+          conflict: conflictCheck,
+        },
+        { status: 409 }
+      );
     }
 
     // Generate unique slug
