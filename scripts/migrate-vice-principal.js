@@ -36,8 +36,10 @@ async function migrateAndSeedVicePrincipal() {
     `);
     console.log("✓ users_role_check updated to include 'vice_principal'");
 
-    // 2. Fetch primary campus ID
-    const campusRes = await client.query("SELECT id FROM public.campuses LIMIT 1;");
+    // 2. Fetch primary campus ID (prefer AISAT if present, otherwise fallback to first available)
+    const campusRes = await client.query(
+      "SELECT id FROM public.campuses ORDER BY CASE WHEN slug = 'aisat' THEN 0 ELSE 1 END LIMIT 1;"
+    );
     const campusId = campusRes.rows[0]?.id;
 
     // 3. Create or update Vice Principal user in auth.users & public.users

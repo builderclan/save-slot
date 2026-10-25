@@ -101,6 +101,7 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
   // Rejection modal state
   const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
   const [rejectionNote, setRejectionNote] = useState("");
+  const [rejectionError, setRejectionError] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
 
   // Banner notification
@@ -272,6 +273,7 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
   const handleOpenReject = (ev: CampusEvent) => {
     setRejectingEvent(ev);
     setRejectionNote(DEFAULT_REJECTION_PRESETS[0]);
+    setRejectionError(null);
   };
 
   const handleConfirmReject = async (e: React.FormEvent) => {
@@ -280,6 +282,7 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
 
     const eventId = rejectingEvent.id;
     setActionInProgress(eventId);
+    setRejectionError(null);
     try {
       await adminApi.updateEventStatus(eventId, {
         status: "rejected",
@@ -309,9 +312,11 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
       setTimeout(() => setBannerNotice(null), 5000);
       setRejectingEvent(null);
       setRejectionNote("");
+      setRejectionError(null);
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to decline event. Please try again.";
+      setRejectionError(msg);
       setBannerNotice({
         message: msg,
         type: "error",
@@ -407,8 +412,12 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
         rejectionNote={rejectionNote}
         onRejectionNoteChange={setRejectionNote}
         onConfirm={handleConfirmReject}
-        onClose={() => setRejectingEvent(null)}
+        onClose={() => {
+          setRejectingEvent(null);
+          setRejectionError(null);
+        }}
         isSubmitting={actionInProgress === rejectingEvent?.id}
+        errorMessage={rejectionError}
       />
     </div>
   );

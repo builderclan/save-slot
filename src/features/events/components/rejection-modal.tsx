@@ -2,6 +2,7 @@
 
 import { type FormEvent } from "react";
 import { Modal } from "@/components/ui/modal";
+import { AlertCircle } from "lucide-react";
 import type { CampusEvent } from "@/types/database";
 
 export const DEFAULT_REJECTION_PRESETS = [
@@ -20,6 +21,7 @@ export interface RejectionModalProps {
   onSubmit: (e: FormEvent) => void;
   onClose: () => void;
   isSubmitting: boolean;
+  errorMessage?: string | null;
   title?: string;
   description?: string;
   presets?: string[];
@@ -34,6 +36,7 @@ export function RejectionModal({
   onSubmit,
   onClose,
   isSubmitting,
+  errorMessage,
   title = "Reject Event Proposal",
   description,
   presets = DEFAULT_REJECTION_PRESETS,
@@ -66,6 +69,16 @@ export function RejectionModal({
       maxWidth="md"
     >
       <form onSubmit={onSubmit} className="space-y-4">
+        {errorMessage && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-800 text-xs flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <span className="font-semibold block">Action failed</span>
+              <span className="text-rose-700">{errorMessage}</span>
+            </div>
+          </div>
+        )}
+
         {presets.length > 0 && (
           <div>
             <label className="block text-xs font-semibold text-zinc-700 mb-1.5">

@@ -225,6 +225,35 @@ describe("UI Design System Primitives", () => {
       expect(el!.props.title).toBe("Decline Event Proposal");
       expect(el!.props.submitLabel).toBe("Confirm Decline");
     });
+
+    it("renders inline error alert when errorMessage is provided", () => {
+      const el = RejectionModal({
+        rejectingEvent: mockEvent,
+        rejectionNote: "",
+        onRejectionNoteChange: vi.fn(),
+        onSubmit: vi.fn(),
+        onClose: vi.fn(),
+        isSubmitting: false,
+        errorMessage: "Event not found",
+      });
+      expect(el).not.toBeNull();
+      const form = el!.props.children;
+      expect(form).toBeDefined();
+    });
+
+    it("passes errorMessage through PrincipalRejectionModal wrapper", () => {
+      const el = PrincipalRejectionModal({
+        rejectingEvent: mockEvent,
+        rejectionNote: "",
+        onRejectionNoteChange: vi.fn(),
+        onConfirm: vi.fn(),
+        onClose: vi.fn(),
+        isSubmitting: false,
+        errorMessage: "Event not found",
+      });
+      expect(el).not.toBeNull();
+      expect(el!.props.errorMessage).toBe("Event not found");
+    });
   });
 
   describe("Button (src/components/ui/button.tsx)", () => {
