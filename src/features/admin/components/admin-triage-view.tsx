@@ -150,6 +150,13 @@ export function AdminTriageView({
     return list;
   }, [communities, pendingEvents]);
 
+  // Reset filter to "all" if selected club no longer has pending events
+  useEffect(() => {
+    if (!communityOptions.some((o) => o.value === selectedCommunity)) {
+      setSelectedCommunity("all");
+    }
+  }, [communityOptions, selectedCommunity]);
+
   if (pendingEvents.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 bg-zinc-50/50">

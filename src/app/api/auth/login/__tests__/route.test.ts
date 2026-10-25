@@ -318,7 +318,7 @@ describe("POST /api/auth/login", () => {
     expect(res4.status).toBe(429);
     const data4 = await res4.json();
     expect(data4.error).toContain("Too many failed login attempts");
-    expect(res4.headers.get("Retry-After")).toBeDefined();
+    expect(res4.headers.get("Retry-After")).toBe("300");
   });
 
   it("clears failed attempt counter on successful login", async () => {

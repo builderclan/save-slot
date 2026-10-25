@@ -56,15 +56,18 @@ export function extractAcronym(text: string): string {
   return initials.slice(0, 8);
 }
 
-// Strict environment validation: require NEXT_PUBLIC_CAMPUS_NAME in standalone non-test runtimes,
+// Strict environment validation: require NEXT_PUBLIC_CAMPUS_NAME in standalone server non-test runtimes,
 // while allowing graceful generic fallback in CI and preview builds (e.g. VERCEL preview without configured envs).
+// Module evaluation on the client must never throw fatally to avoid crashing client hydration.
+const isServer = typeof window === "undefined";
+
 const isCIOrPreview =
   process.env.CI === "true" ||
   process.env.CI === "1" ||
-  process.env.VERCEL === "1" ||
+  process.env.VERCEL_ENV === "preview" ||
   process.env.NODE_ENV === "test";
 
-if (!process.env.NEXT_PUBLIC_CAMPUS_NAME?.trim() && !isCIOrPreview) {
+if (isServer && !process.env.NEXT_PUBLIC_CAMPUS_NAME?.trim() && !isCIOrPreview) {
   throw new Error(
     "[SaveSlot Config] Missing required environment variable: NEXT_PUBLIC_CAMPUS_NAME. " +
       "Every deployment instance must define NEXT_PUBLIC_CAMPUS_NAME in its environment or .env file."
@@ -82,6 +85,7 @@ const rawShortName =
 const derivedSlug = slugify(rawShortName || rawName);
 
 if (
+  isServer &&
   process.env.NEXT_PUBLIC_CAMPUS_NAME &&
   !process.env.NEXT_PUBLIC_CAMPUS_SLUG &&
   !derivedSlug &&
@@ -97,15 +101,12 @@ const rawSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || derivedSlug || "campus";
 
 const rawDomain =
   process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||
-  process.env.CAMPUS_EMAIL_DOMAIN ||
   "campus.edu";
 
 const rawSiteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   process.env.NEXT_PUBLIC_APP_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000");
+  "http://localhost:3000";
 
 export const campusConfig: CampusConfig = {
   name: rawName,

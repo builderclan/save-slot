@@ -31,7 +31,21 @@ export async function getPrimaryCampusId(): Promise<string> {
       return cachedPrimaryCampusId;
     }
 
-    // 2. Not found: self-seed the configured canonical campus
+    // 2. Adopt earliest campus if present (prevents creating duplicate campuses on slug changes)
+    const existing = await withDbRetry((client) =>
+      client
+        .select({ id: campuses.id })
+        .from(campuses)
+        .orderBy(campuses.createdAt)
+        .limit(1)
+    );
+
+    if (existing && existing.length > 0) {
+      cachedPrimaryCampusId = existing[0].id;
+      return cachedPrimaryCampusId;
+    }
+
+    // 3. Fresh database: self-seed the configured canonical campus
     const seedRes = await withDbRetry((client) =>
       client
         .insert(campuses)

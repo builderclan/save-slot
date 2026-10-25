@@ -109,6 +109,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 3. Revoke public/anon execution on administrative moderation functions
+REVOKE EXECUTE ON FUNCTION approve_community(UUID, UUID) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION reject_community(UUID, UUID, TEXT) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION approve_community(UUID, UUID) FROM anon;
 REVOKE EXECUTE ON FUNCTION reject_community(UUID, UUID, TEXT) FROM anon;
 GRANT EXECUTE ON FUNCTION approve_community(UUID, UUID) TO authenticated, service_role;

@@ -1,5 +1,37 @@
 const { Client } = require("pg");
 
+function slugify(text) {
+  return String(text || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function extractAcronym(text) {
+  const clean = String(text || "").trim();
+  if (!clean) return "CAMPUS";
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length === 1) {
+    return words[0].slice(0, 6).toUpperCase();
+  }
+  const stopWords = new Set(["of", "in", "at", "the", "for"]);
+  const meaningfulWords = words.filter((w) => !stopWords.has(w.toLowerCase()));
+  const initials = (meaningfulWords.length > 0 ? meaningfulWords : words)
+    .map((w) => (w === "&" ? "" : w[0].toUpperCase()))
+    .join("");
+  return initials.slice(0, 8);
+}
+
+function deriveCampusSlug(name, shortName, explicitSlug) {
+  if (explicitSlug && explicitSlug.trim()) {
+    return explicitSlug.trim();
+  }
+  const rawShortName = shortName || (name ? extractAcronym(name) : "CAMPUS");
+  return slugify(rawShortName || name) || "campus";
+}
+
 async function migrateAndSeedPrincipal() {
   const password = process.env.DB_PASSWORD || process.env.DB_password;
   const host = process.env.DB_HOST;
@@ -37,7 +69,12 @@ async function migrateAndSeedPrincipal() {
     console.log("✓ users_role_check updated to include 'principal'");
 
     // 2. Fetch primary campus ID for this single-instance deployment
-    const targetSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || "campus";
+    const campusName = process.env.NEXT_PUBLIC_CAMPUS_NAME || "Campus";
+    const targetSlug = deriveCampusSlug(
+      campusName,
+      process.env.NEXT_PUBLIC_CAMPUS_SHORT_NAME,
+      process.env.NEXT_PUBLIC_CAMPUS_SLUG
+    );
     const campusRes = await client.query(
       "SELECT id FROM public.campuses ORDER BY CASE WHEN slug = $1 THEN 0 ELSE 1 END, created_at ASC LIMIT 1;",
       [targetSlug]
@@ -45,7 +82,6 @@ async function migrateAndSeedPrincipal() {
     let campusId = campusRes.rows[0]?.id;
 
     if (!campusId) {
-      const campusName = process.env.NEXT_PUBLIC_CAMPUS_NAME || "Campus";
       const campusTimezone = process.env.NEXT_PUBLIC_CAMPUS_TIMEZONE || "Asia/Kolkata";
       const campusDomain =
         process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||

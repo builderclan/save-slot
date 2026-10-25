@@ -156,7 +156,7 @@ describe("Lead Events API - GET /api/lead/events", () => {
     expect(mockFindMany).toHaveBeenCalledTimes(1);
   });
 
-  it("bypasses community filter for admin users", async () => {
+  it("rejects admin users without campus association with 403", async () => {
     mockGetCurrentUser.mockResolvedValueOnce({
       userId: "u-admin",
       isLead: false,
@@ -165,15 +165,11 @@ describe("Lead Events API - GET /api/lead/events", () => {
       leadCommunities: [],
     } as unknown as AuthSession);
 
-    mockFindMany.mockResolvedValueOnce([]);
-
     const res = await GET();
-    expect(res.status).toBe(200);
-    expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: undefined,
-      })
-    );
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe("Campus association required");
+    expect(mockFindMany).not.toHaveBeenCalled();
   });
 
   it("scopes events to campusId for admin users associated with a campus", async () => {

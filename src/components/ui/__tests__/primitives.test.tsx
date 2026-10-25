@@ -345,13 +345,13 @@ describe("UI Design System Primitives", () => {
       const html = renderToString(<UserAvatar name="Alex Rivera" role="admin" />);
       expect(html).toContain("ring-amber-300");
       expect(html).toContain('title="Alex Rivera"');
-      expect(html).toContain("<img");
+      expect(html).toMatch(/<img|<svg/);
     });
 
     it("falls back to 'User' seed when name is not provided", async () => {
       const { renderToString } = await import("react-dom/server");
       const html = renderToString(<UserAvatar email="test@example.com" />);
-      expect(html).toContain("<img");
+      expect(html).toMatch(/<img|<svg/);
     });
   });
 

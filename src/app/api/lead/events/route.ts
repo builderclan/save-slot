@@ -31,12 +31,14 @@ export async function GET() {
     }
 
     const campusId = session.profile?.campus_id;
+    if ((session.isAdmin || session.isPrincipal) && !campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
+
     const whereClause =
-      (session.isAdmin || session.isPrincipal) && campusId
-        ? eq(events.campusId, campusId)
-        : !session.isAdmin && !session.isPrincipal
-          ? inArray(events.communityId, communityIds)
-          : undefined;
+      session.isAdmin || session.isPrincipal
+        ? eq(events.campusId, campusId!)
+        : inArray(events.communityId, communityIds);
 
     const rows = await withDbRetry((client) =>
       client.query.events.findMany({
