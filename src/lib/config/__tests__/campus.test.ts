@@ -82,6 +82,7 @@ describe("campusConfig", () => {
     delete process.env.NEXT_PUBLIC_CAMPUS_NAME;
     delete process.env.CI;
     delete process.env.VERCEL;
+    delete process.env.VERCEL_ENV;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
     await expect(import("../campus")).rejects.toThrow(
@@ -99,12 +100,24 @@ describe("campusConfig", () => {
     expect(campusConfig.slug).toBe("campus");
   });
 
+  it("gracefully falls back to default values when VERCEL_ENV is preview", async () => {
+    delete process.env.NEXT_PUBLIC_CAMPUS_NAME;
+    delete process.env.CI;
+    process.env.VERCEL_ENV = "preview";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+
+    const { campusConfig } = await import("../campus");
+    expect(campusConfig.name).toBe("Campus");
+    expect(campusConfig.slug).toBe("campus");
+  });
+
   it("throws an error when slug cannot be derived from a non-ASCII name in standalone production environments", async () => {
     process.env.NEXT_PUBLIC_CAMPUS_NAME = "東京大学";
     delete process.env.NEXT_PUBLIC_CAMPUS_SHORT_NAME;
     delete process.env.NEXT_PUBLIC_CAMPUS_SLUG;
     delete process.env.CI;
     delete process.env.VERCEL;
+    delete process.env.VERCEL_ENV;
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
 
     await expect(import("../campus")).rejects.toThrow(

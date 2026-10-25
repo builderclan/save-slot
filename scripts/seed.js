@@ -12,6 +12,39 @@ if (typeof process.loadEnvFile === "function") {
   } catch {}
 }
 
+// Helper utilities aligning with src/lib/config/campus.ts
+function slugify(text) {
+  return String(text || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function extractAcronym(text) {
+  const clean = String(text || "").trim();
+  if (!clean) return "CAMPUS";
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length === 1) {
+    return words[0].slice(0, 6).toUpperCase();
+  }
+  const stopWords = new Set(["of", "in", "at", "the", "for"]);
+  const meaningfulWords = words.filter((w) => !stopWords.has(w.toLowerCase()));
+  const initials = (meaningfulWords.length > 0 ? meaningfulWords : words)
+    .map((w) => (w === "&" ? "" : w[0].toUpperCase()))
+    .join("");
+  return initials.slice(0, 8);
+}
+
+function deriveCampusSlug(name, shortName, explicitSlug) {
+  if (explicitSlug && explicitSlug.trim()) {
+    return explicitSlug.trim();
+  }
+  const rawShortName = shortName || (name ? extractAcronym(name) : "CAMPUS");
+  return slugify(rawShortName || name) || "campus";
+}
+
 async function seedDatabase() {
   if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {
     throw new Error(
@@ -102,7 +135,10 @@ async function seedDatabase() {
     );
     if (tableCheck.rows.length > 0) {
       const userCountRes = await client.query(
-        "SELECT COUNT(*)::int as count FROM users WHERE email NOT LIKE '%@aisat.edu' AND email NOT LIKE '%@demo.save-slot.internal';"
+        `SELECT COUNT(*)::int as count FROM users 
+         WHERE email NOT LIKE '%@aisat.edu' 
+           AND email NOT LIKE '%@campus.edu' 
+           AND email NOT LIKE '%@demo.save-slot.internal';`
       );
       const nonDemoUserCount = userCountRes.rows[0]?.count || 0;
       if (nonDemoUserCount > 0 && process.env.ALLOW_POPULATED_DB_SEED !== "true") {
@@ -117,11 +153,18 @@ async function seedDatabase() {
     if (err && typeof err === "object" && "message" in err && String(err.message).startsWith("SAFETY VIOLATION:")) {
       throw err;
     }
+    throw new Error(
+      `SAFETY VIOLATION: Unable to verify target database contents before seeding: ${err instanceof Error ? err.message : String(err)}`
+    );
   }
 
   // 1. Campus Configuration (Single-Tenant Instance Identity from .env)
   const campusName = process.env.NEXT_PUBLIC_CAMPUS_NAME || "Campus";
-  const campusSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || "campus";
+  const campusSlug = deriveCampusSlug(
+    campusName,
+    process.env.NEXT_PUBLIC_CAMPUS_SHORT_NAME,
+    process.env.NEXT_PUBLIC_CAMPUS_SLUG
+  );
   const campusTimezone = process.env.NEXT_PUBLIC_CAMPUS_TIMEZONE || "Asia/Kolkata";
   const campusDomain =
     process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||
@@ -150,7 +193,11 @@ async function seedDatabase() {
     campusId = current.id;
 
     const updatedName = process.env.NEXT_PUBLIC_CAMPUS_NAME || current.name;
-    const updatedSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || current.slug;
+    const updatedSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || deriveCampusSlug(
+      updatedName,
+      process.env.NEXT_PUBLIC_CAMPUS_SHORT_NAME,
+      current.slug
+    );
     const updatedDomain =
       process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||
       process.env.CAMPUS_EMAIL_DOMAIN ||
