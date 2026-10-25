@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import {
   AdminSidebar,
@@ -86,7 +87,10 @@ function AdminConsoleContent() {
     nowTimestamp,
   } = useAdminDashboard();
 
-  if (initialLoading || authLoading) {
+  const searchParams = useSearchParams();
+  const isSkeletonPreview = searchParams.get("skeleton") === "1";
+
+  if (initialLoading || authLoading || isSkeletonPreview) {
     return <AdminLoadingFallback />;
   }
 

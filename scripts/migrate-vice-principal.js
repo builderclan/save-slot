@@ -36,11 +36,30 @@ async function migrateAndSeedVicePrincipal() {
     `);
     console.log("✓ users_role_check updated to include 'vice_principal'");
 
-    // 2. Fetch primary campus ID (prefer AISAT if present, otherwise fallback to first available)
+    // 2. Fetch primary campus ID for this single-instance deployment
+    const targetSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || "campus";
     const campusRes = await client.query(
-      "SELECT id FROM public.campuses ORDER BY CASE WHEN slug = 'aisat' THEN 0 ELSE 1 END LIMIT 1;"
+      "SELECT id FROM public.campuses ORDER BY CASE WHEN slug = $1 THEN 0 ELSE 1 END, created_at ASC LIMIT 1;",
+      [targetSlug]
     );
-    const campusId = campusRes.rows[0]?.id;
+    let campusId = campusRes.rows[0]?.id;
+
+    if (!campusId) {
+      const campusName = process.env.NEXT_PUBLIC_CAMPUS_NAME || "Campus";
+      const campusTimezone = process.env.NEXT_PUBLIC_CAMPUS_TIMEZONE || "Asia/Kolkata";
+      const campusDomain =
+        process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||
+        process.env.CAMPUS_EMAIL_DOMAIN ||
+        "campus.edu";
+
+      const ins = await client.query(
+        `INSERT INTO public.campuses (name, slug, domain, timezone)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id;`,
+        [campusName, targetSlug, campusDomain, campusTimezone]
+      );
+      campusId = ins.rows[0].id;
+    }
 
     // 3. Create or update Vice Principal user in auth.users & public.users
     const vpEmail = "viceprincipal@campus.edu";

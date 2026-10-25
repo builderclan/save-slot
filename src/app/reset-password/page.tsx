@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { authApi } from "@/features/auth/api";
+import { campusConfig } from "@/lib/config/campus";
 
 function ResetPasswordForm() {
   const router = useRouter();
@@ -138,7 +139,7 @@ function ResetPasswordForm() {
                 Set New Password
               </h1>
               <p className="text-xs text-zinc-500 font-medium truncate">
-                Albertian Institute of Science & Technology
+                {campusConfig.name}
               </p>
             </div>
           </div>
@@ -334,7 +335,7 @@ export default function ResetPasswordPage() {
           <span>Back to Sign In</span>
         </Link>
         <span className="text-[11px] font-semibold text-zinc-700 bg-white px-2.5 py-0.5 rounded-full border border-zinc-200/80 shadow-2xs">
-          AISAT Kochi • Academic Portal
+          {campusConfig.shortName} • Academic Portal
         </span>
       </div>
 
@@ -351,7 +352,7 @@ export default function ResetPasswordPage() {
       {/* Footer disclaimer */}
       <div className="w-full max-w-md mx-auto text-center">
         <p className="text-[11px] text-zinc-400">
-          SaveSlot Event Governance Platform • AISAT Kochi
+          SaveSlot Event Governance Platform • {campusConfig.shortName}
         </p>
       </div>
     </div>

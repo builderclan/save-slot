@@ -8,6 +8,7 @@ import { useAuth } from "@/context/auth-context";
 import { authApi } from "@/features/auth/api";
 import { formatDisplayName } from "@/lib/utils";
 import { UserAvatar } from "@/components/ui";
+import { campusConfig } from "@/lib/config/campus";
 import {
   Lock,
   Mail,
@@ -227,7 +228,7 @@ export default function LoginPage() {
           <span>Public Schedule</span>
         </Link>
         <span className="text-[11px] font-semibold text-zinc-700 bg-white px-2.5 py-0.5 rounded-full border border-zinc-200/80 shadow-2xs">
-          AISAT Kochi • Academic Portal
+          {campusConfig.shortName} • Academic Portal
         </span>
       </div>
 
@@ -254,7 +255,7 @@ export default function LoginPage() {
                   </h1>
                 </div>
                 <p className="text-xs text-zinc-500 font-medium truncate">
-                  Albertian Institute of Science & Technology
+                  {campusConfig.name}
                 </p>
               </div>
             </div>
@@ -525,7 +526,7 @@ export default function LoginPage() {
 
       {/* Footer copyright */}
       <div className="w-full max-w-md sm:max-w-[460px] mx-auto text-center text-[11px] text-zinc-400 shrink-0 mt-4">
-        © 2026 Albertian Institute of Science & Technology (AISAT)
+        © {new Date().getFullYear()} {campusConfig.name} ({campusConfig.shortName})
       </div>
     </div>
   );

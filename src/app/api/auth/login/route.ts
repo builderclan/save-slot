@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
     const profile = userRows[0] ? formatUser(userRows[0]) : null;
 
-    // Self-heal: ensure user is bound to the primary campus (AISAT) upon login
+    // Self-heal: ensure user is bound to the deployment's canonical primary campus upon login
     if (profile && !profile.campus_id) {
       try {
         const primaryCampusId = await getPrimaryCampusId();
