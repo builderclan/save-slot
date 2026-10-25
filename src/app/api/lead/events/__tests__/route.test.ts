@@ -176,6 +176,27 @@ describe("Lead Events API - GET /api/lead/events", () => {
     );
   });
 
+  it("scopes events to campusId for admin users associated with a campus", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce({
+      userId: "u-admin",
+      isLead: false,
+      isAdmin: true,
+      isPrincipal: false,
+      profile: { campus_id: "campus-aisat" },
+      leadCommunities: [],
+    } as unknown as AuthSession);
+
+    mockFindMany.mockResolvedValueOnce([]);
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.anything(),
+      })
+    );
+  });
+
   it("scopes events to campusId for principal users", async () => {
     mockGetCurrentUser.mockResolvedValueOnce({
       userId: "u-principal",

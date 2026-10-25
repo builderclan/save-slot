@@ -80,6 +80,7 @@ export function useAdminDashboard() {
   const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
   const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
   const [rejectionNote, setRejectionNote] = useState("");
+  const [rejectionError, setRejectionError] = useState<string | null>(null);
 
   const [deleteTarget, setDeleteTarget] = useState<AdminDeleteTarget | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -216,6 +217,7 @@ export function useAdminDashboard() {
     if (!rejectingEvent) return;
 
     setActionInProgress(rejectingEvent.id);
+    setRejectionError(null);
     try {
       await adminApi.updateEventStatus(rejectingEvent.id, {
         status: "rejected",
@@ -230,9 +232,11 @@ export function useAdminDashboard() {
       );
       setRejectingEvent(null);
       setRejectionNote("");
+      setRejectionError(null);
       showNotice("Event rejected and returned with administrative feedback.", "success", 5000);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to reject event.";
+      setRejectionError(message);
       showNotice(message, "error", 7000);
     } finally {
       setActionInProgress(null);
@@ -478,6 +482,8 @@ export function useAdminDashboard() {
     setRejectingEvent,
     rejectionNote,
     setRejectionNote,
+    rejectionError,
+    setRejectionError,
     isAddUserOpen,
     setIsAddUserOpen,
     editingUser,

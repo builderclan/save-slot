@@ -32,7 +32,7 @@ export async function GET() {
 
     const campusId = session.profile?.campus_id;
     const whereClause =
-      session.isPrincipal && campusId
+      (session.isAdmin || session.isPrincipal) && campusId
         ? eq(events.campusId, campusId)
         : !session.isAdmin && !session.isPrincipal
           ? inArray(events.communityId, communityIds)

@@ -52,6 +52,8 @@ function AdminConsoleContent() {
     setRejectingEvent,
     rejectionNote,
     setRejectionNote,
+    rejectionError,
+    setRejectionError,
     isAddUserOpen,
     setIsAddUserOpen,
     editingUser,
@@ -213,8 +215,12 @@ function AdminConsoleContent() {
         rejectionNote={rejectionNote}
         onRejectionNoteChange={setRejectionNote}
         onSubmit={handleReject}
-        onClose={() => setRejectingEvent(null)}
+        onClose={() => {
+          setRejectingEvent(null);
+          setRejectionError(null);
+        }}
         isSubmitting={actionInProgress === rejectingEvent?.id}
+        errorMessage={rejectionError}
         title="Reject Event Proposal"
         submitLabel="Submit Rejection"
         submittingLabel="Rejecting..."
