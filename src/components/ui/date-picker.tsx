@@ -59,6 +59,8 @@ export function DatePicker({
   const datePickerId = id || reactId;
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const selectedDayRef = useRef<HTMLButtonElement>(null);
+  const firstEnabledDayRef = useRef<HTMLButtonElement>(null);
 
   const [isOpen, setIsOpen] = useState(false);
   const [coords, setCoords] = useState<{
@@ -144,26 +146,51 @@ export function DatePicker({
       }
     };
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setIsOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
     window.addEventListener("resize", handleScrollOrResize);
     window.addEventListener("scroll", handleScrollOrResize, true);
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
 
     return () => {
       window.removeEventListener("resize", handleScrollOrResize);
       window.removeEventListener("scroll", handleScrollOrResize, true);
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isOpen, updatePosition]);
+
+  // Focus selected day or first enabled day on dialog open (once per open)
+  const isPositioned = coords !== null;
+  useEffect(() => {
+    if (isOpen && isPositioned) {
+      if (selectedDayRef.current) {
+        selectedDayRef.current.focus();
+      } else if (firstEnabledDayRef.current) {
+        firstEnabledDayRef.current.focus();
+      }
+    }
+  }, [isOpen, isPositioned]);
 
   const handleSelectDay = (day: Date) => {
     onChange(format(day, "yyyy-MM-dd"));
     setIsOpen(false);
+    triggerRef.current?.focus();
   };
 
   const handleApplyPreset = (daysToAdd: number) => {
     const target = addDays(new Date(), daysToAdd);
+    if (parsedMinDate && isBefore(startOfDay(target), parsedMinDate)) return;
     onChange(format(target, "yyyy-MM-dd"));
     setIsOpen(false);
+    triggerRef.current?.focus();
   };
 
   // Calendar grid math
@@ -246,27 +273,29 @@ export function DatePicker({
           >
             {/* Quick Preset Pills */}
             <div className="flex items-center gap-1.5 mb-3 pb-2.5 border-b border-zinc-100 overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(7)}
-                className="px-2 py-1 rounded-lg bg-zinc-100 hover:bg-indigo-50 hover:text-indigo-600 text-[10px] font-semibold text-zinc-600 transition-colors whitespace-nowrap cursor-pointer"
-              >
-                +7 Days (Earliest)
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(14)}
-                className="px-2 py-1 rounded-lg bg-zinc-100 hover:bg-indigo-50 hover:text-indigo-600 text-[10px] font-semibold text-zinc-600 transition-colors whitespace-nowrap cursor-pointer"
-              >
-                +2 Weeks
-              </button>
-              <button
-                type="button"
-                onClick={() => handleApplyPreset(30)}
-                className="px-2 py-1 rounded-lg bg-zinc-100 hover:bg-indigo-50 hover:text-indigo-600 text-[10px] font-semibold text-zinc-600 transition-colors whitespace-nowrap cursor-pointer"
-              >
-                +1 Month
-              </button>
+              {[
+                { days: 7, label: "+7 Days (Earliest)" },
+                { days: 14, label: "+2 Weeks" },
+                { days: 30, label: "+1 Month" },
+              ].map((p) => {
+                const target = addDays(new Date(), p.days);
+                const isBlocked = parsedMinDate ? isBefore(startOfDay(target), parsedMinDate) : false;
+                return (
+                  <button
+                    key={p.days}
+                    type="button"
+                    disabled={isBlocked}
+                    onClick={() => handleApplyPreset(p.days)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors whitespace-nowrap ${
+                      isBlocked
+                        ? "bg-zinc-50 text-zinc-300 cursor-not-allowed"
+                        : "bg-zinc-100 hover:bg-indigo-50 hover:text-indigo-600 text-zinc-600 cursor-pointer"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Month Header */}
@@ -305,31 +334,45 @@ export function DatePicker({
 
             {/* Day Cells Grid */}
             <div className="grid grid-cols-7 gap-1 text-center">
-              {days.map((day) => {
-                const isSelected = parsedValue ? isSameDay(day, parsedValue) : false;
-                const isCurrentMonth = isSameMonth(day, viewMonth);
-                const isPastOrBlocked = parsedMinDate ? isBefore(day, parsedMinDate) : false;
+              {(() => {
+                let hasSetFirstEnabled = false;
+                return days.map((day) => {
+                  const isSelected = parsedValue ? isSameDay(day, parsedValue) : false;
+                  const isCurrentMonth = isSameMonth(day, viewMonth);
+                  const isPastOrBlocked = parsedMinDate ? isBefore(day, parsedMinDate) : false;
+                  const isFirstEnabled = !hasSetFirstEnabled && !isPastOrBlocked && isCurrentMonth;
+                  if (isFirstEnabled) {
+                    hasSetFirstEnabled = true;
+                  }
 
-                return (
-                  <button
-                    key={day.toISOString()}
-                    type="button"
-                    disabled={isPastOrBlocked}
-                    onClick={() => handleSelectDay(day)}
-                    className={`h-7 w-7 mx-auto rounded-lg text-xs flex items-center justify-center transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-indigo-600 text-white font-semibold shadow-xs"
-                        : isPastOrBlocked
-                        ? "text-zinc-300 cursor-not-allowed bg-transparent"
-                        : isCurrentMonth
-                        ? "text-zinc-800 hover:bg-zinc-100 hover:text-zinc-950 font-medium active:scale-95"
-                        : "text-zinc-400 hover:bg-zinc-50"
-                    }`}
-                  >
-                    {format(day, "d")}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={day.toISOString()}
+                      type="button"
+                      ref={
+                        isSelected
+                          ? selectedDayRef
+                          : isFirstEnabled
+                          ? firstEnabledDayRef
+                          : undefined
+                      }
+                      disabled={isPastOrBlocked}
+                      onClick={() => handleSelectDay(day)}
+                      className={`h-7 w-7 mx-auto rounded-lg text-xs flex items-center justify-center transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-indigo-600 text-white font-semibold shadow-xs"
+                          : isPastOrBlocked
+                          ? "text-zinc-300 cursor-not-allowed bg-transparent"
+                          : isCurrentMonth
+                          ? "text-zinc-800 hover:bg-zinc-100 hover:text-zinc-950 font-medium active:scale-95"
+                          : "text-zinc-400 hover:bg-zinc-50"
+                      }`}
+                    >
+                      {format(day, "d")}
+                    </button>
+                  );
+                });
+              })()}
             </div>
           </div>,
           document.body

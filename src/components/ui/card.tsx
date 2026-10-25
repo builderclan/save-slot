@@ -18,10 +18,8 @@ export function Card({
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
-    if (
-      target !== e.currentTarget &&
-      target.closest("button, a, input, select, textarea, [role='button']")
-    ) {
+    const interactive = target.closest("button, a, input, select, textarea, [role='button']");
+    if (interactive && interactive !== e.currentTarget && e.currentTarget.contains(interactive)) {
       return;
     }
     onClick?.(e);

@@ -61,8 +61,11 @@ export function TimePicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const selectedItemRef = useRef<HTMLDivElement>(null);
+  const highlightedItemRef = useRef<HTMLDivElement>(null);
+  const hasScrolledRef = useRef(false);
 
   const [isOpen, setIsOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const [coords, setCoords] = useState<{
     top?: number;
     bottom?: number;
@@ -146,16 +149,79 @@ export function TimePicker({
     };
   }, [isOpen, updatePosition]);
 
-  // Scroll active item into view when popover opens
+  // Sync highlightedIndex with selected value when opened
   useEffect(() => {
-    if (isOpen && selectedItemRef.current) {
-      selectedItemRef.current.scrollIntoView({ block: "center" });
+    if (isOpen) {
+      const idx = TIME_SLOTS.findIndex((s) => s.value === value);
+      setHighlightedIndex(idx >= 0 ? idx : 0);
     }
-  }, [isOpen]);
+  }, [isOpen, value]);
+
+  // Scroll active item into view when popover opens and mounts into portal
+  useEffect(() => {
+    if (!isOpen) {
+      hasScrolledRef.current = false;
+      return;
+    }
+
+    if (coords && selectedItemRef.current && !hasScrolledRef.current) {
+      selectedItemRef.current.scrollIntoView({ block: "center" });
+      hasScrolledRef.current = true;
+    }
+  }, [isOpen, coords]);
+
+  // Scroll highlighted item into view on arrow navigation
+  useEffect(() => {
+    if (isOpen && highlightedItemRef.current) {
+      highlightedItemRef.current.scrollIntoView({ block: "nearest" });
+    }
+  }, [isOpen, highlightedIndex]);
 
   const handleSelectTime = (val: string) => {
     onChange(val);
     setIsOpen(false);
+    triggerRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled) return;
+
+    if (!isOpen) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        setIsOpen(true);
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case "Escape":
+        e.preventDefault();
+        setIsOpen(false);
+        triggerRef.current?.focus();
+        break;
+      case "ArrowDown": {
+        e.preventDefault();
+        setHighlightedIndex((prev) => (prev < TIME_SLOTS.length - 1 ? prev + 1 : prev));
+        break;
+      }
+      case "ArrowUp": {
+        e.preventDefault();
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev));
+        break;
+      }
+      case "Enter":
+      case " ": {
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < TIME_SLOTS.length) {
+          handleSelectTime(TIME_SLOTS[highlightedIndex].value);
+        }
+        break;
+      }
+      case "Tab":
+        setIsOpen(false);
+        break;
+    }
   };
 
   return (
@@ -181,8 +247,12 @@ export function TimePicker({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
+        onKeyDown={handleKeyDown}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-activedescendant={
+          isOpen && highlightedIndex >= 0 ? `${timePickerId}-opt-${highlightedIndex}` : undefined
+        }
         className={`w-full flex items-center justify-between text-left py-2 px-3.5 text-xs font-medium rounded-xl border cursor-pointer select-none transition-all duration-150 min-h-[38px] ${
           isOpen
             ? "border-indigo-600 ring-2 ring-indigo-500/10 bg-white"
@@ -225,18 +295,30 @@ export function TimePicker({
             }}
             className="rounded-xl border border-zinc-200/90 bg-white shadow-2xl py-1 px-1 overflow-y-auto animate-in fade-in-0 zoom-in-95 duration-100 select-none"
           >
-            {TIME_SLOTS.map((slot) => {
+            {TIME_SLOTS.map((slot, idx) => {
               const isSelected = slot.value === value;
+              const isHighlighted = idx === highlightedIndex;
               return (
                 <div
                   key={slot.value}
-                  ref={isSelected ? selectedItemRef : undefined}
+                  id={`${timePickerId}-opt-${idx}`}
+                  ref={(node) => {
+                    if (isSelected) {
+                      (selectedItemRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+                    }
+                    if (isHighlighted) {
+                      (highlightedItemRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+                    }
+                  }}
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => handleSelectTime(slot.value)}
+                  onMouseEnter={() => setHighlightedIndex(idx)}
                   className={`px-3 py-2 rounded-lg text-xs cursor-pointer flex items-center justify-between transition-colors select-none ${
                     isSelected
                       ? "bg-indigo-50 text-indigo-900 font-semibold shadow-2xs"
+                      : isHighlighted
+                      ? "bg-zinc-100 text-zinc-950"
                       : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-950"
                   }`}
                 >
