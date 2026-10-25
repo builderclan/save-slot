@@ -15,8 +15,10 @@ export default async function PrincipalDeskPage() {
 
   let initialEvents: CampusEvent[] = [];
   try {
+    const campusId = session.profile?.campus_id;
     const rows = await withDbRetry((client) =>
       client.query.events.findMany({
+        where: campusId ? eq(events.campusId, campusId) : undefined,
         orderBy: [desc(events.startTime)],
         with: {
           community: {

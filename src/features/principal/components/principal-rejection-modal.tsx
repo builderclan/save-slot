@@ -18,6 +18,7 @@ export interface PrincipalRejectionModalProps {
   onConfirm: (e: React.FormEvent) => void;
   onClose: () => void;
   isSubmitting: boolean;
+  errorMessage?: string | null;
   presets?: string[];
 }
 

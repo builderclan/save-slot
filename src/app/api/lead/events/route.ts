@@ -30,12 +30,17 @@ export async function GET() {
       return NextResponse.json({ events: [] });
     }
 
+    const campusId = session.profile?.campus_id;
+    const whereClause =
+      session.isPrincipal && campusId
+        ? eq(events.campusId, campusId)
+        : !session.isAdmin && !session.isPrincipal
+          ? inArray(events.communityId, communityIds)
+          : undefined;
+
     const rows = await withDbRetry((client) =>
       client.query.events.findMany({
-        where:
-          !session.isAdmin && !session.isPrincipal
-            ? inArray(events.communityId, communityIds)
-            : undefined,
+        where: whereClause,
         orderBy: [desc(events.startTime)],
         with: {
           community: {
