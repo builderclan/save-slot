@@ -119,24 +119,49 @@ async function seedDatabase() {
     }
   }
 
-  // 1. Campus: Albertian Institute of Science & Technology (AISAT)
+  // 1. Campus Configuration (Single-Tenant Instance Identity from .env)
+  const campusName = process.env.NEXT_PUBLIC_CAMPUS_NAME || "Campus";
+  const campusSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || "campus";
+  const campusTimezone = process.env.NEXT_PUBLIC_CAMPUS_TIMEZONE || "Asia/Kolkata";
+  const campusDomain =
+    process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||
+    process.env.CAMPUS_EMAIL_DOMAIN ||
+    "campus.edu";
+
   let campusId;
-  const campusRes = await client.query("SELECT id FROM campuses WHERE slug IN ('aisat', 'apex-tech') LIMIT 1;");
-  if (campusRes.rows.length > 0) {
-    campusId = campusRes.rows[0].id;
-    await client.query(
-      "UPDATE campuses SET name = 'Albertian Institute of Science & Technology', slug = 'aisat', timezone = 'Asia/Kolkata' WHERE id = $1;",
-      [campusId]
+  const existingCampuses = await client.query(
+    "SELECT id, name, slug, domain, timezone FROM campuses ORDER BY CASE WHEN slug = $1 THEN 0 ELSE 1 END, created_at ASC LIMIT 1;",
+    [campusSlug]
+  );
+
+  if (existingCampuses.rows.length === 0) {
+    // Fresh database: insert the configured campus
+    const ins = await client.query(
+      `INSERT INTO campuses (name, slug, domain, timezone)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id;`,
+      [campusName, campusSlug, campusDomain, campusTimezone]
     );
-    console.log(`✓ Campus exists: Albertian Institute of Science & Technology (${campusId})`);
-  } else {
-    const ins = await client.query(`
-      INSERT INTO campuses (name, slug, timezone)
-      VALUES ('Albertian Institute of Science & Technology', 'aisat', 'Asia/Kolkata')
-      RETURNING id;
-    `);
     campusId = ins.rows[0].id;
-    console.log(`+ Created campus: Albertian Institute of Science & Technology (${campusId})`);
+    console.log(`+ Created campus: ${campusName} (${campusId})`);
+  } else {
+    // Existing database: preserve existing campus and update only explicitly configured fields
+    const current = existingCampuses.rows[0];
+    campusId = current.id;
+
+    const updatedName = process.env.NEXT_PUBLIC_CAMPUS_NAME || current.name;
+    const updatedSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || current.slug;
+    const updatedDomain =
+      process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||
+      process.env.CAMPUS_EMAIL_DOMAIN ||
+      current.domain;
+    const updatedTimezone = process.env.NEXT_PUBLIC_CAMPUS_TIMEZONE || current.timezone;
+
+    await client.query(
+      "UPDATE campuses SET name = $1, slug = $2, domain = $3, timezone = $4 WHERE id = $5;",
+      [updatedName, updatedSlug, updatedDomain, updatedTimezone, campusId]
+    );
+    console.log(`✓ Synchronized campus: ${updatedName} (${campusId})`);
   }
 
   // 2. Venues

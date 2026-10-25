@@ -8,7 +8,7 @@ const {
   mockInsertReturning,
 } = vi.hoisted(() => {
   const mockSelectLimit = vi.fn();
-  const mockSelectOrderBy = vi.fn();
+  const mockSelectWhere = vi.fn();
   const mockSelectFrom = vi.fn();
   const mockSelect = vi.fn();
 
@@ -17,8 +17,8 @@ const {
   const mockInsertValues = vi.fn();
   const mockInsert = vi.fn();
 
-  mockSelectOrderBy.mockReturnValue({ limit: mockSelectLimit });
-  mockSelectFrom.mockReturnValue({ orderBy: mockSelectOrderBy });
+  mockSelectWhere.mockReturnValue({ limit: mockSelectLimit });
+  mockSelectFrom.mockReturnValue({ where: mockSelectWhere });
   mockSelect.mockReturnValue({ from: mockSelectFrom });
 
   mockInsertOnConflictDoUpdate.mockReturnValue({ returning: mockInsertReturning });
@@ -64,10 +64,10 @@ describe("Campus Domain Resolver (getPrimaryCampusId)", () => {
     expect(mockSelect).toHaveBeenCalledTimes(1);
   });
 
-  it("self-seeds AISAT campus when campuses table is empty", async () => {
-    // Select returns empty
+  it("self-seeds configured canonical campus when slug is not found in database", async () => {
+    // 1. Where query by slug returns empty
     mockSelectLimit.mockResolvedValueOnce([]);
-    // Insert returns newly seeded campus
+    // 2. Insert returns newly seeded configured campus
     mockInsertReturning.mockResolvedValueOnce([{ id: "campus-seeded-uuid" }]);
 
     const campusId = await getPrimaryCampusId();
