@@ -144,6 +144,25 @@ describe("Conflict Detection Engine (checkEventConflicts)", () => {
     expect(result.safeSlots[0].label).toContain("Earliest Safe Date");
   });
 
+  it("uses calendar-day notice so that 7 calendar days in advance is compliant regardless of hour", async () => {
+    const calendarDate = addDays(new Date(), 7);
+    calendarDate.setHours(8, 0, 0, 0);
+    const startTime = calendarDate.toISOString();
+    calendarDate.setHours(10, 0, 0, 0);
+    const endTime = calendarDate.toISOString();
+
+    queueQueryResults([mockVenue], []);
+
+    const result = await checkEventConflicts({
+      venueId,
+      startTime,
+      endTime,
+    });
+
+    expect(result.hasLeadTimeViolation).toBe(false);
+    expect(result.leadTimeDays).toBe(7);
+  });
+
   it("handles overnight events ending the following day with positive duration", async () => {
     const futureDate = addDays(new Date(), 10);
     const startTime = new Date(futureDate.setHours(21, 0, 0, 0)).toISOString();

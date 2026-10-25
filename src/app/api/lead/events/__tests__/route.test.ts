@@ -57,9 +57,15 @@ vi.mock("@/lib/db", () => {
   };
 });
 
+vi.mock("@/lib/conflicts/engine", () => ({
+  checkEventConflicts: vi.fn(),
+}));
+
 import { getCurrentUser, type AuthSession } from "@/lib/auth";
+import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
+const mockCheckEventConflicts = vi.mocked(checkEventConflicts);
 
 describe("Lead Events API - GET /api/lead/events", () => {
   beforeEach(() => {
@@ -192,6 +198,14 @@ describe("Lead Events API - POST /api/lead/events", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSelect.mockReturnValue({ from: mockSelectFrom });
+    mockCheckEventConflicts.mockResolvedValue({
+      hasConflict: false,
+      hasVenueConflict: false,
+      hasLeadTimeViolation: false,
+      leadTimeDays: 14,
+      safeSlots: [],
+      message: "Slot is available.",
+    });
   });
 
   const validPayload = {
@@ -313,5 +327,37 @@ describe("Lead Events API - POST /api/lead/events", () => {
     expect(data.event.title).toBe("AI Workshop");
     expect(data.event.status).toBe("pending");
     expect(data.event.campus_id).toBe("campus-1");
+  });
+
+  it("returns 409 when venue conflict is detected by the server conflict guard", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce({
+      userId: "u-lead",
+      isLead: true,
+      isAdmin: false,
+      leadCommunities: [{ id: "22222222-2222-4222-a222-222222222222" }],
+    } as unknown as AuthSession);
+
+    mockSelectLimit.mockResolvedValueOnce([
+      { name: "Tech Lab", campusId: "campus-1" },
+    ]);
+
+    mockCheckEventConflicts.mockResolvedValueOnce({
+      hasConflict: true,
+      hasVenueConflict: true,
+      hasLeadTimeViolation: false,
+      leadTimeDays: 14,
+      safeSlots: [],
+      message: "This venue is already booked for the selected time slot.",
+    });
+
+    const req = new Request("http://localhost/api/lead/events", {
+      method: "POST",
+      body: JSON.stringify(validPayload),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error).toContain("Conflict: This venue is already booked");
+    expect(data.conflict.hasVenueConflict).toBe(true);
   });
 });

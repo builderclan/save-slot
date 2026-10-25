@@ -19,7 +19,7 @@ import {
   SafeSlotSuggestion,
   Venue,
 } from "@/types/database";
-import { addDays, addMinutes, differenceInDays, format } from "date-fns";
+import { addDays, addMinutes, differenceInCalendarDays, format } from "date-fns";
 import {
   doAudiencesOverlap,
   getOverlappingAudience,
@@ -55,8 +55,8 @@ export async function checkEventConflicts(params: {
     end = addDays(end, 1);
   }
 
-  // 1. Check Lead-Time Policy (7 Days Advance Notice Rule)
-  const diffDays = differenceInDays(start, now);
+  // 1. Check Lead-Time Policy (7 Calendar Days Advance Notice Rule)
+  const diffDays = differenceInCalendarDays(start, now);
   const minRequiredDays = 7;
   const hasLeadTimeViolation = diffDays < minRequiredDays;
 

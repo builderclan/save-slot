@@ -63,9 +63,15 @@ vi.mock("@/lib/db", () => {
   };
 });
 
+vi.mock("@/lib/conflicts/engine", () => ({
+  checkEventConflicts: vi.fn(),
+}));
+
 import { getCurrentUser, type AuthSession } from "@/lib/auth";
+import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
+const mockCheckEventConflicts = vi.mocked(checkEventConflicts);
 
 describe("Lead Event Item API - PUT /api/lead/events/[id]", () => {
   const targetId = "11111111-2222-4333-a444-555555555555";
@@ -84,6 +90,14 @@ describe("Lead Event Item API - PUT /api/lead/events/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSelect.mockReturnValue({ from: mockSelectFrom });
+    mockCheckEventConflicts.mockResolvedValue({
+      hasConflict: false,
+      hasVenueConflict: false,
+      hasLeadTimeViolation: false,
+      leadTimeDays: 14,
+      safeSlots: [],
+      message: "Slot is available.",
+    });
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -260,6 +274,43 @@ describe("Lead Event Item API - PUT /api/lead/events/[id]", () => {
     expect(res.status).toBe(404);
     const data = await res.json();
     expect(data.error).toBe("Event not found");
+  });
+
+  it("returns 409 when venue conflict is detected during event update", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce({
+      userId: "u-lead",
+      isLead: true,
+      isAdmin: false,
+      leadCommunities: [{ id: validCommunityId }],
+    } as unknown as AuthSession);
+
+    // 1st select: existing event
+    mockSelectLimit.mockResolvedValueOnce([
+      { id: targetId, communityId: validCommunityId, status: "pending" },
+    ]);
+    // 2nd select: venue lookup
+    mockSelectLimit.mockResolvedValueOnce([
+      { name: "Auditorium A" },
+    ]);
+
+    mockCheckEventConflicts.mockResolvedValueOnce({
+      hasConflict: true,
+      hasVenueConflict: true,
+      hasLeadTimeViolation: false,
+      leadTimeDays: 14,
+      safeSlots: [],
+      message: "This venue is already booked for the selected time slot.",
+    });
+
+    const req = new Request(`http://localhost/api/lead/events/${targetId}`, {
+      method: "PUT",
+      body: JSON.stringify(validPayload),
+    });
+    const res = await PUT(req, { params: Promise.resolve({ id: targetId }) });
+    expect(res.status).toBe(409);
+    const data = await res.json();
+    expect(data.error).toContain("Conflict: This venue is already booked");
+    expect(data.conflict.hasVenueConflict).toBe(true);
   });
 });
 
