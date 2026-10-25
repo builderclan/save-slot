@@ -158,8 +158,20 @@ function LoginParamsHandler({
       );
     }
     const redirectParam = searchParams.get("redirect") || searchParams.get("returnTo");
-    if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")) {
-      onSetRedirect(redirectParam);
+    if (
+      redirectParam &&
+      redirectParam.startsWith("/") &&
+      !redirectParam.startsWith("//") &&
+      !redirectParam.includes("\\")
+    ) {
+      try {
+        const resolved = new URL(redirectParam, window.location.origin);
+        if (resolved.origin === window.location.origin) {
+          onSetRedirect(resolved.pathname + resolved.search + resolved.hash);
+        }
+      } catch {
+        // Fall back safely if URL parsing fails
+      }
     }
   }, [searchParams, onSetError, onSetSuccess, onSetRedirect]);
   return null;
@@ -191,7 +203,16 @@ export default function LoginPage() {
       const data = await authApi.login({ email: email.trim(), password });
       setIsRedirecting(true);
 
-      const destination = customRedirect || data.redirectUrl || "/";
+      const candidate = customRedirect || data.redirectUrl || "/";
+      let destination = "/";
+      try {
+        const resolved = new URL(candidate, window.location.origin);
+        if (resolved.origin === window.location.origin && !candidate.includes("\\")) {
+          destination = resolved.pathname + resolved.search + resolved.hash;
+        }
+      } catch {
+        destination = "/";
+      }
       window.location.replace(destination);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Authentication error");

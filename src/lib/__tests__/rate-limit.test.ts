@@ -13,6 +13,7 @@ const {
   mockInsert,
   mockInsertValues,
   mockInsertOnConflict,
+  mockInsertReturning,
   mockDelete,
   mockDeleteWhere,
 } = vi.hoisted(() => {
@@ -21,6 +22,7 @@ const {
   const mockSelectFrom = vi.fn();
   const mockSelect = vi.fn();
 
+  const mockInsertReturning = vi.fn();
   const mockInsertOnConflict = vi.fn();
   const mockInsertValues = vi.fn();
   const mockInsert = vi.fn();
@@ -32,6 +34,7 @@ const {
   mockSelectFrom.mockReturnValue({ where: mockSelectWhere });
   mockSelect.mockReturnValue({ from: mockSelectFrom });
 
+  mockInsertOnConflict.mockReturnValue({ returning: mockInsertReturning });
   mockInsertValues.mockReturnValue({ onConflictDoUpdate: mockInsertOnConflict });
   mockInsert.mockReturnValue({ values: mockInsertValues });
 
@@ -45,6 +48,7 @@ const {
     mockInsert,
     mockInsertValues,
     mockInsertOnConflict,
+    mockInsertReturning,
     mockDelete,
     mockDeleteWhere,
   };
@@ -72,20 +76,31 @@ describe("Persistent Auth Rate Limiter (src/lib/rate-limit.ts)", () => {
   });
 
   describe("getClientRateLimitKey()", () => {
-    it("extracts client IP from x-forwarded-for header", () => {
-      const req = new Request("http://localhost/api/auth/login", {
-        headers: { "x-forwarded-for": "203.0.113.195, 70.41.3.18" },
-      });
-      const key = getClientRateLimitKey(req, "admin@campus.edu");
-      expect(key).toBe("203.0.113.195:admin@campus.edu");
-    });
-
-    it("falls back to x-real-ip when x-forwarded-for is missing", () => {
+    it("extracts client IP from x-real-ip header", () => {
       const req = new Request("http://localhost/api/auth/login", {
         headers: { "x-real-ip": "10.0.0.5" },
       });
       const key = getClientRateLimitKey(req, "user@campus.edu");
       expect(key).toBe("10.0.0.5:user@campus.edu");
+    });
+
+    it("prioritizes x-real-ip over x-forwarded-for header", () => {
+      const req = new Request("http://localhost/api/auth/login", {
+        headers: {
+          "x-real-ip": "10.0.0.5",
+          "x-forwarded-for": "203.0.113.195",
+        },
+      });
+      const key = getClientRateLimitKey(req, "user@campus.edu");
+      expect(key).toBe("10.0.0.5:user@campus.edu");
+    });
+
+    it("falls back to x-forwarded-for when x-real-ip is missing", () => {
+      const req = new Request("http://localhost/api/auth/login", {
+        headers: { "x-forwarded-for": "203.0.113.195, 70.41.3.18" },
+      });
+      const key = getClientRateLimitKey(req, "admin@campus.edu");
+      expect(key).toBe("203.0.113.195:admin@campus.edu");
     });
 
     it("falls back to 127.0.0.1 when no IP headers are present", () => {
@@ -143,8 +158,9 @@ describe("Persistent Auth Rate Limiter (src/lib/rate-limit.ts)", () => {
 
   describe("recordFailedAuthAttempt()", () => {
     it("inserts initial failure when no prior record exists", async () => {
-      mockSelectLimit.mockResolvedValueOnce([]);
-      mockInsertOnConflict.mockResolvedValueOnce([]);
+      mockInsertReturning.mockResolvedValueOnce([
+        { failedAttempts: 1, firstFailedAt: new Date(), lockedUntil: null },
+      ]);
 
       await recordFailedAuthAttempt(testKey);
 
@@ -159,23 +175,19 @@ describe("Persistent Auth Rate Limiter (src/lib/rate-limit.ts)", () => {
     });
 
     it("locks the account on reaching MAX_FAILED_ATTEMPTS", async () => {
-      mockSelectLimit.mockResolvedValueOnce([
+      const futureLock = new Date(Date.now() + 300 * 1000);
+      mockInsertReturning.mockResolvedValueOnce([
         {
-          failedAttempts: 2,
+          failedAttempts: 3,
           firstFailedAt: new Date(),
+          lockedUntil: futureLock,
         },
       ]);
-      mockInsertOnConflict.mockResolvedValueOnce([]);
 
       await recordFailedAuthAttempt(testKey);
 
-      expect(mockInsertValues).toHaveBeenCalledWith(
-        expect.objectContaining({
-          key: testKey,
-          failedAttempts: 3,
-          lockedUntil: expect.any(Date),
-        })
-      );
+      expect(mockInsert).toHaveBeenCalledTimes(1);
+      expect(mockInsertOnConflict).toHaveBeenCalledTimes(1);
 
       // Verify L1 is locked
       const check = await checkAuthRateLimit(testKey);
