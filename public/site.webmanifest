@@ -1,7 +1,7 @@
 {
   "name": "SaveSlot • Campus Events & Scheduling",
   "short_name": "SaveSlot",
-  "description": "Conflict-free event scheduling and student notice board for Albertian Institute of Science & Technology (AISAT)",
+  "description": "Conflict-free event scheduling and student notice board",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0F1D",

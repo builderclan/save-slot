@@ -24,6 +24,7 @@ import {
   CalendarViewSwitcher,
 } from "./calendar-nav-controls";
 import { UserAvatar } from "@/components/ui";
+import { campusConfig } from "@/lib/config/campus";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -47,7 +48,7 @@ export function Navbar() {
     <header className="sticky top-0 z-40 w-full h-14 border-b border-zinc-200/80 bg-white/95 backdrop-blur-md">
       {/* Accessible h1 heading for document hierarchy */}
       <h1 className="sr-only">
-        SaveSlot • Campus Events & Scheduling • Albertian Institute of Science & Technology (AISAT)
+        SaveSlot • Campus Events & Scheduling • {campusConfig.name} ({campusConfig.shortName})
       </h1>
 
       <div className="w-full px-3 sm:px-6 h-full relative flex items-center justify-between gap-2 sm:gap-4">
@@ -89,9 +90,9 @@ export function Navbar() {
                 </span>
                 <span
                   className="hidden xl:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md border border-zinc-200 bg-zinc-50 text-zinc-600 font-medium"
-                  title="Albertian Institute of Science & Technology"
+                  title={campusConfig.name}
                 >
-                  AISAT
+                  {campusConfig.shortName}
                 </span>
               </div>
             </div>

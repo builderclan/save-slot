@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import React from "react";
+import { campusConfig } from "@/lib/config/campus";
 
 export const metadata: Metadata = {
-  title: "Forgot Password • SaveSlot • AISAT",
-  description: "Request a password reset link for your SaveSlot campus account.",
+  title: `Forgot Password • SaveSlot • ${campusConfig.shortName}`,
+  description: `Request a password reset link for your SaveSlot account at ${campusConfig.name}.`,
 };
 
 export default function ForgotPasswordLayout({
