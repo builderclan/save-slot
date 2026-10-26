@@ -12,7 +12,88 @@ if (typeof process.loadEnvFile === "function") {
   } catch {}
 }
 
+// Helper utilities aligning with src/lib/config/campus.ts
+function slugify(text) {
+  return String(text || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function extractAcronym(text) {
+  const clean = String(text || "").trim();
+  if (!clean) return "CAMPUS";
+  const words = clean.split(/\s+/).filter(Boolean);
+  if (words.length === 1) {
+    return words[0].slice(0, 6).toUpperCase();
+  }
+  const stopWords = new Set(["of", "in", "at", "the", "for"]);
+  const meaningfulWords = words.filter((w) => !stopWords.has(w.toLowerCase()));
+  const initials = (meaningfulWords.length > 0 ? meaningfulWords : words)
+    .map((w) => (w === "&" ? "" : w[0].toUpperCase()))
+    .join("");
+  return initials.slice(0, 8);
+}
+
+function deriveCampusSlug(name, shortName, explicitSlug) {
+  if (explicitSlug && explicitSlug.trim()) {
+    return explicitSlug.trim();
+  }
+  const rawShortName = shortName || (name ? extractAcronym(name) : "CAMPUS");
+  return slugify(rawShortName || name) || "campus";
+}
+
 async function seedDatabase() {
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {
+    throw new Error(
+      "SAFETY VIOLATION: scripts/seed.js cannot be executed in production environments (NODE_ENV=production or VERCEL=1)."
+    );
+  }
+
+  // Fail-closed verification: only explicitly approved local targets and non-production DB names are permitted without an override
+  let targetHost = process.env.DB_HOST || "";
+  let targetDatabase = process.env.DB_NAME || "";
+
+  if (process.env.DATABASE_URL) {
+    try {
+      const dummyClient = new Client({ connectionString: process.env.DATABASE_URL });
+      targetHost = dummyClient.connectionParameters.host || "";
+      targetDatabase = dummyClient.connectionParameters.database || "";
+    } catch {
+      targetHost = "";
+      targetDatabase = "";
+    }
+  }
+
+  const isLocalHost =
+    targetHost === "localhost" ||
+    targetHost === "127.0.0.1" ||
+    targetHost === "::1" ||
+    targetHost === "db" ||
+    targetHost === "postgres";
+
+  const prodLabelRegex = /(^|[_\W])(prod|production|live)($|[_\W])/i;
+  const isProductionNamedDb =
+    prodLabelRegex.test(targetDatabase) ||
+    prodLabelRegex.test(targetHost);
+
+  if (isProductionNamedDb) {
+    throw new Error(
+      `SAFETY VIOLATION: scripts/seed.js detected production database target (host: '${targetHost}', db: '${targetDatabase}'). ` +
+      `Seeding creates fixed demo passwords and can NEVER run against production databases.`
+    );
+  }
+
+  if (!isLocalHost && process.env.ALLOW_REMOTE_SEED !== "true") {
+    throw new Error(
+      `SAFETY VIOLATION: scripts/seed.js detected non-local database host '${targetHost}'. ` +
+      `Seeding creates fixed demo passwords and must not run against remote or production databases. ` +
+      `If you explicitly intend to seed a non-production remote staging database, set ALLOW_REMOTE_SEED=true.`
+    );
+  }
+
   const rejectUnauthorized = process.env.DB_SSL_REJECT_UNAUTHORIZED === "true";
 
   let client;
@@ -47,24 +128,87 @@ async function seedDatabase() {
   await client.connect();
   console.log("Connected to PostgreSQL for Phase 1 Seeding...\n");
 
-  // 1. Campus: Albertian Institute of Science & Technology (AISAT)
-  let campusId;
-  const campusRes = await client.query("SELECT id FROM campuses WHERE slug IN ('aisat', 'apex-tech') LIMIT 1;");
-  if (campusRes.rows.length > 0) {
-    campusId = campusRes.rows[0].id;
-    await client.query(
-      "UPDATE campuses SET name = 'Albertian Institute of Science & Technology', slug = 'aisat', timezone = 'Asia/Kolkata' WHERE id = $1;",
-      [campusId]
+  // Database-side pre-write safety check: verify target does not contain live non-demo accounts
+  try {
+    const tableCheck = await client.query(
+      "SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'users' LIMIT 1;"
     );
-    console.log(`✓ Campus exists: Albertian Institute of Science & Technology (${campusId})`);
-  } else {
-    const ins = await client.query(`
-      INSERT INTO campuses (name, slug, timezone)
-      VALUES ('Albertian Institute of Science & Technology', 'aisat', 'Asia/Kolkata')
-      RETURNING id;
-    `);
+    if (tableCheck.rows.length > 0) {
+      const userCountRes = await client.query(
+        `SELECT COUNT(*)::int as count FROM users 
+         WHERE email NOT LIKE '%@aisat.edu' 
+           AND email NOT LIKE '%@campus.edu' 
+           AND email NOT LIKE '%@demo.save-slot.internal';`
+      );
+      const nonDemoUserCount = userCountRes.rows[0]?.count || 0;
+      if (nonDemoUserCount > 0 && process.env.ALLOW_POPULATED_DB_SEED !== "true") {
+        throw new Error(
+          `SAFETY VIOLATION: Target database contains ${nonDemoUserCount} live/non-demo user account(s). ` +
+          `scripts/seed.js resets user credentials to fixed demo passwords and cannot execute against populated production databases (even via forwarded local ports). ` +
+          `If this is intentional in a local dev testbed, set ALLOW_POPULATED_DB_SEED=true.`
+        );
+      }
+    }
+  } catch (err) {
+    if (err && typeof err === "object" && "message" in err && String(err.message).startsWith("SAFETY VIOLATION:")) {
+      throw err;
+    }
+    throw new Error(
+      `SAFETY VIOLATION: Unable to verify target database contents before seeding: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+
+  // 1. Campus Configuration (Single-Tenant Instance Identity from .env)
+  const campusName = process.env.NEXT_PUBLIC_CAMPUS_NAME || "Campus";
+  const campusSlug = deriveCampusSlug(
+    campusName,
+    process.env.NEXT_PUBLIC_CAMPUS_SHORT_NAME,
+    process.env.NEXT_PUBLIC_CAMPUS_SLUG
+  );
+  const campusTimezone = process.env.NEXT_PUBLIC_CAMPUS_TIMEZONE || "Asia/Kolkata";
+  const campusDomain =
+    process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||
+    process.env.CAMPUS_EMAIL_DOMAIN ||
+    "campus.edu";
+
+  let campusId;
+  const existingCampuses = await client.query(
+    "SELECT id, name, slug, domain, timezone FROM campuses ORDER BY CASE WHEN slug = $1 THEN 0 ELSE 1 END, created_at ASC LIMIT 1;",
+    [campusSlug]
+  );
+
+  if (existingCampuses.rows.length === 0) {
+    // Fresh database: insert the configured campus
+    const ins = await client.query(
+      `INSERT INTO campuses (name, slug, domain, timezone)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id;`,
+      [campusName, campusSlug, campusDomain, campusTimezone]
+    );
     campusId = ins.rows[0].id;
-    console.log(`+ Created campus: Albertian Institute of Science & Technology (${campusId})`);
+    console.log(`+ Created campus: ${campusName} (${campusId})`);
+  } else {
+    // Existing database: preserve existing campus and update only explicitly configured fields
+    const current = existingCampuses.rows[0];
+    campusId = current.id;
+
+    const updatedName = process.env.NEXT_PUBLIC_CAMPUS_NAME || current.name;
+    const updatedSlug = process.env.NEXT_PUBLIC_CAMPUS_SLUG || deriveCampusSlug(
+      updatedName,
+      process.env.NEXT_PUBLIC_CAMPUS_SHORT_NAME,
+      current.slug
+    );
+    const updatedDomain =
+      process.env.NEXT_PUBLIC_CAMPUS_EMAIL_DOMAIN ||
+      process.env.CAMPUS_EMAIL_DOMAIN ||
+      current.domain;
+    const updatedTimezone = process.env.NEXT_PUBLIC_CAMPUS_TIMEZONE || current.timezone;
+
+    await client.query(
+      "UPDATE campuses SET name = $1, slug = $2, domain = $3, timezone = $4 WHERE id = $5;",
+      [updatedName, updatedSlug, updatedDomain, updatedTimezone, campusId]
+    );
+    console.log(`✓ Synchronized campus: ${updatedName} (${campusId})`);
   }
 
   // 2. Venues

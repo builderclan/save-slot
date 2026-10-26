@@ -66,7 +66,7 @@ function LeadWorkspaceContent() {
   }
 
   return (
-    <div className="flex-1 w-full flex flex-col bg-slate-50/50">
+    <div className="flex-1 w-full flex flex-col bg-zinc-50/50">
       <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         {/* Toast Notification */}
       {actionNotice && (
@@ -87,7 +87,7 @@ function LeadWorkspaceContent() {
           <button
             type="button"
             onClick={() => setActionNotice(null)}
-            className="text-slate-400 hover:text-slate-600 p-1 ml-2"
+            className="text-zinc-400 hover:text-zinc-600 p-1 ml-2"
           >
             <X className="w-4 h-4" />
           </button>
@@ -95,18 +95,18 @@ function LeadWorkspaceContent() {
       )}
 
       {/* Header Bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-8 border-b border-slate-200">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-8 border-b border-zinc-200/80">
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-100/80 text-indigo-700 text-xs font-semibold uppercase tracking-wider mb-2">
             <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
             <span>Lead Dispatcher & Triage</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
             Organizer&apos;s Workspace
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-zinc-500 mt-1">
             Propose, monitor, and refine events on behalf of{" "}
-            <span className="font-semibold text-slate-700">
+            <span className="font-semibold text-zinc-700">
               {assignedCommunity ? assignedCommunity.name : "your assigned club"}
             </span>
             .
@@ -115,7 +115,7 @@ function LeadWorkspaceContent() {
           {/* Multiple Community Selector */}
           {user?.leadCommunities && user.leadCommunities.length > 1 && (
             <div className="flex items-center gap-2 mt-3 text-xs">
-              <span className="text-slate-500 font-medium">Switch club:</span>
+              <span className="text-zinc-500 font-medium">Switch club:</span>
               <div className="flex flex-wrap gap-1.5">
                 {user.leadCommunities.map((c) => (
                   <button
@@ -125,7 +125,7 @@ function LeadWorkspaceContent() {
                     className={`px-2.5 py-1 rounded-lg border font-medium transition-all ${
                       assignedCommunity?.id === c.id
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                        : "bg-white text-zinc-700 border-zinc-200/90 hover:bg-zinc-50"
                     }`}
                   >
                     {c.name}
@@ -141,9 +141,9 @@ function LeadWorkspaceContent() {
             href="/"
             className="btn-base btn-secondary text-xs sm:text-sm"
           >
-            <Calendar className="w-4 h-4 text-slate-500" />
+            <Calendar className="w-4 h-4 text-zinc-500" />
             <span>Student View</span>
-            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+            <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
           </Link>
           <button
             type="button"
@@ -169,7 +169,7 @@ function LeadWorkspaceContent() {
       </div>
 
       {/* Filter Toolbar & Events Listing Card */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-2xs overflow-hidden">
+      <div className="rounded-2xl border border-zinc-200/90 bg-white shadow-2xs overflow-hidden">
         <LeadFilterBar
           totalCount={communityEvents.length}
           filteredCount={filteredEvents.length}

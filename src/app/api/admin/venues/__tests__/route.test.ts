@@ -8,6 +8,7 @@ vi.mock("@/lib/auth", () => ({
 const {
   mockSelect,
   mockSelectFrom,
+  mockSelectWhere,
   mockSelectOrderBy,
   mockInsert,
   mockInsertValues,
@@ -18,6 +19,7 @@ const {
   mockUpdateReturning,
 } = vi.hoisted(() => {
   const mockSelectOrderBy = vi.fn();
+  const mockSelectWhere = vi.fn();
   const mockSelectFrom = vi.fn();
   const mockSelect = vi.fn();
 
@@ -30,7 +32,8 @@ const {
   const mockUpdateSet = vi.fn();
   const mockUpdate = vi.fn();
 
-  mockSelectFrom.mockReturnValue({ orderBy: mockSelectOrderBy });
+  mockSelectWhere.mockReturnValue({ orderBy: mockSelectOrderBy });
+  mockSelectFrom.mockReturnValue({ where: mockSelectWhere, orderBy: mockSelectOrderBy });
   mockSelect.mockReturnValue({ from: mockSelectFrom });
 
   mockInsertValues.mockReturnValue({ returning: mockInsertReturning });
@@ -43,6 +46,7 @@ const {
   return {
     mockSelect,
     mockSelectFrom,
+    mockSelectWhere,
     mockSelectOrderBy,
     mockInsert,
     mockInsertValues,
@@ -108,7 +112,8 @@ describe("Admin Venues API (/api/admin/venues)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSelectFrom.mockReturnValue({ orderBy: mockSelectOrderBy });
+    mockSelectWhere.mockReturnValue({ orderBy: mockSelectOrderBy });
+    mockSelectFrom.mockReturnValue({ where: mockSelectWhere, orderBy: mockSelectOrderBy });
     mockSelect.mockReturnValue({ from: mockSelectFrom });
     mockInsertValues.mockReturnValue({ returning: mockInsertReturning });
     mockInsert.mockReturnValue({ values: mockInsertValues });

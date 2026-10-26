@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 import {
   AdminSidebar,
@@ -16,6 +17,7 @@ import {
   AdminEditVenueModal,
   AdminAddCommunityModal,
   AdminEditCommunityModal,
+  AdminConfirmDeleteModal,
   useAdminDashboard,
 } from "@/features/admin";
 import { RejectionModal, EventDetailModal } from "@/features/events";
@@ -51,6 +53,8 @@ function AdminConsoleContent() {
     setRejectingEvent,
     rejectionNote,
     setRejectionNote,
+    rejectionError,
+    setRejectionError,
     isAddUserOpen,
     setIsAddUserOpen,
     editingUser,
@@ -76,10 +80,17 @@ function AdminConsoleContent() {
     handleCreateCommunity,
     handleSaveEditCommunity,
     handleDeleteCommunity,
+    deleteTarget,
+    setDeleteTarget,
+    isDeleting,
+    handleConfirmDelete,
     nowTimestamp,
   } = useAdminDashboard();
 
-  if (initialLoading || authLoading) {
+  const searchParams = useSearchParams();
+  const isSkeletonPreview = searchParams.get("skeleton") === "1";
+
+  if (initialLoading || authLoading || isSkeletonPreview) {
     return <AdminLoadingFallback />;
   }
 
@@ -106,7 +117,7 @@ function AdminConsoleContent() {
           <button
             type="button"
             onClick={() => setAdminNotice(null)}
-            className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+            className="text-zinc-400 hover:text-zinc-600 cursor-pointer p-1"
           >
             ✕
           </button>
@@ -208,8 +219,12 @@ function AdminConsoleContent() {
         rejectionNote={rejectionNote}
         onRejectionNoteChange={setRejectionNote}
         onSubmit={handleReject}
-        onClose={() => setRejectingEvent(null)}
+        onClose={() => {
+          setRejectingEvent(null);
+          setRejectionError(null);
+        }}
         isSubmitting={actionInProgress === rejectingEvent?.id}
+        errorMessage={rejectionError}
         title="Reject Event Proposal"
         submitLabel="Submit Rejection"
         submittingLabel="Rejecting..."
@@ -268,6 +283,15 @@ function AdminConsoleContent() {
         community={editingCommunity}
         eligibleUsers={eligibleUsers}
         isSubmitting={actionInProgress === editingCommunity?.id}
+      />
+
+      {/* CONFIRM DELETION MODAL */}
+      <AdminConfirmDeleteModal
+        isOpen={Boolean(deleteTarget)}
+        target={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
       />
     </div>
   );

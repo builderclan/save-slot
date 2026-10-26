@@ -17,6 +17,10 @@ export async function PATCH(
     }
 
     const { id } = await params;
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
     const body = await request.json().catch(() => null);
     const parsed = UpdateVenueFullSchema.safeParse(body);
 
@@ -58,7 +62,12 @@ export async function PATCH(
       client
         .update(venues)
         .set(updateData)
-        .where(eq(venues.id, id))
+        .where(
+          and(
+            eq(venues.id, id),
+            eq(venues.campusId, campusId)
+          )
+        )
         .returning()
     );
 
@@ -68,8 +77,8 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, venue: formatVenue(updatedVenue) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to update venue";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[PATCH /api/admin/venues/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to update venue" }, { status: 500 });
   }
 }
 
@@ -84,6 +93,10 @@ export async function DELETE(
     }
 
     const { id } = await params;
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
 
     // Safety guard: Check for active or pending events scheduled in this venue
     const activeEvents = await withDbRetry((client) =>
@@ -96,7 +109,8 @@ export async function DELETE(
         .where(
           and(
             eq(events.venueId, id),
-            inArray(events.status, ["pending", "published"])
+            inArray(events.status, ["pending", "published"]),
+            eq(events.campusId, campusId)
           )
         )
     );
@@ -116,11 +130,21 @@ export async function DELETE(
         await tx
           .update(events)
           .set({ venueId: null })
-          .where(eq(events.venueId, id));
+          .where(
+            and(
+              eq(events.venueId, id),
+              eq(events.campusId, campusId)
+            )
+          );
 
         const res = await tx
           .delete(venues)
-          .where(eq(venues.id, id))
+          .where(
+            and(
+              eq(venues.id, id),
+              eq(venues.campusId, campusId)
+            )
+          )
           .returning({ id: venues.id });
 
         return res.length > 0;
@@ -133,7 +157,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to delete venue";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[DELETE /api/admin/venues/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to delete venue" }, { status: 500 });
   }
 }

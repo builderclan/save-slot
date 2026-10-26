@@ -1,11 +1,14 @@
 import { withDbRetry } from "@/lib/db";
 import { campuses } from "@/db/schema";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { campusConfig } from "@/lib/config/campus";
 
 let cachedPrimaryCampusId: string | null = null;
 
 /**
- * Resolves the primary campus UUID (AISAT) for the deployment.
+ * Resolves the primary campus UUID for this single-tenant deployment instance.
+ * Looks up the campus strictly by the configured slug in campusConfig.
+ * If missing, self-seeds the configured canonical campus entity.
  * Caches the result in memory across invocations for high throughput.
  */
 export async function getPrimaryCampusId(): Promise<string> {
@@ -14,11 +17,12 @@ export async function getPrimaryCampusId(): Promise<string> {
   }
 
   try {
+    // 1. Check for campus strictly matching the configured instance slug
     const rows = await withDbRetry((client) =>
       client
         .select({ id: campuses.id })
         .from(campuses)
-        .orderBy(sql`CASE WHEN ${campuses.slug} = 'aisat' THEN 0 ELSE 1 END`)
+        .where(eq(campuses.slug, campusConfig.slug))
         .limit(1)
     );
 
@@ -27,19 +31,37 @@ export async function getPrimaryCampusId(): Promise<string> {
       return cachedPrimaryCampusId;
     }
 
-    // Self-seed AISAT campus if campuses table is completely empty in the database
+    // 2. Adopt earliest campus if present (prevents creating duplicate campuses on slug changes)
+    const existing = await withDbRetry((client) =>
+      client
+        .select({ id: campuses.id })
+        .from(campuses)
+        .orderBy(campuses.createdAt)
+        .limit(1)
+    );
+
+    if (existing && existing.length > 0) {
+      cachedPrimaryCampusId = existing[0].id;
+      return cachedPrimaryCampusId;
+    }
+
+    // 3. Fresh database: self-seed the configured canonical campus
     const seedRes = await withDbRetry((client) =>
       client
         .insert(campuses)
         .values({
-          name: "Albertian Institute of Science & Technology",
-          slug: "aisat",
-          domain: "aisat.ac.in",
-          timezone: "Asia/Kolkata",
+          name: campusConfig.name,
+          slug: campusConfig.slug,
+          domain: campusConfig.domain,
+          timezone: campusConfig.timezone,
         })
         .onConflictDoUpdate({
           target: campuses.slug,
-          set: { name: sql`EXCLUDED.name` },
+          set: {
+            name: sql`EXCLUDED.name`,
+            domain: sql`EXCLUDED.domain`,
+            timezone: sql`EXCLUDED.timezone`,
+          },
         })
         .returning({ id: campuses.id })
     );

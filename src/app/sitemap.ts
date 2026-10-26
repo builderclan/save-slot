@@ -1,10 +1,8 @@
 import type { MetadataRoute } from "next";
+import { campusConfig } from "@/lib/config/campus";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
-    "https://saveslot.aisat.ac.in";
+  const baseUrl = campusConfig.siteUrl;
 
   const routes = [
     {

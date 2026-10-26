@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { POST } from "../route";
+import { POST, clearLoginAttemptsForTesting } from "../route";
 
 const mockSignInWithPassword = vi.fn();
 
@@ -13,6 +13,26 @@ vi.mock("@/lib/supabase/server", () => ({
 
 vi.mock("@/lib/campus", () => ({
   getPrimaryCampusId: vi.fn(),
+}));
+
+let failedAttemptsCount = 0;
+vi.mock("@/lib/rate-limit", () => ({
+  getClientRateLimitKey: vi.fn(() => "test-ip:test-email"),
+  checkAuthRateLimit: vi.fn(async () => {
+    if (failedAttemptsCount >= 3) {
+      return { isLocked: true, remainingSeconds: 300, remainingMinutes: 5 };
+    }
+    return { isLocked: false, remainingSeconds: 0, remainingMinutes: 0 };
+  }),
+  recordFailedAuthAttempt: vi.fn(async () => {
+    failedAttemptsCount += 1;
+  }),
+  clearAuthRateLimit: vi.fn(async () => {
+    failedAttemptsCount = 0;
+  }),
+  clearRateLimitMemoryCacheForTesting: vi.fn(() => {
+    failedAttemptsCount = 0;
+  }),
 }));
 
 const {
@@ -67,6 +87,7 @@ describe("POST /api/auth/login", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    clearLoginAttemptsForTesting();
   });
 
   it("returns 400 when body is invalid", async () => {
@@ -265,5 +286,87 @@ describe("POST /api/auth/login", () => {
     const data = await res.json();
     expect(data.user.role).toBe("principal");
     expect(data.redirectUrl).toBe("/principal");
+  });
+
+  it("enforces cooldown (429) after 3 consecutive failed login attempts (SEC-11 Brute-Force defense)", async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: null },
+      error: { message: "Invalid credentials" },
+    });
+
+    const createReq = () =>
+      new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        headers: { "x-forwarded-for": "192.168.1.100" },
+        body: JSON.stringify({ email: "victim@campus.edu", password: "badpassword" }),
+      });
+
+    // Attempt 1: 401
+    const res1 = await POST(createReq());
+    expect(res1.status).toBe(401);
+
+    // Attempt 2: 401
+    const res2 = await POST(createReq());
+    expect(res2.status).toBe(401);
+
+    // Attempt 3: 401
+    const res3 = await POST(createReq());
+    expect(res3.status).toBe(401);
+
+    // Attempt 4: Should be rate limited (429)
+    const res4 = await POST(createReq());
+    expect(res4.status).toBe(429);
+    const data4 = await res4.json();
+    expect(data4.error).toContain("Too many failed login attempts");
+    expect(res4.headers.get("Retry-After")).toBe("300");
+  });
+
+  it("clears failed attempt counter on successful login", async () => {
+    // 2 failed attempts
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { user: null },
+      error: { message: "Invalid credentials" },
+    });
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { user: null },
+      error: { message: "Invalid credentials" },
+    });
+
+    const reqFail = () =>
+      new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        headers: { "x-forwarded-for": "192.168.1.100" },
+        body: JSON.stringify({ email: "victim@campus.edu", password: "badpassword" }),
+      });
+
+    await POST(reqFail());
+    await POST(reqFail());
+
+    // 3rd attempt succeeds
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { user: { id: "user-1", email: "victim@campus.edu" } },
+      error: null,
+    });
+    mockSelectLimit.mockResolvedValueOnce([
+      { id: "user-1", email: "victim@campus.edu", fullName: "User", role: "student", campusId: "campus-1" },
+    ]);
+    mockSelectLimit.mockResolvedValueOnce([]);
+
+    const reqSuccess = new Request("http://localhost/api/auth/login", {
+      method: "POST",
+      headers: { "x-forwarded-for": "192.168.1.100" },
+      body: JSON.stringify({ email: "victim@campus.edu", password: "correctpassword" }),
+    });
+
+    const resSuccess = await POST(reqSuccess);
+    expect(resSuccess.status).toBe(200);
+
+    // Next failed attempt should be attempt 1 again (not blocked)
+    mockSignInWithPassword.mockResolvedValueOnce({
+      data: { user: null },
+      error: { message: "Invalid credentials" },
+    });
+    const resAfterReset = await POST(reqFail());
+    expect(resAfterReset.status).toBe(401);
   });
 });

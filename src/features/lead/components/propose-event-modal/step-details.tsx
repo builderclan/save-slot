@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Users } from "lucide-react";
+import { Check } from "lucide-react";
 import { EventCategory } from "@/types/database";
 import { TARGET_AUDIENCE_OPTIONS } from "@/lib/validations";
+import { Select } from "@/components/ui/select";
 import { CATEGORIES } from "./types";
 
 interface StepDetailsProps {
@@ -29,104 +30,93 @@ export function StepDetails({
   onFieldChange,
 }: StepDetailsProps) {
   return (
-    <div className="space-y-5">
-      <div className="space-y-1">
-        <h3 className="text-sm font-bold text-slate-900">Step 1: Event Information</h3>
-        <p className="text-xs text-slate-500">
-          Give your event a clear title and description so students know what to expect.
-        </p>
+    <div className="space-y-4 sm:space-y-6">
+      {/* Event Title - Hero Input */}
+      <div>
+        <label className="block text-xs font-semibold text-zinc-900 mb-1.5">
+          Event Title <span className="hidden sm:inline text-zinc-400 font-normal">· Clear, recognizable name</span>
+        </label>
+        <input
+          type="text"
+          required
+          autoFocus
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            onFieldChange();
+          }}
+          placeholder="e.g. Systems Programming Workshop & Hack"
+          className="w-full px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 placeholder:font-normal focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all"
+        />
       </div>
 
-      {/* Title & Category */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="sm:col-span-2">
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
-            Event Title *
-          </label>
-          <input
-            type="text"
-            required
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              onFieldChange();
-            }}
-            placeholder="e.g. Systems Programming Workshop & Hack"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
+      {/* Category & Audience Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 items-start">
+        {/* Category Dropdown */}
+        <div className="sm:col-span-1">
+          <Select
+            label="Category"
+            value={category}
+            onChange={(val) => setCategory(val as EventCategory)}
+            options={CATEGORIES.map((c) => ({ value: c, label: c }))}
           />
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
-            Category *
-          </label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value as EventCategory)}
-            className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs cursor-pointer"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+        {/* Target Audience Cohort Multi-Select */}
+        <div className="sm:col-span-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs font-semibold text-zinc-900">
+              Target Audience
+            </label>
+            <span className="text-[11px] text-zinc-400 font-medium">
+              {targetAudience.includes("All Students")
+                ? "Campus-Wide"
+                : `${targetAudience.length} cohort${targetAudience.length === 1 ? "" : "s"}`}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {TARGET_AUDIENCE_OPTIONS.map((aud) => {
+              const isSelected = targetAudience.includes(aud);
+              return (
+                <button
+                  key={aud}
+                  type="button"
+                  onClick={() => toggleAudience(aud)}
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
+                    isSelected
+                      ? "bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold shadow-2xs"
+                      : "bg-white text-zinc-600 border border-zinc-200/90 hover:border-zinc-300 hover:bg-zinc-50"
+                  }`}
+                >
+                  {isSelected && <Check className="w-3 h-3 text-indigo-600 stroke-[2.5]" />}
+                  <span>{aud}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
-
-      {/* Target Audience Cohort Selector */}
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-            <Users className="w-3.5 h-3.5 text-slate-400" />
-            <span>Target Audience Cohort *</span>
-          </label>
-          <span className="text-[10px] text-slate-400 font-medium">
-            {targetAudience.includes("All Students")
-              ? "Campus-Wide (Open to All)"
-              : `${targetAudience.length} cohort${targetAudience.length === 1 ? "" : "s"} selected`}
-          </span>
-        </div>
-        <div className="flex flex-wrap gap-1.5 p-2 rounded-xl bg-slate-50 border border-slate-200/80">
-          {TARGET_AUDIENCE_OPTIONS.map((aud) => {
-            const isSelected = targetAudience.includes(aud);
-            return (
-              <button
-                key={aud}
-                type="button"
-                onClick={() => toggleAudience(aud)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 active:scale-[0.98] ${
-                  isSelected
-                    ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs font-semibold"
-                    : "bg-white text-slate-600 border-slate-200/90 hover:border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                {isSelected && <Check className="w-3 h-3 stroke-[2.5]" />}
-                <span>{aud}</span>
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-[11px] text-slate-400 mt-1">
-          The Safe-Slot engine verifies concurrent campus events to protect student turnout for your selected cohorts.
-        </p>
       </div>
 
       {/* Description */}
       <div>
-        <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wider text-[11px]">
-          Event Description *
-        </label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="block text-xs font-semibold text-zinc-900">
+            Event Description
+          </label>
+          <span className="text-[11px] text-zinc-400">
+            Visible on student notice board
+          </span>
+        </div>
         <textarea
           required
-          rows={4}
+          rows={3}
           value={description}
           onChange={(e) => {
             setDescription(e.target.value);
             onFieldChange();
           }}
           placeholder="Outline what attendees will learn or experience, prerequisites, schedule highlights, and key speakers..."
-          className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-indigo-600 shadow-xs"
+          className="w-full px-3.5 py-2 sm:py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all resize-none sm:rows-4"
         />
       </div>
     </div>

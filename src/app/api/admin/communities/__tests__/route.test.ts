@@ -83,10 +83,9 @@ vi.mock("@/lib/db", () => {
 });
 
 import { getCurrentUser, type AuthSession } from "@/lib/auth";
-import { getPrimaryCampusId, resetCampusCache } from "@/lib/campus";
+import { resetCampusCache } from "@/lib/campus";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
-const mockGetPrimaryCampusId = vi.mocked(getPrimaryCampusId);
 
 describe("Admin Communities API (/api/admin/communities)", () => {
   const adminSession: AuthSession = {
@@ -259,12 +258,11 @@ describe("Admin Communities API (/api/admin/communities)", () => {
       expect(data.error).toContain("already exists");
     });
 
-    it("returns 400 if admin profile is missing campus_id and no active campus exists", async () => {
+    it("returns 403 if admin profile is missing campus_id", async () => {
       mockGetCurrentUser.mockResolvedValueOnce({
         ...adminSession,
         profile: { ...adminSession.profile, campus_id: "" },
       });
-      mockGetPrimaryCampusId.mockResolvedValueOnce("");
 
       const req = new Request("http://localhost/api/admin/communities", {
         method: "POST",
@@ -274,42 +272,9 @@ describe("Admin Communities API (/api/admin/communities)", () => {
         }),
       });
       const res = await POST(req);
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(403);
       const data = await res.json();
-      expect(data.error).toContain("No active campus found in the system");
-    });
-
-    it("automatically falls back to primary campus if admin profile is missing campus_id", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce({
-        ...adminSession,
-        profile: { ...adminSession.profile, campus_id: "" },
-      });
-      mockGetPrimaryCampusId.mockResolvedValueOnce("campus-uuid-1");
-      mockSelectLimit.mockResolvedValueOnce([]); // No slug collision
-
-      const createdComm = {
-        id: "new-comm-uuid",
-        campusId: "campus-uuid-1",
-        name: "Robotics Club",
-        slug: "robotics-club",
-        category: "Tech",
-        status: "approved",
-      };
-
-      mockInsertReturning.mockResolvedValueOnce([createdComm]);
-
-      const req = new Request("http://localhost/api/admin/communities", {
-        method: "POST",
-        body: JSON.stringify({
-          name: "Robotics Club",
-          category: "Tech",
-        }),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(201);
-      const data = await res.json();
-      expect(data.success).toBe(true);
-      expect(data.community.campus_id).toBe("campus-uuid-1");
+      expect(data.error).toContain("Campus association required");
     });
 
     it("returns 400 if assigned lead user does not exist or is ineligible", async () => {

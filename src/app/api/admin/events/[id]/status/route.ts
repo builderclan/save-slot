@@ -22,6 +22,11 @@ export async function POST(
     }
 
     const { id } = await params;
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
+
     const rawBody = await request.json().catch(() => null);
     const parsed = UpdateEventStatusSchema.safeParse(rawBody);
 
@@ -44,7 +49,12 @@ export async function POST(
           targetAudience: events.targetAudience,
         })
         .from(events)
-        .where(eq(events.id, id))
+        .where(
+          and(
+            eq(events.id, id),
+            eq(events.campusId, campusId)
+          )
+        )
         .limit(1)
     );
 
@@ -121,7 +131,12 @@ export async function POST(
             reviewedBy: session.userId,
             updatedAt: new Date(),
           })
-          .where(eq(events.id, id))
+          .where(
+            and(
+              eq(events.id, id),
+              eq(events.campusId, campusId)
+            )
+          )
           .returning();
 
         return res;
@@ -144,8 +159,8 @@ export async function POST(
         { status: 409 }
       );
     }
-    const message = err instanceof Error ? err.message : "Failed to update event status";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[POST /api/admin/events/[id]/status] Error:", err);
+    return NextResponse.json({ error: "Failed to update event status" }, { status: 500 });
   }
 }
 

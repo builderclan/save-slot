@@ -31,7 +31,7 @@ export async function GET() {
       }
     );
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load venues";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[GET /api/venues] Error:", err);
+    return NextResponse.json({ error: "Failed to load venues" }, { status: 500 });
   }
 }

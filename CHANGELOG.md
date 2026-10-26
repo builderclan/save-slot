@@ -5,9 +5,44 @@ All notable changes to the SaveSlot project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
-
 ## [Unreleased]
+
+## [0.3.0] - 2026-10-26
+
+### Added
+
+- **Single-Instance Institutional White-Labeling**: Centralized campus configuration (`src/lib/config/campus.ts`) with smart acronym (`extractAcronym`) and URL slug derivation (`slugify`) driven by `NEXT_PUBLIC_CAMPUS_*` environment variables.
+- **Dynamic Brand Injection**: Injected institutional identity into navigation, authentication views, SEO metadata, web manifest, sitemaps, and `.ics` calendar exports.
+- **Admin Workspace Loading Skeleton**: Added a 2-column sidebar loading skeleton (`src/app/admin/loading.tsx`) eliminating Cumulative Layout Shift (CLS).
+
+### Changed
+
+- **Next.js & Vitest Engine Upgrades**: Upgraded Next.js to `16.4.3` and Vitest to `5.0.5`.
+- **Response Headers Modernization**: Updated `X-XSS-Protection: 0` per OWASP guidance and removed `preload` from `Strict-Transport-Security`.
+- **Read-Path Campus Optimization**: Removed database mutation writes from `getPrimaryCampusId()`, caching resolved UUIDs in memory.
+- **Slug Derivation Synchronization**: Aligned slug and acronym extraction across migration scripts and `scripts/seed.js`.
+
+### Fixed
+
+- **Principal Event Creation UI Leak**: Restricted Notice Board `isPrivileged` guard in `src/features/events/hooks/use-notice-board.ts` to Community Leads and Admins, preventing Principals from seeing the "Create Event" button and aligning UI with backend RBAC.
+- **Open Redirect Vulnerability**: Rejected backslash normalization bypasses (`/\evil.com`) in `src/app/login/page.tsx`, strictly enforcing URL origin checks.
+- **Auth Rate-Limiter Race Conditions**: Replaced multi-step read-then-write checks in `src/lib/rate-limit.ts` with atomic PostgreSQL upserts (`.insert().onConflictDoUpdate().returning()`), explicit `::timestamptz` casts, and rolling-window L1 cache preservation.
+- **Multi-Tenant Campus Isolation Leaks**: Added missing tenant guards in `src/app/api/lead/events/route.ts` (returns `403 Forbidden` for unassociated accounts) and rendered an empty desk view on `src/app/principal/page.tsx` when `campusId` is absent.
+- **Server-Side 409 Conflict Guard**: Enforced server-side double-booking and calendar-day lead-time policy validation on lead event proposals and edits.
+- **TimePicker & DatePicker Accessibility**: Added keyboard navigation (`ArrowUp`/`ArrowDown`/`Enter`/`Space`/`Escape`/`Tab`), portal auto-scroll synchronization on mount, and Escape focus restoration.
+- **DatePicker Preset Safety Guard**: Blocked date presets from selecting dates preceding `parsedMinDate`.
+- **Card Interactive Trapping**: Fixed click delegation in `<Card isClickable>` to allow nested buttons and links to trigger naturally.
+- **Admin Triage Filter Reset**: Auto-reset community filter to `"all"` when a selected club's pending proposals reach zero.
+- **Production Seed Guard Bypass**: Corrected account query filters in `scripts/seed.js` to strictly preserve live accounts in production.
+
+### Security
+
+- **RPC Identity Verification**: Revoked client-supplied `p_admin_id` and enforced server-side `auth.uid()` in `approve_community()` and `reject_community()` (migration `011`).
+- **RPC Public Execution Revocation**: Revoked `EXECUTE` privileges on community administrative RPCs from `PUBLIC`.
+- **Client-Side Privilege Escalation Guard**: Hardened `community_members_insert` RLS policy to strictly require `role = 'member'`.
+- **Stored XSS Protocol Whitelisting**: Enforced `SafeUrlSchema` on event posters and RSVP links, rejecting dangerous protocols (`javascript:`, `data:`).
+- **Public Data Leakage Protection**: Restricted public `/api/communities` queries strictly to `status = 'approved'`.
+- **Error Response Sanitization**: Stripped internal error stacks and database details from 500 error responses across all public and administrative API routes.
 
 ---
 
@@ -79,3 +114,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Microsecond-level double-booking and cohort quiet-hour detection algorithms.
 - **Edge Incremental Static Regeneration (ISR)**:
   - 60-second revalidation pipeline for public campus notice boards.
+
+[Unreleased]: https://github.com/builderclan/save-slot/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/builderclan/save-slot/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/builderclan/save-slot/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/builderclan/save-slot/releases/tag/v0.1.0

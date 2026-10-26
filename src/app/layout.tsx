@@ -4,6 +4,7 @@ import "./globals.css";
 import { Navbar } from "@/components/layout/navbar";
 import { CalendarProvider } from "@/context/calendar-context";
 import { AuthProvider } from "@/context/auth-context";
+import { campusConfig } from "@/lib/config/campus";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -23,9 +24,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SaveSlot • Campus Events & Scheduling • AISAT",
+  title: `SaveSlot • Campus Events & Scheduling • ${campusConfig.shortName}`,
   description:
-    "Official centralized student notice board and conflict-free event scheduling platform for Albertian Institute of Science & Technology (AISAT).",
+    `Official centralized student notice board and conflict-free event scheduling platform for ${campusConfig.name} (${campusConfig.shortName}).`,
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

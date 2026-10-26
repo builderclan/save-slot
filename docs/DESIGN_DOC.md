@@ -1,8 +1,8 @@
 # SaveSlot System Design Document
 
 **Product**: SaveSlot — Campus Events & Scheduling Platform  
-**Target Institution**: Albertian Institute of Science & Technology (AISAT)  
-**Version**: 1.2.0 (Current Production Build)  
+**Target Institution**: Configurable Single-Instance Deployment (via `NEXT_PUBLIC_CAMPUS_NAME`, e.g. AISAT)  
+**Version**: 0.3.0 (Target Release / In Development)  
 **Status**: Implemented & Verified  
 
 ---
@@ -58,14 +58,14 @@ graph TD
 
 | Layer | Technology | Version | Purpose / Rationale |
 | :--- | :--- | :--- | :--- |
-| **Framework** | Next.js | `16.3.5` | App Router, Server Components (SSR), Turbopack bundler, API routes |
+| **Framework** | Next.js | `16.4.3` | App Router, Server Components (SSR), Turbopack bundler, API routes |
 | **UI Runtime** | React | `19.2.8` | Server & Client Components (`"use client"`), hooks, concurrent rendering |
-| **Styling** | Tailwind CSS | `v4.0` | Modern `@tailwindcss/postcss`, zero-runtime CSS variables, utility tokens |
+| **Styling** | Tailwind CSS | `v4` | Modern `@tailwindcss/postcss`, zero-runtime CSS variables, utility tokens |
 | **Database** | PostgreSQL / Supabase | `15+` | Relational integrity, foreign keys, JSON aggregation, transactional locks |
-| **DB Client** | `pg` (node-postgres) | `8.13.1` | Low-level connection pool with TCP keepAlive and resilient query retry |
-| **Date & Time** | `date-fns` | `4.1.0` | Immutable, localized date manipulation and interval intersection |
-| **Icons** | `lucide-react` | `0.475.0` | Minimalist line icons |
-| **Validation** | `zod` | `3.24.2` | Runtime schema validation for API request bodies and route parameters |
+| **ORM & DB Client** | Drizzle ORM & `pg` | `0.45.4` / `^8.23.0` | Type-safe data access with schema relations and low-level connection pool |
+| **Date & Time** | `date-fns` | `^4.4.0` | Immutable, localized date manipulation and interval intersection |
+| **Icons** | `lucide-react` | `^1.45.0` | Minimalist line icons |
+| **Validation** | `zod` | `^4.6.4` | Runtime schema validation for API request bodies and route parameters |
 
 ---
 
@@ -89,7 +89,9 @@ erDiagram
         uuid id PK
         varchar name
         varchar slug UK
+        varchar domain
         varchar timezone
+        boolean is_active
         timestamptz created_at
     }
 
@@ -109,7 +111,7 @@ erDiagram
         uuid id PK
         uuid campus_id FK
         varchar name
-        varchar slug UK
+        varchar slug
         varchar category
         text description
         text logo_url
@@ -117,15 +119,21 @@ erDiagram
         timestamptz created_at
     }
 
-    USERS {
+    COMMUNITY_MEMBERS {
         uuid id PK
+        uuid community_id FK
+        uuid user_id FK
+        varchar role "lead | co-lead | member"
+        timestamptz created_at
+    }
+
+    USERS {
+        uuid id PK "auth.users FK"
         varchar email UK
-        varchar password_hash
         varchar full_name
         varchar role "student | organizer | admin | principal | vice_principal"
         varchar avatar_url
         uuid campus_id FK
-        boolean is_active
         timestamptz created_at
     }
 
@@ -140,6 +148,7 @@ erDiagram
         varchar slug UK
         text description
         varchar category
+        text_array target_audience
         text_array tags
         timestamptz start_time
         timestamptz end_time
@@ -171,9 +180,11 @@ erDiagram
 3. **Critical Performance Indexes**:
 
    ```sql
-   CREATE INDEX idx_events_timeline ON public.events (start_time, end_time, status);
-   CREATE INDEX idx_events_venue_window ON public.events (venue_id, start_time, end_time) WHERE status != 'rejected';
-   CREATE INDEX idx_events_community ON public.events (community_id);
+   CREATE INDEX idx_events_campus_status ON public.events (campus_id, status);
+   CREATE INDEX idx_events_start_time ON public.events (start_time);
+   CREATE INDEX idx_events_status_start_time ON public.events (status, start_time);
+   CREATE INDEX idx_events_venue_time ON public.events (venue_id, start_time, end_time);
+   CREATE INDEX idx_events_target_audience ON public.events USING gin (target_audience);
    ```
 
 ---

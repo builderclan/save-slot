@@ -6,6 +6,7 @@ import { events, venues, communityMembers } from "@/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { formatCampusEvent } from "@/db/adapters";
 import { ProposeEventSchema } from "@/lib/validations";
+import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 function slugify(text: string): string {
   return text
@@ -29,12 +30,19 @@ export async function GET() {
       return NextResponse.json({ events: [] });
     }
 
+    const campusId = session.profile?.campus_id;
+    if ((session.isAdmin || session.isPrincipal) && !campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
+
+    const whereClause =
+      session.isAdmin || session.isPrincipal
+        ? eq(events.campusId, campusId!)
+        : inArray(events.communityId, communityIds);
+
     const rows = await withDbRetry((client) =>
       client.query.events.findMany({
-        where:
-          !session.isAdmin && !session.isPrincipal
-            ? inArray(events.communityId, communityIds)
-            : undefined,
+        where: whereClause,
         orderBy: [desc(events.startTime)],
         with: {
           community: {
@@ -88,8 +96,8 @@ export async function GET() {
 
     return NextResponse.json({ events: rows.map(formatCampusEvent) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load lead events";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[GET /api/lead/events] Error:", err);
+    return NextResponse.json({ error: "Failed to load lead events" }, { status: 500 });
   }
 }
 
@@ -157,6 +165,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Selected venue not found." }, { status: 404 });
     }
 
+    // Server-side venue collision guard
+    const conflictCheck = await checkEventConflicts({
+      venueId,
+      startTime,
+      endTime,
+      category,
+      targetAudience: targetAudience || ["All Students"],
+    });
+
+    if (conflictCheck.hasVenueConflict) {
+      return NextResponse.json(
+        {
+          error: "Conflict: This venue is already booked for the selected time slot.",
+          conflict: conflictCheck,
+        },
+        { status: 409 }
+      );
+    }
+
     // Generate unique slug
     let baseSlug = slugify(title);
     if (!baseSlug) baseSlug = "campus-event";
@@ -190,7 +217,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, event: formatCampusEvent(inserted) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to submit event proposal";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[POST /api/lead/events] Error:", err);
+    return NextResponse.json({ error: "Failed to submit event proposal" }, { status: 500 });
   }
 }

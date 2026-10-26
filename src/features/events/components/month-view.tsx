@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   format,
   startOfMonth,
@@ -36,12 +36,80 @@ export function MonthView({
 }: MonthViewProps) {
   const [internalDate, setInternalDate] = useState<Date>(currentDate);
   const [popoverDay, setPopoverDay] = useState<Date | null>(null);
+  const popoverModalRef = useRef<HTMLDivElement>(null);
+  const isSelectingEventRef = useRef(false);
+  const triggerElementRef = useRef<HTMLElement | null>(null);
   const activeDate = currentDate || internalDate;
 
   const handleDateChange = (newDate: Date) => {
     setInternalDate(newDate);
     onDateChange?.(newDate);
   };
+
+  const handleOpenPopover = (day: Date, e?: React.MouseEvent<HTMLElement>) => {
+    isSelectingEventRef.current = false;
+    triggerElementRef.current = e?.currentTarget || (document.activeElement as HTMLElement | null);
+    setPopoverDay(day);
+  };
+
+  const handleSelectPopoverEvent = (ev: CampusEvent) => {
+    isSelectingEventRef.current = true;
+    setPopoverDay(null);
+    onSelectEvent(ev);
+  };
+
+  const handleDialogKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setPopoverDay(null);
+      return;
+    }
+
+    if (e.key === "Tab" && popoverModalRef.current) {
+      const focusables = Array.from(
+        popoverModalRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      );
+
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!popoverDay) return;
+
+    const focusTimer = setTimeout(() => {
+      if (popoverModalRef.current) {
+        const firstFocusable = popoverModalRef.current.querySelector<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        firstFocusable?.focus();
+      }
+    }, 50);
+
+    return () => {
+      clearTimeout(focusTimer);
+      if (
+        !isSelectingEventRef.current &&
+        triggerElementRef.current &&
+        typeof triggerElementRef.current.focus === "function"
+      ) {
+        triggerElementRef.current.focus();
+      }
+    };
+  }, [popoverDay]);
 
   const monthStart = startOfMonth(activeDate);
   const monthEnd = endOfMonth(monthStart);
@@ -80,8 +148,8 @@ export function MonthView({
 
   return (
     <div className="w-full h-full bg-white flex flex-col select-none min-h-0 overflow-hidden">
-      {/* Weekday Names Header matching Image 1 */}
-      <div className="grid grid-cols-7 border-b border-slate-200 divide-x divide-slate-200/80 text-center py-2 bg-white text-xs font-semibold text-slate-500 shrink-0 sticky top-0 z-10 shadow-2xs">
+      {/* Weekday Names Header */}
+      <div className="grid grid-cols-7 border-b border-zinc-200/80 divide-x divide-zinc-200/80 text-center py-2 bg-white text-xs font-semibold text-zinc-500 shrink-0 sticky top-0 z-10 shadow-2xs">
         <div><span className="sm:hidden">Sun</span><span className="hidden sm:inline">Sunday</span></div>
         <div><span className="sm:hidden">Mon</span><span className="hidden sm:inline">Monday</span></div>
         <div><span className="sm:hidden">Tue</span><span className="hidden sm:inline">Tuesday</span></div>
@@ -93,7 +161,7 @@ export function MonthView({
 
       {/* Days Grid: Compact on mobile (< lg), full-height flex-1 on desktop (lg+) */}
       <div
-        className="calendar-month-grid grid grid-cols-7 divide-x divide-y divide-slate-200/80 bg-white flex-1 min-h-0 overflow-hidden"
+        className="calendar-month-grid grid grid-cols-7 divide-x divide-y divide-zinc-200/80 bg-white flex-1 min-h-0 overflow-hidden"
         style={{
           ["--week-rows" as string]: weekCount,
         }}
@@ -117,11 +185,11 @@ export function MonthView({
                   handleDateChange(day);
                 }
               }}
-              className={`min-h-[46px] sm:min-h-[64px] lg:min-h-0 h-full p-1 sm:p-1.5 lg:p-2 flex flex-col transition-colors cursor-pointer group focus:outline-none focus:bg-indigo-50/30 overflow-hidden ${
-                !isCurrentMonth ? "bg-slate-50/40 text-slate-400" : "hover:bg-slate-50/70"
+              className={`min-h-[46px] sm:min-h-[64px] lg:min-h-0 h-full p-1 sm:p-1.5 lg:p-2 flex flex-col transition-colors cursor-pointer group focus:outline-none focus:bg-zinc-50/80 overflow-hidden ${
+                !isCurrentMonth ? "bg-zinc-50/40 text-zinc-400" : "hover:bg-zinc-50/70"
               }`}
             >
-              {/* Day header inside cell centered matching Image 1 */}
+              {/* Day header inside cell */}
               <div className="text-center mb-1 sm:mb-1.5 flex items-center justify-center">
                 {isSelected ? (
                   <span className="h-6 sm:h-7 px-1.5 sm:px-2 min-w-6 sm:min-w-7 rounded-lg bg-indigo-600 text-white font-bold text-[11px] sm:text-xs flex items-center justify-center shadow-xs">
@@ -135,8 +203,8 @@ export function MonthView({
                   <span
                     className={`text-[11px] sm:text-xs font-semibold px-1 sm:px-2 py-0.5 rounded-md ${
                       isCurrentMonth
-                        ? "text-slate-800 group-hover:text-indigo-600"
-                        : "text-slate-400"
+                        ? "text-zinc-800 group-hover:text-indigo-600"
+                        : "text-zinc-400"
                     }`}
                   >
                     {isDay1 ? format(day, "MMM d") : format(day, "d")}
@@ -180,9 +248,9 @@ export function MonthView({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setPopoverDay(day);
+                        handleOpenPopover(day, e);
                       }}
-                      className="text-[10px] text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50/80 px-1.5 py-0.5 rounded-md font-semibold text-left transition-colors cursor-pointer block w-full truncate"
+                      className="text-[10px] text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 px-1.5 py-0.5 rounded-md font-semibold text-left transition-colors cursor-pointer block w-full truncate"
                     >
                       +{dayEvents.length - 3} more
                     </button>
@@ -237,7 +305,7 @@ export function MonthView({
                     );
                   })}
                   {dayEvents.length > 3 && (
-                    <span className="text-[9px] font-bold text-slate-500 leading-none">
+                    <span className="text-[9px] font-bold text-zinc-500 leading-none">
                       +{dayEvents.length - 3}
                     </span>
                   )}
@@ -249,26 +317,26 @@ export function MonthView({
       </div>
 
       {/* Selected Day Agenda (Visible on Mobile & Tablet: lg:hidden) */}
-      <div className="lg:hidden border-t border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+      <div className="lg:hidden border-t border-zinc-200/80 bg-zinc-50/50 p-4 sm:p-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-indigo-600" />
-            <h3 className="text-xs sm:text-sm font-bold text-slate-900">
+            <CalendarIcon className="w-4 h-4 text-zinc-700" />
+            <h3 className="text-xs sm:text-sm font-semibold text-zinc-900">
               {format(activeDate, "EEEE, MMM d, yyyy")}
             </h3>
           </div>
-          <span className="text-[11px] font-semibold text-slate-500">
+          <span className="text-[11px] font-medium text-zinc-500">
             {selectedDayEvents.length} {selectedDayEvents.length === 1 ? "event" : "events"}
           </span>
         </div>
 
         {selectedDayEvents.length === 0 ? (
-          <div className="py-6 px-4 text-center rounded-xl border border-dashed border-slate-200 bg-white text-slate-400">
-            <p className="text-xs font-medium">No events scheduled on this day</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">Tap another date with colored dots above</p>
+          <div className="py-6 px-4 text-center rounded-xl border border-dashed border-zinc-200 bg-white text-zinc-400">
+            <p className="text-xs font-medium text-zinc-600">No events scheduled on this day</p>
+            <p className="text-[11px] text-zinc-400 mt-0.5">Tap another date with colored dots above</p>
           </div>
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {selectedDayEvents.map((ev) => {
               const startTime = format(toDate(ev.start_time), "h:mm a");
               const endTime = format(toDate(ev.end_time), "h:mm a");
@@ -285,23 +353,23 @@ export function MonthView({
                       onSelectEvent(ev);
                     }
                   }}
-                  className="p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
+                  className="p-3 rounded-xl border border-zinc-200/80 bg-white hover:border-zinc-300 hover:shadow-xs active:scale-[0.98] transition-all cursor-pointer shadow-2xs"
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <CategoryBadge category={ev.category} size="sm" />
-                    <span className="text-xs font-medium text-slate-600 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" />
+                    <CategoryBadge category={ev.category} size="sm" showDot />
+                    <span className="text-xs font-medium text-zinc-600 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-zinc-400" />
                       {startTime} – {endTime}
                     </span>
                   </div>
-                  <h4 className="text-xs font-bold text-slate-900 mb-1">
+                  <h4 className="text-xs font-semibold text-zinc-900 mb-1">
                     {ev.title}
                   </h4>
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+                    <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
                     <span className="truncate">{ev.venue?.name || ev.location_name}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-slate-600 font-medium truncate">{ev.community?.name}</span>
+                    <span className="text-zinc-300">•</span>
+                    <span className="text-zinc-600 font-medium truncate">{ev.community?.name}</span>
                   </div>
                 </div>
               );
@@ -312,59 +380,76 @@ export function MonthView({
 
       {/* Popover for Day Overflow (+N more) */}
       {popoverDay && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl z-10 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Events for ${format(popoverDay, "MMMM d, yyyy")}`}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/45 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setPopoverDay(null)}
+          onKeyDown={handleDialogKeyDown}
+        >
+          <div
+            ref={popoverModalRef}
+            className="relative w-full max-w-md rounded-2xl border border-zinc-200/90 bg-white p-5 shadow-2xl z-10 max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 mb-3 shrink-0">
               <div className="flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-indigo-600" />
-                <h3 className="font-bold text-sm text-slate-900">
+                <CalendarIcon className="w-4 h-4 text-zinc-700" />
+                <h3 className="font-semibold text-sm text-zinc-900">
                   {format(popoverDay, "EEEE, MMMM d, yyyy")}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setPopoverDay(null)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                aria-label="Close overflow events dialog"
+                className="p-1 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 cursor-pointer transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 min-h-0">
               {popoverEvents.map((ev) => (
                 <div
                   key={ev.id}
-                  onClick={() => {
-                    setPopoverDay(null);
-                    onSelectEvent(ev);
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => handleSelectPopoverEvent(ev)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleSelectPopoverEvent(ev);
+                    }
                   }}
-                  className="p-3 rounded-xl border border-slate-200 hover:border-indigo-400 hover:bg-indigo-50/40 transition-all cursor-pointer group"
+                  className="p-3 rounded-xl border border-zinc-200/80 hover:border-zinc-300 hover:bg-zinc-50/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all cursor-pointer group shadow-2xs"
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <CategoryBadge category={ev.category} size="sm" />
-                    <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-slate-400" />
+                    <CategoryBadge category={ev.category} size="sm" showDot />
+                    <span className="text-xs text-zinc-500 font-medium flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-zinc-400" />
                       {format(toDate(ev.start_time), "h:mm a")}
                     </span>
                   </div>
-                  <h4 className="font-semibold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                  <h4 className="font-semibold text-xs text-zinc-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
                     {ev.title}
                   </h4>
-                  <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 truncate">
-                    <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                  <div className="text-[11px] text-zinc-500 mt-1 flex items-center gap-1 truncate">
+                    <MapPin className="w-3 h-3 text-zinc-400 shrink-0" />
                     <span className="truncate">{ev.venue?.name || ev.location_name}</span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-slate-600 font-medium truncate">{ev.community?.name}</span>
+                    <span className="text-zinc-300">•</span>
+                    <span className="text-zinc-600 font-medium truncate">{ev.community?.name}</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="pt-3 border-t border-slate-100 mt-3 text-right">
+            <div className="pt-3 border-t border-zinc-100 mt-3 text-right shrink-0">
               <button
                 type="button"
                 onClick={() => setPopoverDay(null)}
-                className="px-3.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 cursor-pointer transition-colors shadow-2xs"
               >
                 Close
               </button>

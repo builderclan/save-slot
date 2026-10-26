@@ -1,4 +1,5 @@
 import { CampusEvent } from "@/types/database";
+import { campusConfig } from "@/lib/config/campus";
 
 export function getGoogleCalendarUrl(event: CampusEvent): string {
   const title = encodeURIComponent(event.title);
@@ -34,7 +35,7 @@ export function downloadIcsFile(event: CampusEvent) {
   const icsContent = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//AISAT SaveSlot//Calendar//EN",
+    `PRODID:-//${campusConfig.shortName} SaveSlot//Calendar//EN`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
@@ -45,7 +46,7 @@ export function downloadIcsFile(event: CampusEvent) {
     `SUMMARY:${event.title.replace(/,/g, "\\,")}`,
     `DESCRIPTION:${event.description.replace(/\n/g, "\\n").replace(/,/g, "\\,")}`,
     `LOCATION:${location.replace(/,/g, "\\,")}`,
-    `ORGANIZER;CN="${(event.community?.name || "Campus Community").replace(/"/g, "")}":MAILTO:events@campus.edu`,
+    `ORGANIZER;CN="${(event.community?.name || "Campus Community").replace(/"/g, "")}":MAILTO:events@${campusConfig.domain}`,
     "STATUS:CONFIRMED",
     "END:VEVENT",
     "END:VCALENDAR",

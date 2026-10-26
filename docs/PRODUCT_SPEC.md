@@ -73,6 +73,7 @@ Every campus event must be guaranteed a **"Safe Slot"**:
   * **Visual Notice Board (Default)**: Visual event cards with cover imagery, date badges, host community tags, and quick-action buttons.
   * **Month Calendar Grid**: High-level overview of the month showing event density dots and compact titles.
   * **Week Timeline**: Hour-by-hour visual schedule of campus activities to quickly spot free slots and daily highlights.
+  * **Board View (Kanban Swimlanes)**: Category-grouped swimlanes ideal for scanning campus activities by discipline (Tech, Arts, Sports, Career, Academic, Workshop, Social).
 * **Filtering & Discovery**:
   * **Search Bar**: Debounced search by title, description, or host name.
   * **Category Filter**: Filter by tags (`Technical`, `Cultural`, `Sports`, `Career/Workshop`, `Social`, `Academic`).

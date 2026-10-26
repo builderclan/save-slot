@@ -6,6 +6,7 @@ import { events, venues } from "@/db/schema";
 import { eq, and, ne } from "drizzle-orm";
 import { formatCampusEvent } from "@/db/adapters";
 import { ProposeEventSchema } from "@/lib/validations";
+import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 export async function PUT(
   request: Request,
@@ -84,6 +85,26 @@ export async function PUT(
       return NextResponse.json({ error: "Selected venue not found." }, { status: 404 });
     }
 
+    // Server-side venue collision guard (excluding the current event)
+    const conflictCheck = await checkEventConflicts({
+      venueId,
+      startTime,
+      endTime,
+      category,
+      targetAudience: targetAudience || ["All Students"],
+      excludeEventId: id,
+    });
+
+    if (conflictCheck.hasVenueConflict) {
+      return NextResponse.json(
+        {
+          error: "Conflict: This venue is already booked for the selected time slot.",
+          conflict: conflictCheck,
+        },
+        { status: 409 }
+      );
+    }
+
     // Resubmitting a rejected event resets status to 'pending' and clears rejection_reason
     const [updated] = await withDbRetry((client) =>
       client
@@ -118,8 +139,8 @@ export async function PUT(
 
     return NextResponse.json({ success: true, event: formatCampusEvent(updated) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to update event proposal";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[PUT /api/lead/events/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to update event proposal" }, { status: 500 });
   }
 }
 
@@ -191,7 +212,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to withdraw event proposal";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[DELETE /api/lead/events/[id]] Error:", err);
+    return NextResponse.json({ error: "Failed to withdraw event proposal" }, { status: 500 });
   }
 }

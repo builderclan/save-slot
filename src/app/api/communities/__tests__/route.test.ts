@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "../route";
 
 const mockOrderBy = vi.fn();
-const mockFrom = vi.fn(() => ({ orderBy: mockOrderBy }));
+const mockWhere = vi.fn(() => ({ orderBy: mockOrderBy }));
+const mockFrom = vi.fn(() => ({ where: mockWhere, orderBy: mockOrderBy }));
 const mockSelect = vi.fn();
 mockSelect.mockReturnValue({ from: mockFrom });
 
@@ -56,6 +57,7 @@ describe("GET /api/communities", () => {
 
     expect(mockSelect).toHaveBeenCalledTimes(1);
     expect(mockFrom).toHaveBeenCalledTimes(1);
+    expect(mockWhere).toHaveBeenCalledTimes(1);
     expect(mockOrderBy).toHaveBeenCalledTimes(1);
   });
 
@@ -65,6 +67,6 @@ describe("GET /api/communities", () => {
     const res = await GET();
     expect(res.status).toBe(500);
     const data = await res.json();
-    expect(data.error).toContain("Database connection timeout");
+    expect(data.error).toBe("Failed to load communities");
   });
 });

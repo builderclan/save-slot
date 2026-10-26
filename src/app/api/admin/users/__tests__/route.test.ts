@@ -242,21 +242,20 @@ describe("Admin Users API (/api/admin/users)", () => {
       expect(data.error).toBe("A user with this email already exists.");
     });
 
-    it("should return 400 when no active campus exists", async () => {
+    it("should return 403 when admin profile is missing campus_id", async () => {
       mockGetCurrentUser.mockResolvedValue({
         ...adminSession,
         profile: { ...adminSession.profile, campus_id: undefined },
       });
-      mockGetPrimaryCampusId.mockResolvedValue("");
 
       const req = new Request("http://localhost/api/admin/users", {
         method: "POST",
         body: JSON.stringify(validBody),
       });
       const res = await POST(req);
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(403);
       const data = await res.json();
-      expect(data.error).toContain("No active campus found");
+      expect(data.error).toContain("Campus association required");
     });
 
     it("should create user in transaction and assign community lead", async () => {

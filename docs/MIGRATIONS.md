@@ -7,10 +7,11 @@ This guide details SaveSlot's database migration strategy (**Option A: Timestamp
 ## 1. System Overview
 
 Database migrations in SaveSlot use a versioned ledger table pattern:
-1. **Migration Files**: Stored under [`migrations/`](file:///c:/Users/main/codinways/builderclan/calendar-bc/migrations) as ordered SQL files (`001_...sql`, `002_...sql`, etc.).
+
+1. **Migration Files**: Stored under [`migrations/`](../migrations) as ordered SQL files (`001_...sql`, `002_...sql`, etc.).
 2. **Ledger Table**: Tracks executed migrations in PostgreSQL (`public._schema_migrations`).
-3. **Migration Runner**: [`scripts/migrate.js`](file:///c:/Users/main/codinways/builderclan/calendar-bc/scripts/migrate.js) executes pending migrations within transactions, guarded by PostgreSQL advisory locks.
-4. **CI/CD Automation**: [`.github/workflows/db-migrate.yml`](file:///c:/Users/main/codinways/builderclan/calendar-bc/.github/workflows/db-migrate.yml) runs migrations upon merge to `main` using repository secrets.
+3. **Migration Runner**: [`scripts/migrate.js`](../scripts/migrate.js) executes pending migrations within transactions, guarded by PostgreSQL advisory locks.
+4. **CI/CD Automation**: [`.github/workflows/db-migrate.yml`](../.github/workflows/db-migrate.yml) runs migrations upon merge to `main` using repository secrets.
 
 ```mermaid
 flowchart TD
@@ -42,8 +43,10 @@ flowchart TD
 ## 2. Managing Two Environments: `dev` and `prod`
 
 ### Development Environment
+
 - Connected via `.env` or `.env.local` pointing to your development database (e.g. local Docker Postgres or a Dev Supabase project).
 - Run commands:
+
   ```bash
   # Check which migrations are pending vs applied
   pnpm db:migrate:status
@@ -56,6 +59,7 @@ flowchart TD
   ```
 
 ### Production Environment
+
 - Production database credentials are stored in **GitHub Repository Secrets**:
   - `PROD_DB_HOST` (or `DB_HOST`)
   - `PROD_DB_PORT` (default: `6543`)
@@ -93,39 +97,112 @@ CREATE TABLE IF NOT EXISTS public._schema_migrations (
 ```
 
 ### Transaction Safety
+
 Each migration `.sql` file is executed inside its own PostgreSQL transaction:
+
 ```sql
 BEGIN;
 -- Migration SQL executed here
 INSERT INTO public._schema_migrations (name, applied_at) VALUES ($1, NOW());
 COMMIT;
 ```
+
 If any error occurs, the runner issues an immediate `ROLLBACK;`, reports the line and error message, and exits with code 1. No partial table or column mutations remain.
 
 ### Advisory Concurrency Locking
+
 The runner acquires a PostgreSQL advisory lock (`pg_advisory_lock(7429184712)`) before inspecting the ledger and releases it in a `finally` block upon completion. This ensures no two CI runners or developer terminals can migrate the same database concurrently.
 
 ---
 
-## 5. Authoring a New Migration
+## 5. Migration Ledger Catalog
 
-1. Create a new sequential `.sql` file in [`migrations/`](file:///c:/Users/main/codinways/builderclan/calendar-bc/migrations), for example:
+| File | Purpose / Scope |
+| :--- | :--- |
+| `001_initial_schema.sql` | Core schema: `campuses`, `venues`, `communities`, `users`, `events` |
+| `002_optional_registration_url.sql` | Makes `registration_url` optional for internal club meetings |
+| `003_complete_rls_and_conflict_engine.sql` | Comprehensive Row-Level Security policies & initial conflict check functions |
+| `004_fix_rls_recursion.sql` | Resolves circular evaluation in community members RLS policies |
+| `005_auth_and_multicampus_hardening.sql` | Multi-campus foreign key relationships and auth hardening |
+| `006_community_onboarding.sql` | Community application lifecycle (`pending`, `approved`, `rejected`) |
+| `007_add_reviewed_by.sql` | Adds `reviewed_by` auditor tracking to `events` table |
+| `008_add_principal_and_vice_principal_roles.sql` | Extends user role enum to support `principal` and `vice_principal` |
+| `009_add_target_audience.sql` | Adds `target_audience` cohort array column to `events` |
+| `010_add_events_status_start_time_idx.sql` | Composite performance index for rapid date-window calendar queries |
+| `011_harden_rpc_and_community_members_rls.sql` | Enforces server-side `auth.uid()` in RPCs & revokes public execution |
+| `012_add_auth_rate_limits.sql` | Persistent table for atomic distributed auth rate limiting & lockouts |
+
+---
+
+## 6. Authoring a New Migration
+
+1. Create a new sequential `.sql` file in [`migrations/`](../migrations), for example:
+
    ```bash
-   migrations/009_add_event_attendee_limit.sql
+   migrations/013_add_event_attendee_limit.sql
    ```
+
 2. Write idempotent SQL where possible:
+
    ```sql
-   -- Migration: 009_add_event_attendee_limit.sql
+   -- Migration: 013_add_event_attendee_limit.sql
    ALTER TABLE events ADD COLUMN IF NOT EXISTS max_attendees INT DEFAULT 100;
    CREATE INDEX IF NOT EXISTS idx_events_max_attendees ON events (max_attendees);
    ```
+
 3. Test the migration locally:
+
    ```bash
    pnpm db:migrate:status
    pnpm db:migrate
    ```
+
 4. Run validation checks:
+
    ```bash
    pnpm validate
    ```
+
 5. Commit and open a PR. Once reviewed and merged, GitHub Actions safely deploys the change to production.
+
+---
+
+## 7. Disaster Recovery & Rollback Strategy
+
+SaveSlot follows a **forward-fix migration discipline**: because each file executes inside an isolated transaction (`BEGIN...COMMIT`), failed migrations roll back automatically with zero partial state.
+
+### 7.1 Forward-Fix Rollbacks (Production)
+
+If an applied migration needs to be reverted in production:
+
+1. Do **not** delete the existing migration file from git or edit the production ledger manually.
+2. Create a new compensating migration file (e.g. `014_revert_event_attendee_limit.sql`) that explicitly drops or restores the schema state.
+3. Test locally and deploy through the standard CI/CD workflow.
+
+### 7.2 Recovering from a Stuck Advisory Lock
+
+If a CI runner or development machine crashed mid-execution before releasing the advisory lock (`7429184712`), other runs will pause waiting for the lock.
+
+To diagnose and release:
+
+```sql
+-- 1. Check for active advisory locks
+SELECT pid, locktype, mode, granted 
+FROM pg_locks 
+WHERE classid = 7429184712;
+
+-- 2. Unlock explicitly from any active superuser / admin connection
+SELECT pg_advisory_unlock(7429184712);
+```
+
+### 7.3 Development Ledger Reset
+
+For local development databases only, you can check ledger status or re-run by deleting the specific ledger record:
+
+```sql
+-- View applied migrations
+SELECT * FROM public._schema_migrations ORDER BY applied_at DESC;
+
+-- Re-enable a specific migration for local re-testing
+DELETE FROM public._schema_migrations WHERE name = '012_add_auth_rate_limits.sql';
+```

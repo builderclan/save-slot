@@ -13,17 +13,23 @@ import {
   Menu,
   X,
   GraduationCap,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
+import { useCalendar } from "@/context/calendar-context";
 import { formatDisplayName } from "@/lib/utils";
 import {
   CalendarDateControls,
   CalendarViewSwitcher,
 } from "./calendar-nav-controls";
+import { UserAvatar } from "@/components/ui";
+import { campusConfig } from "@/lib/config/campus";
 
 export function Navbar() {
   const pathname = usePathname();
   const { user, loading, logout, isLoggingOut } = useAuth();
+  const calendar = useCalendar();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isCalendarHome = pathname === "/";
@@ -39,16 +45,35 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full h-14 border-b border-slate-200 bg-white/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full h-14 border-b border-zinc-200/80 bg-white/95 backdrop-blur-md">
       {/* Accessible h1 heading for document hierarchy */}
-      <h1 className="sr-only">SaveSlot • Campus Events & Scheduling • Albertian Institute of Science & Technology (AISAT)</h1>
+      <h1 className="sr-only">
+        SaveSlot • Campus Events & Scheduling • {campusConfig.name} ({campusConfig.shortName})
+      </h1>
 
       <div className="w-full px-3 sm:px-6 h-full relative flex items-center justify-between gap-2 sm:gap-4">
-        {/* Left: Brand + Date Controls if on Calendar Home */}
-        <div className="flex items-center gap-1.5 sm:gap-4 min-w-0 shrink">
+        {/* Left: Sidebar Toggle + Brand + Date Controls if on Calendar Home */}
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 shrink">
+          {/* Desktop Sidebar Toggle Button (Only on Calendar Home) */}
+          {isCalendarHome && calendar && (
+            <button
+              type="button"
+              onClick={calendar.toggleSidebar}
+              title={calendar.isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              aria-label={calendar.isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition-colors cursor-pointer active:scale-95 shrink-0"
+            >
+              {calendar.isSidebarOpen ? (
+                <PanelLeftClose className="w-4 h-4" />
+              ) : (
+                <PanelLeftOpen className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
           {/* Brand & Campus Badge */}
-          <Link href="/" className="flex items-center gap-2 group shrink-0">
-            <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0 shadow-xs ring-1 ring-slate-900/5 transition-transform group-hover:scale-105">
+          <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+            <div className="relative w-8 h-8 rounded-xl overflow-hidden shrink-0 shadow-2xs ring-1 ring-zinc-900/10 transition-transform group-hover:scale-105 bg-white">
               <Image
                 src="/icon.png"
                 alt="SaveSlot"
@@ -60,14 +85,14 @@ export function Navbar() {
             </div>
             <div className="hidden xs:block sm:block">
               <div className="flex items-center gap-1.5">
-                <span className="font-bold text-sm sm:text-base tracking-tight text-slate-900">
-                  Save<span className="text-[#8B5CF6]">Slot</span>
+                <span className="font-bold text-sm sm:text-base tracking-tight text-zinc-900">
+                  Save<span className="text-indigo-600">Slot</span>
                 </span>
                 <span
-                  className="hidden xl:inline-block text-[10px] px-1.5 py-0.5 rounded-full border border-purple-100 bg-purple-50 text-purple-700 font-semibold"
-                  title="Albertian Institute of Science & Technology"
+                  className="hidden xl:inline-block text-[10px] font-mono px-1.5 py-0.5 rounded-md border border-zinc-200 bg-zinc-50 text-zinc-600 font-medium"
+                  title={campusConfig.name}
                 >
-                  AISAT
+                  {campusConfig.shortName}
                 </span>
               </div>
             </div>
@@ -84,27 +109,27 @@ export function Navbar() {
           ) : (
             <nav
               aria-label="Main navigation"
-              className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-2xs text-xs"
+              className="flex items-center gap-1 bg-zinc-100/90 p-1 rounded-xl border border-zinc-200/80 shadow-2xs text-xs"
             >
               <Link
                 href="/"
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 active:scale-[0.98] ${
                   pathname === "/"
-                    ? "bg-white text-slate-900 font-semibold shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-zinc-900 font-semibold shadow-xs"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-white/60"
                 }`}
               >
-                <CalendarIcon className="w-3.5 h-3.5" />
+                <CalendarIcon className="w-3.5 h-3.5 text-zinc-500" />
                 <span>Calendar</span>
               </Link>
 
               {user?.isPrincipal && (
                 <Link
                   href="/principal"
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 active:scale-[0.98] ${
                     pathname.startsWith("/principal")
                       ? "bg-white text-purple-950 font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
+                      : "text-zinc-600 hover:text-purple-950 hover:bg-white/60"
                   }`}
                 >
                   <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
@@ -115,13 +140,13 @@ export function Navbar() {
               {user?.isLead && (
                 <Link
                   href="/lead"
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 active:scale-[0.98] ${
                     pathname.startsWith("/lead")
-                      ? "bg-white text-slate-900 font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-white text-indigo-950 font-semibold shadow-xs"
+                      : "text-zinc-600 hover:text-indigo-950 hover:bg-white/60"
                   }`}
                 >
-                  <LayoutGrid className="w-3.5 h-3.5 text-slate-400" />
+                  <LayoutGrid className="w-3.5 h-3.5 text-indigo-500" />
                   <span>Lead Workspace</span>
                 </Link>
               )}
@@ -129,13 +154,13 @@ export function Navbar() {
               {user?.isAdmin && (
                 <Link
                   href="/admin"
-                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 active:scale-[0.98] ${
                     pathname.startsWith("/admin")
-                      ? "bg-white text-slate-900 font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900"
+                      ? "bg-white text-amber-950 font-semibold shadow-xs"
+                      : "text-zinc-600 hover:text-amber-950 hover:bg-white/60"
                   }`}
                 >
-                  <Shield className="w-3.5 h-3.5 text-amber-500" />
+                  <Shield className="w-3.5 h-3.5 text-amber-600" />
                   <span>Admin Console</span>
                 </Link>
               )}
@@ -145,17 +170,16 @@ export function Navbar() {
 
         {/* Right side: Desktop Auth */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-
           {/* Auth session / logout / login (Desktop) */}
           {loading ? (
-            <div className="w-16 sm:w-24 h-8 rounded-xl bg-slate-100 animate-pulse" />
+            <div className="w-16 sm:w-24 h-8 rounded-xl bg-zinc-100 animate-pulse" />
           ) : user ? (
             <div className="hidden sm:flex items-center gap-2">
               <div className="text-right hidden xl:block">
-                <div className="text-xs font-semibold text-slate-900 truncate max-w-[220px]">
+                <div className="text-xs font-semibold text-zinc-900 truncate max-w-[220px]">
                   {formatDisplayName(user.fullName)}
                 </div>
-                <div className="text-[10px] text-slate-500 capitalize">
+                <div className="text-[10px] text-zinc-500 capitalize">
                   {user.role === "principal"
                     ? "College Principal"
                     : user.role === "vice_principal"
@@ -166,21 +190,14 @@ export function Navbar() {
                 </div>
               </div>
 
-              {/* Role avatar badge */}
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border shadow-xs ${
-                  user.role === "principal"
-                    ? "bg-purple-100 border-purple-200 text-purple-800"
-                    : user.role === "vice_principal"
-                    ? "bg-indigo-100 border-indigo-200 text-indigo-800"
-                    : user.role === "admin"
-                    ? "bg-amber-100 border-amber-200 text-amber-800"
-                    : "bg-indigo-100 border-indigo-200 text-indigo-800"
-                }`}
-                title={formatDisplayName(user.fullName)}
-              >
-                {formatDisplayName(user.fullName).charAt(0) || "U"}
-              </div>
+              {/* Role avatar badge using Blobatar */}
+              <UserAvatar
+                name={formatDisplayName(user.fullName)}
+                email={user.email}
+                role={user.role}
+                avatarUrl={user.avatarUrl}
+                size={32}
+              />
 
               <button
                 type="button"
@@ -188,20 +205,20 @@ export function Navbar() {
                 disabled={isLoggingOut}
                 title="Sign Out"
                 aria-label="Sign out"
-                className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-400 hover:text-rose-600 disabled:opacity-50 transition-colors cursor-pointer shadow-2xs"
+                className="h-8 w-8 rounded-lg border border-zinc-200/90 bg-white hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 text-zinc-400 disabled:opacity-50 transition-all flex items-center justify-center cursor-pointer shadow-2xs active:scale-95"
               >
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : pathname === "/login" ? (
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-xs font-medium">
-              <LogIn className="w-3.5 h-3.5 text-slate-400" />
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 text-zinc-500 text-xs font-medium">
+              <LogIn className="w-3.5 h-3.5 text-zinc-400" />
               <span>Portal Sign In</span>
             </div>
           ) : (
             <Link
               href="/login"
-              className="hidden sm:flex px-3 sm:px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-all items-center gap-1.5 shadow-xs cursor-pointer shrink-0"
+              className="hidden sm:flex h-8 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium transition-all items-center gap-1.5 shadow-2xs hover:shadow-xs cursor-pointer shrink-0 active:scale-[0.98]"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Staff Login</span>
@@ -214,7 +231,7 @@ export function Navbar() {
             onClick={() => setMobileMenuOpen((prev) => !prev)}
             aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={mobileMenuOpen}
-            className="p-1.5 sm:p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition-colors cursor-pointer shadow-2xs lg:hidden"
+            className="p-1.5 sm:p-2 rounded-xl border border-zinc-200/90 bg-white hover:bg-zinc-50 text-zinc-700 transition-colors cursor-pointer shadow-2xs lg:hidden active:scale-95"
           >
             {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
           </button>
@@ -223,29 +240,23 @@ export function Navbar() {
 
       {/* Mobile & Tablet Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-slate-200 bg-white/98 backdrop-blur-md px-4 py-4 space-y-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="lg:hidden border-t border-zinc-200/80 bg-white/98 backdrop-blur-md px-4 py-4 space-y-3 shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
           {/* User info banner if logged in */}
           {user ? (
-            <div className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex items-center justify-between gap-3">
+            <div className="p-3 rounded-xl border border-zinc-200/80 bg-zinc-50/70 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold border shrink-0 ${
-                    user.role === "principal"
-                      ? "bg-purple-100 border-purple-200 text-purple-800"
-                      : user.role === "vice_principal"
-                      ? "bg-indigo-100 border-indigo-200 text-indigo-800"
-                      : user.role === "admin"
-                      ? "bg-amber-100 border-amber-200 text-amber-800"
-                      : "bg-indigo-100 border-indigo-200 text-indigo-800"
-                  }`}
-                >
-                  {formatDisplayName(user.fullName).charAt(0) || "U"}
-                </div>
+                <UserAvatar
+                  name={formatDisplayName(user.fullName)}
+                  email={user.email}
+                  role={user.role}
+                  avatarUrl={user.avatarUrl}
+                  size={36}
+                />
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-slate-900 truncate">
+                  <div className="text-xs font-semibold text-zinc-900 truncate">
                     {formatDisplayName(user.fullName)}
                   </div>
-                  <div className="text-[11px] text-slate-500 truncate">
+                  <div className="text-[11px] text-zinc-500 truncate">
                     {user.email} · <span className="capitalize font-medium">{user.role === "principal" ? "College Principal" : user.role === "vice_principal" ? "Vice Principal" : user.role === "admin" ? "Campus Admin" : "Lead"}</span>
                   </div>
                 </div>
@@ -255,7 +266,7 @@ export function Navbar() {
                 type="button"
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs font-medium transition-colors flex items-center gap-1 shrink-0"
+                className="px-2.5 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-rose-50 hover:border-rose-200 hover:text-rose-600 text-zinc-600 text-xs font-medium transition-all flex items-center gap-1 shrink-0 active:scale-95"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign Out</span>
@@ -265,7 +276,7 @@ export function Navbar() {
             <Link
               href="/login"
               onClick={() => setMobileMenuOpen(false)}
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center gap-2 shadow-xs transition-colors"
+              className="w-full py-2.5 px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium flex items-center justify-center gap-2 shadow-2xs transition-colors active:scale-[0.98]"
             >
               <LogIn className="w-4 h-4" />
               <span>Campus Staff Login</span>
@@ -279,11 +290,11 @@ export function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
               className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
                 pathname === "/"
-                  ? "bg-indigo-50 text-indigo-700"
-                  : "text-slate-700 hover:bg-slate-50"
+                  ? "bg-zinc-100 text-zinc-900"
+                  : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
               }`}
             >
-              <CalendarIcon className="w-4 h-4 text-indigo-600" />
+              <CalendarIcon className="w-4 h-4 text-zinc-500" />
               <span>Public Notice Board Calendar</span>
             </Link>
 
@@ -294,13 +305,13 @@ export function Navbar() {
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
                   pathname.startsWith("/lead")
                     ? "bg-indigo-50 text-indigo-700"
-                    : "text-slate-700 hover:bg-slate-50"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
                 }`}
               >
-                <LayoutGrid className="w-4 h-4 text-slate-500" />
+                <LayoutGrid className="w-4 h-4 text-indigo-500" />
                 <span>Lead Workspace</span>
                 {user.leadCommunities?.[0] && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 font-normal ml-auto">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-100/70 text-indigo-700 font-normal ml-auto">
                     {user.leadCommunities[0].name}
                   </span>
                 )}
@@ -314,12 +325,12 @@ export function Navbar() {
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
                   pathname.startsWith("/principal")
                     ? "bg-purple-50 text-purple-900"
-                    : "text-slate-700 hover:bg-slate-50"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
                 }`}
               >
                 <GraduationCap className="w-4 h-4 text-purple-600" />
                 <span>{user?.role === "vice_principal" ? "Vice Principal Approval Desk" : "Principal Approval Desk"}</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 font-semibold ml-auto">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-100/70 text-purple-800 font-semibold ml-auto">
                   Executive
                 </span>
               </Link>
@@ -332,12 +343,12 @@ export function Navbar() {
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
                   pathname.startsWith("/admin")
                     ? "bg-amber-50 text-amber-900"
-                    : "text-slate-700 hover:bg-slate-50"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
                 }`}
               >
                 <Shield className="w-4 h-4 text-amber-600" />
                 <span>Admin Operations Console</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 font-semibold ml-auto">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100/70 text-amber-800 font-semibold ml-auto">
                   Staff
                 </span>
               </Link>

@@ -19,6 +19,7 @@ import {
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "@/features/events";
 import { doAudiencesOverlap } from "@/lib/conflicts/audience";
+import { Select } from "@/components/ui/select";
 
 export const CATEGORY_DEFAULT_IMAGES: Record<string, string> = {
   Tech: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
@@ -138,14 +139,32 @@ export function AdminTriageView({
     return pendingEvents.find((e) => e.id === selectedEventId) || filteredEvents[0] || null;
   }, [pendingEvents, filteredEvents, selectedEventId]);
 
+  const communityOptions = useMemo(() => {
+    const list = [{ value: "all", label: `All Student Clubs (${pendingEvents.length})` }];
+    for (const c of communities) {
+      const count = pendingEvents.filter((e) => e.community_id === c.id).length;
+      if (count > 0) {
+        list.push({ value: c.id, label: `${c.name} (${count})` });
+      }
+    }
+    return list;
+  }, [communities, pendingEvents]);
+
+  // Reset filter to "all" if selected club no longer has pending events
+  useEffect(() => {
+    if (!communityOptions.some((o) => o.value === selectedCommunity)) {
+      setSelectedCommunity("all");
+    }
+  }, [communityOptions, selectedCommunity]);
+
   if (pendingEvents.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 bg-slate-50/50">
-        <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-500 mb-3 shadow-2xs">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 bg-zinc-50/50">
+        <div className="w-10 h-10 rounded-full bg-zinc-100 border border-zinc-200/80 flex items-center justify-center text-zinc-500 mb-3 shadow-2xs">
           <Check className="w-4 h-4 stroke-[2.5]" />
         </div>
-        <h2 className="text-sm font-semibold text-slate-900">All caught up</h2>
-        <p className="text-xs text-slate-500 mt-1 max-w-xs text-center leading-relaxed">
+        <h2 className="text-sm font-semibold text-zinc-900">All caught up</h2>
+        <p className="text-xs text-zinc-500 mt-1 max-w-xs text-center leading-relaxed">
           No student club proposals waiting for review. You will be notified when new events are submitted.
         </p>
       </div>
@@ -161,61 +180,51 @@ export function AdminTriageView({
     <div className="flex-1 flex flex-col md:flex-row min-w-0 h-full overflow-hidden">
       {/* PANE 2: Submissions Queue */}
       <div
-        className={`w-full md:w-80 lg:w-96 shrink-0 border-b md:border-b-0 md:border-r border-slate-200 bg-slate-50/30 flex-col h-full overflow-hidden ${
+        className={`w-full md:w-80 lg:w-96 shrink-0 border-b md:border-b-0 md:border-r border-zinc-200/80 bg-zinc-50/30 flex-col h-full overflow-hidden ${
           mobileDetailView ? "hidden md:flex" : "flex"
         }`}
       >
         {/* Header toolbar */}
-        <div className="p-3.5 border-b border-slate-200 bg-white flex items-center justify-between text-xs font-semibold text-slate-700 shrink-0">
+        <div className="p-3.5 border-b border-zinc-200/80 bg-white flex items-center justify-between text-xs font-semibold text-zinc-700 shrink-0">
           <div className="flex items-center gap-2">
             <span>Awaiting Review</span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold tabular-nums">
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-bold tabular-nums">
               {pendingEvents.length}
             </span>
           </div>
-          <span className="text-[11px] text-slate-400 font-normal">By submission date</span>
+          <span className="text-[11px] text-zinc-400 font-normal">By submission date</span>
         </div>
 
         {/* Search & Filter Strip */}
-        <div className="p-2.5 border-b border-slate-200 bg-white space-y-2 shrink-0">
+        <div className="p-2.5 border-b border-zinc-200/80 bg-white space-y-2 shrink-0">
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter queue by title, club..."
-              className="w-full pl-8 pr-3 py-1 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-400"
+              className="w-full pl-8.5 pr-3 py-1.5 rounded-xl border border-zinc-200/90 bg-zinc-50 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all"
             />
           </div>
 
           {communities.length > 0 && (
-            <div className="flex items-center gap-1.5">
-              <Filter className="w-3 h-3 text-slate-400 shrink-0" />
-              <select
-                value={selectedCommunity}
-                onChange={(e) => setSelectedCommunity(e.target.value)}
-                className="w-full px-2 py-1 rounded-lg border border-slate-200 bg-slate-50 text-[11px] text-slate-700 focus:outline-none focus:bg-white cursor-pointer"
-              >
-                <option value="all">All Student Clubs ({pendingEvents.length})</option>
-                {communities.map((c) => {
-                  const count = pendingEvents.filter((e) => e.community_id === c.id).length;
-                  if (count === 0) return null;
-                  return (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({count})
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+            <Select
+              value={selectedCommunity}
+              onChange={setSelectedCommunity}
+              options={communityOptions}
+              size="sm"
+              aria-label="Filter inbox by student club"
+              leftIcon={<Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+              triggerClassName="w-full bg-zinc-50 border-zinc-200/90 text-xs text-zinc-700 h-8 rounded-xl shadow-2xs"
+            />
           )}
         </div>
 
         {/* Queue Items */}
-        <div className="divide-y divide-slate-100 overflow-y-auto flex-1">
+        <div className="divide-y divide-zinc-100 overflow-y-auto flex-1">
           {filteredEvents.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-400">
+            <div className="p-6 text-center text-xs text-zinc-400">
               No proposals match your search.
             </div>
           ) : (
@@ -245,47 +254,47 @@ export function AdminTriageView({
                   }}
                   className={`text-left transition-colors cursor-pointer group ${
                     isSelected
-                      ? "md:bg-indigo-50/70 md:border-l-3 md:border-indigo-700 bg-white"
-                      : "hover:bg-slate-100/60 text-slate-700 bg-white"
+                      ? "md:bg-indigo-50/50 md:border-l-2 md:border-indigo-600 bg-white"
+                      : "hover:bg-zinc-50/80 text-zinc-700 bg-white"
                   }`}
                 >
                   {/* MOBILE DATE-RAIL ITEM (< md) */}
-                  <div className="md:hidden p-4 flex items-center gap-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors">
+                  <div className="md:hidden p-3.5 flex items-center gap-3 hover:bg-zinc-50 active:bg-zinc-100/70 transition-colors">
                     {/* Left Date Block */}
-                    <div className="w-11 shrink-0 flex flex-col items-center justify-center rounded-lg bg-slate-100/80 border border-slate-200/70 py-1.5 group-hover:bg-indigo-50 group-hover:border-indigo-200 transition-colors">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-indigo-600 transition-colors leading-none">
+                    <div className="w-11 shrink-0 flex flex-col items-center justify-center rounded-xl bg-zinc-100/80 border border-zinc-200/70 py-1.5 group-hover:bg-indigo-50/70 group-hover:border-indigo-200/80 transition-colors">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 group-hover:text-indigo-600 transition-colors leading-none">
                         {format(startDate, "MMM")}
                       </span>
-                      <span className="text-base font-bold text-slate-800 group-hover:text-indigo-700 transition-colors tabular-nums leading-tight my-0.5">
+                      <span className="text-base font-bold text-zinc-900 group-hover:text-indigo-700 transition-colors tabular-nums leading-tight my-0.5">
                         {format(startDate, "d")}
                       </span>
-                      <span className="text-[10px] font-medium text-slate-400 leading-none">
+                      <span className="text-[10px] font-medium text-zinc-400 leading-none">
                         {format(startDate, "EEE")}
                       </span>
                     </div>
 
                     {/* Center Details */}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-xs font-bold text-slate-800 truncate">
+                      <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                        <span className="text-xs font-semibold text-zinc-900 truncate">
                           {ev.community?.name}
                         </span>
-                        <span className="text-slate-300">•</span>
+                        <span className="text-zinc-300">•</span>
                         <CategoryBadge category={ev.category} size="sm" />
                       </div>
-                      <div className="font-semibold text-slate-900 text-sm line-clamp-1 mb-1">
+                      <div className="font-semibold text-zinc-900 text-sm line-clamp-1 mb-1 group-hover:text-indigo-600 transition-colors">
                         {ev.title}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <div className="flex items-center gap-2 text-xs text-zinc-500">
                         <span className="truncate">{ev.venue?.name || ev.location_name}</span>
-                        <span className="text-slate-300">•</span>
+                        <span className="text-zinc-300">•</span>
                         <span
-                          className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border shrink-0 ${
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                             isColliding
-                              ? "text-rose-800 bg-rose-50 border-rose-200"
+                              ? "text-rose-700 bg-rose-50 border-rose-200/80"
                               : isAudienceColliding
-                              ? "text-amber-800 bg-amber-50 border-amber-200"
-                              : "text-emerald-800 bg-emerald-50 border-emerald-200"
+                              ? "text-amber-700 bg-amber-50 border-amber-200/80"
+                              : "text-emerald-700 bg-emerald-50 border-emerald-200/80"
                           }`}
                         >
                           {isColliding ? "⚠ Clash" : isAudienceColliding ? "👥 Overlap" : "✓ Safe Slot"}
@@ -294,27 +303,27 @@ export function AdminTriageView({
                     </div>
 
                     {/* Right Action Affordance */}
-                    <div className="shrink-0 flex items-center gap-1 text-indigo-700 font-semibold text-xs pl-1">
+                    <div className="shrink-0 flex items-center gap-1 text-indigo-600 font-medium text-xs pl-1">
                       <span className="hidden xs:inline">Review</span>
                       <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                     </div>
                   </div>
 
                   {/* DESKTOP SPLIT-QUEUE ITEM (md+) */}
-                  <div className="hidden md:block p-4">
+                  <div className="hidden md:block p-3.5">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-xs font-bold text-slate-800 truncate">
+                      <span className="text-xs font-semibold text-zinc-900 truncate">
                         {ev.community?.name}
                       </span>
                       <span
                         className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                           isColliding
-                            ? "text-rose-800 bg-rose-50 border-rose-200"
+                            ? "text-rose-700 bg-rose-50 border-rose-200/80"
                             : isAudienceColliding
-                            ? "text-amber-800 bg-amber-50 border-amber-200"
+                            ? "text-amber-700 bg-amber-50 border-amber-200/80"
                             : leadNotice < 7
-                            ? "text-amber-800 bg-amber-50 border-amber-200"
-                            : "text-emerald-800 bg-emerald-50 border-emerald-200"
+                            ? "text-amber-700 bg-amber-50 border-amber-200/80"
+                            : "text-emerald-700 bg-emerald-50 border-emerald-200/80"
                         }`}
                       >
                         {isColliding
@@ -327,13 +336,13 @@ export function AdminTriageView({
                       </span>
                     </div>
 
-                    <div className="font-semibold text-slate-900 text-sm line-clamp-1 mb-1">
+                    <div className="font-semibold text-zinc-900 text-sm line-clamp-1 mb-1 group-hover:text-indigo-600 transition-colors">
                       {ev.title}
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
                       <span>{format(startDate, "MMM d, yyyy")}</span>
-                      <span>•</span>
+                      <span className="text-zinc-300">•</span>
                       <span className="truncate">{ev.venue?.name || ev.location_name}</span>
                     </div>
                   </div>
@@ -355,17 +364,17 @@ export function AdminTriageView({
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6">
             <div className="max-w-3xl space-y-3.5 sm:space-y-4">
               {/* Mobile Sub-Navigation Bar */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 md:hidden">
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-100 md:hidden">
                 <button
                   type="button"
                   onClick={() => setMobileDetailView(false)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer active:scale-95 transition-all"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold cursor-pointer active:scale-95 transition-all shadow-2xs"
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span>Queue ({pendingEvents.length})</span>
                 </button>
 
-                <span className="text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80">
                   {differenceInDays(parseISO(activeEvent.start_time), new Date())}d lead notice
                 </span>
               </div>
@@ -374,30 +383,30 @@ export function AdminTriageView({
               <div>
                 <div className="flex items-center justify-between gap-3 mb-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
+                    <span className="text-xs font-semibold text-zinc-900 tracking-wide uppercase">
                       {activeEvent.community?.name}
                     </span>
-                    <span className="text-slate-300">•</span>
+                    <span className="text-zinc-300">•</span>
                     <CategoryBadge category={activeEvent.category} size="sm" />
                   </div>
 
-                  <span className="hidden md:inline-flex text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 shrink-0">
+                  <span className="hidden md:inline-flex text-[11px] text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/80 shrink-0">
                     {differenceInDays(parseISO(activeEvent.start_time), new Date())}d lead notice
                   </span>
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">
                   {activeEvent.title}
                 </h2>
                 {activeEvent.description && (
-                  <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+                  <p className="text-xs sm:text-sm text-zinc-600 mt-1 leading-relaxed">
                     {activeEvent.description}
                   </p>
                 )}
               </div>
 
               {/* Schedule, Venue & Clearance */}
-              <div className="rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-5 shadow-2xs space-y-4">
+              <div className="rounded-2xl border border-zinc-200/80 bg-zinc-50/40 p-4 sm:p-5 shadow-2xs space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Target Schedule */}
                   <div className="flex items-start gap-3">
@@ -405,13 +414,13 @@ export function AdminTriageView({
                       <Calendar className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                         Target Schedule
                       </div>
-                      <div className="font-bold text-slate-900 text-sm mt-0.5">
+                      <div className="font-bold text-zinc-900 text-sm mt-0.5">
                         {format(parseISO(activeEvent.start_time), "EEE, MMM d, yyyy")}
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
+                      <div className="text-xs text-zinc-500 mt-0.5">
                         {format(parseISO(activeEvent.start_time), "h:mm a")} –{" "}
                         {format(parseISO(activeEvent.end_time), "h:mm a")}
                       </div>
@@ -424,13 +433,13 @@ export function AdminTriageView({
                       <MapPin className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                         Venue & Capacity
                       </div>
-                      <div className="font-bold text-slate-900 text-sm mt-0.5">
+                      <div className="font-bold text-zinc-900 text-sm mt-0.5">
                         {activeEvent.venue?.name || activeEvent.location_name || "Campus Facility"}
                       </div>
-                      <div className="text-xs text-slate-500 mt-0.5">
+                      <div className="text-xs text-zinc-500 mt-0.5">
                         {activeEvent.venue ? `${activeEvent.venue.building || "Campus"} • Capacity: ${activeEvent.venue.capacity || "N/A"}` : "Campus Grounds"}
                       </div>
                     </div>
@@ -442,7 +451,7 @@ export function AdminTriageView({
                       <Users className="w-4 h-4" />
                     </div>
                     <div>
-                      <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                      <div className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
                         Target Audience
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1">
@@ -452,7 +461,7 @@ export function AdminTriageView({
                         ).map((aud) => (
                           <span
                             key={aud}
-                            className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200/80"
+                            className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-md bg-white text-zinc-700 border border-zinc-200/80 shadow-2xs"
                           >
                             {aud}
                           </span>
@@ -463,9 +472,9 @@ export function AdminTriageView({
                 </div>
 
                 {/* Conflict / Clearance Strip */}
-                <div className="pt-3 border-t border-slate-100 space-y-2.5">
+                <div className="pt-3 border-t border-zinc-200/80 space-y-2.5">
                   {hasConflict && (
-                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2.5">
+                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200/80 text-rose-900 text-xs flex items-start gap-2.5 shadow-2xs">
                       <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <div className="font-semibold text-rose-950">
@@ -479,7 +488,7 @@ export function AdminTriageView({
                   )}
 
                   {hasAudienceConflict && (
-                    <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                    <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs flex items-start gap-2.5 shadow-2xs">
                       <Users className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                       <div className="flex-1">
                         <div className="font-semibold text-amber-950">
@@ -493,7 +502,7 @@ export function AdminTriageView({
                   )}
 
                   {!hasConflict && !hasAudienceConflict && (
-                    <div className="flex items-center gap-2 text-xs text-emerald-900 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
+                    <div className="flex items-center gap-2 text-xs text-emerald-900 bg-emerald-50/70 p-3 rounded-xl border border-emerald-200/80 shadow-2xs">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span className="font-medium text-xs">
                         All clear • Venue is open and no audience overlap detected
@@ -505,11 +514,11 @@ export function AdminTriageView({
 
               {/* Event Poster Preview */}
               <div>
-                <div className="text-slate-400 uppercase text-[10px] font-bold tracking-wider mb-1.5">
+                <div className="text-zinc-400 uppercase text-[10px] font-bold tracking-wider mb-1.5">
                   Event Poster
                 </div>
                 <div
-                  className="relative aspect-[21/9] max-h-36 sm:max-h-40 w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shadow-2xs group"
+                  className="relative aspect-[21/9] max-h-36 sm:max-h-40 w-full rounded-xl overflow-hidden bg-zinc-100 border border-zinc-200/80 shadow-2xs group"
                 >
                   <Image
                     src={
@@ -542,10 +551,10 @@ export function AdminTriageView({
               )}
 
               {/* Decision Action Bar */}
-              <div className="pt-3 sm:pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="pt-3 sm:pt-4 border-t border-zinc-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-slate-400 hidden sm:inline">
-                    ID: <code className="font-mono text-slate-600">{activeEvent.id.slice(0, 8)}</code>
+                  <span className="text-[11px] text-zinc-400 hidden sm:inline">
+                    ID: <code className="font-mono text-zinc-600">{activeEvent.id.slice(0, 8)}</code>
                   </span>
                 </div>
 
@@ -554,7 +563,7 @@ export function AdminTriageView({
                     type="button"
                     disabled={actionInProgress === activeEvent.id}
                     onClick={() => onOpenReject(activeEvent)}
-                    className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-xs font-semibold text-rose-700 transition-colors cursor-pointer text-center"
+                    className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl border border-zinc-200 bg-white hover:bg-rose-50 hover:border-rose-200 text-xs font-medium text-rose-700 transition-colors cursor-pointer text-center shadow-2xs active:scale-[0.98]"
                   >
                     Decline with Note
                   </button>
@@ -563,7 +572,7 @@ export function AdminTriageView({
                     type="button"
                     disabled={actionInProgress === activeEvent.id}
                     onClick={() => onApprove(activeEvent.id)}
-                    className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-xs font-semibold text-white shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer text-center shrink-0"
+                    className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-xs font-medium text-white shadow-2xs transition-all flex items-center justify-center gap-1.5 cursor-pointer text-center shrink-0 active:scale-[0.98]"
                   >
                     <Check className="w-4 h-4" />
                     <span>{actionInProgress === activeEvent.id ? "Publishing..." : "Approve & Publish"}</span>

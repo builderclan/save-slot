@@ -3,9 +3,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
 import { venues } from "@/db/schema";
 import { formatVenue } from "@/db/adapters";
-import { getPrimaryCampusId } from "@/lib/campus";
 import { CreateVenueSchema, UpdateVenueSchema } from "@/lib/validations";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -14,17 +13,23 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
+
     const rows = await withDbRetry((client) =>
       client
         .select()
         .from(venues)
+        .where(eq(venues.campusId, campusId))
         .orderBy(asc(venues.name))
     );
 
     return NextResponse.json({ venues: rows.map(formatVenue) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load venues";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[GET /api/admin/venues] Error:", err);
+    return NextResponse.json({ error: "Failed to load venues" }, { status: 500 });
   }
 }
 
@@ -44,12 +49,9 @@ export async function POST(request: Request) {
     }
 
     const { name, building, capacity, address, notes } = parsed.data;
-    const campusId = session.profile.campus_id || (await getPrimaryCampusId());
+    const campusId = session.profile.campus_id;
     if (!campusId) {
-      return NextResponse.json(
-        { error: "No active campus found in the system." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
     }
 
     const [newVenue] = await withDbRetry((client) =>
@@ -69,8 +71,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, venue: formatVenue(newVenue) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to create venue";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[POST /api/admin/venues] Error:", err);
+    return NextResponse.json({ error: "Failed to create venue" }, { status: 500 });
   }
 }
 
@@ -91,13 +93,23 @@ export async function PATCH(request: Request) {
 
     const { id, is_active } = parsed.data;
 
+    const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
+
     const [updatedVenue] = await withDbRetry((client) =>
       client
         .update(venues)
         .set({
           isActive: is_active,
         })
-        .where(eq(venues.id, id))
+        .where(
+          and(
+            eq(venues.id, id),
+            eq(venues.campusId, campusId)
+          )
+        )
         .returning()
     );
 
@@ -107,8 +119,8 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true, venue: formatVenue(updatedVenue) });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to update venue";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[PATCH /api/admin/venues] Error:", err);
+    return NextResponse.json({ error: "Failed to update venue" }, { status: 500 });
   }
 }
 

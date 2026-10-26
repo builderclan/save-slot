@@ -3,7 +3,6 @@ import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
 import { communities, communityMembers, users, events } from "@/db/schema";
 import { formatCommunity, formatAdminCommunity } from "@/db/adapters";
-import { getPrimaryCampusId } from "@/lib/campus";
 import { CreateCommunitySchema } from "@/lib/validations";
 import { and, eq, or, isNull, asc, sql } from "drizzle-orm";
 
@@ -23,6 +22,9 @@ export async function GET() {
     }
 
     const campusId = session.profile.campus_id;
+    if (!campusId) {
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    }
 
     const rows = await withDbRetry(async (client) => {
       const leadSubquery = client
@@ -58,7 +60,7 @@ export async function GET() {
         .from(communities)
         .leftJoin(leadSubquery, eq(leadSubquery.communityId, communities.id))
         .leftJoin(users, eq(users.id, leadSubquery.userId))
-        .where(campusId ? eq(communities.campusId, campusId) : undefined)
+        .where(eq(communities.campusId, campusId))
         .orderBy(asc(communities.name));
     });
 
@@ -76,15 +78,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
-    let campusId = session.profile.campus_id;
+    const campusId = session.profile.campus_id;
     if (!campusId) {
-      campusId = await getPrimaryCampusId();
-    }
-    if (!campusId) {
-      return NextResponse.json(
-        { error: "No active campus found in the system." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
     }
 
     const rawBody = await request.json().catch(() => null);

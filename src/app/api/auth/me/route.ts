@@ -14,6 +14,7 @@ export async function GET() {
       email: session.email,
       fullName: session.profile.full_name,
       role: session.profile.role,
+      avatarUrl: session.profile.avatar_url ?? null,
       isAdmin: session.isAdmin,
       isPrincipal: session.isPrincipal,
       isVicePrincipal: session.isVicePrincipal,
