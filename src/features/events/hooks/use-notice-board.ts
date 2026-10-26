@@ -78,9 +78,7 @@ export function useNoticeBoard({
   // Auth & Proposal modal
   const { user: authUser } = useAuth();
   const activeUser = authUser || initialUserSession?.user;
-  const isPrivileged = Boolean(
-    activeUser?.isLead || activeUser?.isAdmin || activeUser?.isPrincipal
-  );
+  const isPrivileged = Boolean(activeUser?.isLead || activeUser?.isAdmin);
   const [isProposeOpen, setIsProposeOpen] = useState(false);
 
   // Selected event for detail modal
