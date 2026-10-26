@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Principal Event Creation UI Leak**: Restricted Notice Board `isPrivileged` guard in `src/features/events/hooks/use-notice-board.ts` to Community Leads and Admins, preventing Principals from seeing the "Create Event" button and aligning UI with backend RBAC.
 - **Open Redirect Vulnerability**: Rejected backslash normalization bypasses (`/\evil.com`) in `src/app/login/page.tsx`, strictly enforcing URL origin checks.
 - **Auth Rate-Limiter Race Conditions**: Replaced multi-step read-then-write checks in `src/lib/rate-limit.ts` with atomic PostgreSQL upserts (`.insert().onConflictDoUpdate().returning()`), explicit `::timestamptz` casts, and rolling-window L1 cache preservation.
 - **Multi-Tenant Campus Isolation Leaks**: Added missing tenant guards in `src/app/api/lead/events/route.ts` (returns `403 Forbidden` for unassociated accounts) and rendered an empty desk view on `src/app/principal/page.tsx` when `campusId` is absent.
