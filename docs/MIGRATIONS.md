@@ -8,10 +8,10 @@ This guide details SaveSlot's database migration strategy (**Option A: Timestamp
 
 Database migrations in SaveSlot use a versioned ledger table pattern:
 
-1. **Migration Files**: Stored under [`migrations/`](file:///c:/Users/main/codinways/builderclan/calendar-bc/migrations) as ordered SQL files (`001_...sql`, `002_...sql`, etc.).
+1. **Migration Files**: Stored under [`migrations/`](../migrations) as ordered SQL files (`001_...sql`, `002_...sql`, etc.).
 2. **Ledger Table**: Tracks executed migrations in PostgreSQL (`public._schema_migrations`).
-3. **Migration Runner**: [`scripts/migrate.js`](file:///c:/Users/main/codinways/builderclan/calendar-bc/scripts/migrate.js) executes pending migrations within transactions, guarded by PostgreSQL advisory locks.
-4. **CI/CD Automation**: [`.github/workflows/db-migrate.yml`](file:///c:/Users/main/codinways/builderclan/calendar-bc/.github/workflows/db-migrate.yml) runs migrations upon merge to `main` using repository secrets.
+3. **Migration Runner**: [`scripts/migrate.js`](../scripts/migrate.js) executes pending migrations within transactions, guarded by PostgreSQL advisory locks.
+4. **CI/CD Automation**: [`.github/workflows/db-migrate.yml`](../.github/workflows/db-migrate.yml) runs migrations upon merge to `main` using repository secrets.
 
 ```mermaid
 flowchart TD
@@ -136,7 +136,7 @@ The runner acquires a PostgreSQL advisory lock (`pg_advisory_lock(7429184712)`) 
 
 ## 6. Authoring a New Migration
 
-1. Create a new sequential `.sql` file in [`migrations/`](file:///c:/Users/main/codinways/builderclan/calendar-bc/migrations), for example:
+1. Create a new sequential `.sql` file in [`migrations/`](../migrations), for example:
 
    ```bash
    migrations/013_add_event_attendee_limit.sql
@@ -164,3 +164,45 @@ The runner acquires a PostgreSQL advisory lock (`pg_advisory_lock(7429184712)`) 
    ```
 
 5. Commit and open a PR. Once reviewed and merged, GitHub Actions safely deploys the change to production.
+
+---
+
+## 7. Disaster Recovery & Rollback Strategy
+
+SaveSlot follows a **forward-fix migration discipline**: because each file executes inside an isolated transaction (`BEGIN...COMMIT`), failed migrations roll back automatically with zero partial state.
+
+### 7.1 Forward-Fix Rollbacks (Production)
+
+If an applied migration needs to be reverted in production:
+
+1. Do **not** delete the existing migration file from git or edit the production ledger manually.
+2. Create a new compensating migration file (e.g. `014_revert_event_attendee_limit.sql`) that explicitly drops or restores the schema state.
+3. Test locally and deploy through the standard CI/CD workflow.
+
+### 7.2 Recovering from a Stuck Advisory Lock
+
+If a CI runner or development machine crashed mid-execution before releasing the advisory lock (`7429184712`), other runs will pause waiting for the lock.
+
+To diagnose and release:
+
+```sql
+-- 1. Check for active advisory locks
+SELECT pid, locktype, mode, granted 
+FROM pg_locks 
+WHERE classid = 7429184712;
+
+-- 2. Unlock explicitly from any active superuser / admin connection
+SELECT pg_advisory_unlock(7429184712);
+```
+
+### 7.3 Development Ledger Reset
+
+For local development databases only, you can check ledger status or re-run by deleting the specific ledger record:
+
+```sql
+-- View applied migrations
+SELECT * FROM public._schema_migrations ORDER BY applied_at DESC;
+
+-- Re-enable a specific migration for local re-testing
+DELETE FROM public._schema_migrations WHERE name = '012_add_auth_rate_limits.sql';
+```
