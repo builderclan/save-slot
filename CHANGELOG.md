@@ -5,9 +5,14 @@ All notable changes to the SaveSlot project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
+## [0.3.0] - Unreleased
 
-## [0.3.0] - 2026-10-24
+### Institutional Configuration & White-Labeling
+
+- **Single-Instance Institutional Configuration**:
+  - Added centralized configuration in `src/lib/config/campus.ts` (`campusConfig`).
+  - Automatic derivation of short name acronyms (`extractAcronym`) and slugs (`slugify`), with boot-time validation.
+  - Dynamically injects institution identity into navigation, login, forgot-password, reset-password, page metadata (`title`, descriptions, OpenGraph), `site.webmanifest`, sitemaps, and calendar `.ics` exports.
 
 ### Security & Hardening
 
@@ -21,25 +26,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Upgraded Next.js and `eslint-config-next` to `16.4.3` to eliminate Image Optimization remote execution / SSRF vulnerabilities (GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr, GHSA-cjq9-62q9-8jv4, GHSA-h694-7cp9-m8p3, GHSA-39w2-rjm5-chcv).
   - Updated Vitest test runner to `5.0.5`.
 - **Production Seed Guard & Demo Account Gating (SEC-05)**:
-  - Added strict environment safeguard in `scripts/seed.js` forbidding execution when `NODE_ENV === "production"` or `process.env.VERCEL === "1"`.
-  - Configured `NEXT_PUBLIC_ENABLE_DEMO_LOGINS=false` in production environment configuration.
-- **Host Poisoning & Open Redirect Defense (SEC-06)**:
+  - Added strict environment safeguard in `scripts/seed.js` forbidding execution against remote or production databases unless explicitly permitted.
+  - Hardened populated production database checks in `scripts/seed.js` to strictly preserve live accounts in production.
+- **Host Poisoning & Open Redirect Defense (SEC-06 & SEC-12)**:
   - Hardened `auth/callback/route.ts` against spoofed `X-Forwarded-Host` headers and enforced relative internal paths (`/` and not `//`).
-- **Strict Multi-Tenant Campus Isolation & IDOR Prevention (SEC-07)**:
-  - Enforced mandatory `campus_id` verification and boundary enforcement across all administrative endpoints:
-    - `api/admin/events/[id]` & `api/admin/events/[id]/status`
-    - `api/admin/venues` & `api/admin/venues/[id]`
-    - `api/admin/communities` & `api/admin/communities/[id]`
-    - `api/admin/users` & `api/admin/users/[id]`
-  - Endpoints reject requests lacking an active campus association with `403 Forbidden` and restrict all queries, updates, and deletions to the administrator's designated campus.
+  - Hardened `src/app/login/page.tsx` against backslash normalization bypasses (`/\evil.com`) by strictly verifying parsed URLs against `window.location.origin`.
+- **Strict Multi-Tenant Campus Isolation & IDOR Prevention (SEC-07 & SEC-14)**:
+  - Enforced mandatory `campus_id` verification across all administrative endpoints (`/api/admin/events/*`, `/api/admin/venues/*`, `/api/admin/communities/*`, `/api/admin/users/*`).
+  - Added tenant boundaries in `src/app/api/lead/events/route.ts` returning `403 Forbidden` (`{ error: "Campus association required" }`) when privileged accounts lack `campus_id`.
+  - Rendered a graceful empty desk view on `src/app/principal/page.tsx` when `campusId` is absent.
 - **Public Data Leakage Protection (SEC-08)**:
   - Restricted public `/api/communities` queries to `status = 'approved'` only.
 - **API Error Message Sanitization & Info Leak Defense (SEC-09)**:
-  - Sanitized 500 internal server error responses across all administrative and public API handlers (`/api/admin/*`, `/api/venues`, `/api/events`, `/api/lead/*`, `/api/conflicts/*`, `/api/auth/*`), returning uniform client messages while retaining detailed logs on the server.
+  - Sanitized 500 internal server error responses across all administrative and public API handlers, returning uniform client messages while retaining detailed logs on the server.
 - **Defensive HTTP Headers (SEC-10)**:
-  - Added `Strict-Transport-Security` (`max-age=31536000; includeSubDomains; preload`) and `X-XSS-Protection` headers in `next.config.ts`.
-- **Vercel-Ready Distributed Auth Rate Limiting & Cooldown (SEC-11)**:
-  - Added migration `012_add_auth_rate_limits.sql` and `src/lib/rate-limit.ts` providing atomic PostgreSQL upserts (`auth_rate_limits`) and L1 memory caching across ephemeral Vercel serverless function instances (3 failed attempts -> 5-minute sliding cooldown with `HTTP 429` and `Retry-After`).
+  - Added `Strict-Transport-Security` (`max-age=31536000; includeSubDomains`) and `X-XSS-Protection: 0` headers in `next.config.ts`.
+- **Atomic Distributed Auth Rate Limiting & Cooldown (SEC-11 & SEC-13)**:
+  - Migration `012_add_auth_rate_limits.sql` provisions the `auth_rate_limits` table.
+  - Implemented atomic PostgreSQL upserts (`.insert().onConflictDoUpdate().returning()`) with explicit `::timestamptz` casts, rolling-window L1 memory cache fallback, and `firstFailedAt` preservation in `src/lib/rate-limit.ts` (5 failed attempts -> 5-minute lockout).
+- **RPC Execute Permission Revocation (SEC-15)**:
+  - Revoked `EXECUTE` on `approve_community` and `reject_community` functions from `PUBLIC` in migration `011_harden_rpc_and_community_members_rls.sql`.
+
+### UI & Accessibility Polish
+
+- **TimePicker & DatePicker Keyboard Navigation & Positioning**:
+  - Added full keyboard accessibility (`ArrowUp`/`ArrowDown`/`Enter`/`Space`/`Escape`/`Tab`), portal auto-scroll synchronization on mount, and Escape focus restoration to trigger buttons.
+- **DatePicker Preset Safety Guard**:
+  - Prevented date preset buttons from selecting dates preceding `parsedMinDate`.
+- **Card Interactive Child Delegation**:
+  - Fixed `closest("[role='button']")` click guard in `<Card isClickable>` to permit clicks on child links, buttons, and text.
+- **Admin Triage Filter Auto-Reset**:
+  - Added reactive reset in `src/features/admin/components/admin-triage-view.tsx` resetting `selectedCommunity` to `"all"` when the selected club has no remaining proposals.
+- **Admin Layout Loading Skeleton (CLS Elimination)**:
+  - Replaced spinner in `src/app/admin/loading.tsx` with a full 2-column sidebar workspace skeleton, eliminating Cumulative Layout Shift.
+
+### Conflict Engine & Core Workflows
+
+- **Server-Side 409 Conflict Guard**:
+  - Enforced server-side 409 conflict detection on lead event proposals and edits in `src/app/api/lead/events/route.ts` and `src/app/api/lead/events/[id]/route.ts`.
+  - Enforced calendar-day lead time policy in conflict engine.
+- **Slug & Acronym Derivation Alignment**:
+  - Harmonized acronym and slug derivation across `scripts/seed.js`, `scripts/migrate-principal.js`, and `scripts/migrate-vice-principal.js`.
+- **Read-Path Database Mutation Removal**:
+  - Eliminated campus record writes from `getPrimaryCampusId()` in `src/lib/campus.ts`, caching resolved UUIDs in memory.
 
 ---
 
