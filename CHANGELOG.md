@@ -5,41 +5,41 @@ All notable changes to the SaveSlot project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
+## [Unreleased]
 
-## [0.3.0] - 2026-10-24
+### Added
 
-### Security & Hardening
+- **Single-Instance Institutional White-Labeling**: Centralized campus configuration (`src/lib/config/campus.ts`) with smart acronym (`extractAcronym`) and URL slug derivation (`slugify`) driven by `NEXT_PUBLIC_CAMPUS_*` environment variables.
+- **Dynamic Brand Injection**: Injected institutional identity into navigation, authentication views, SEO metadata, web manifest, sitemaps, and `.ics` calendar exports.
+- **Admin Workspace Loading Skeleton**: Added a 2-column sidebar loading skeleton (`src/app/admin/loading.tsx`) eliminating Cumulative Layout Shift (CLS).
 
-- **Database RPC Caller Identity Verification (SEC-01)**:
-  - Migration `011_harden_rpc_and_community_members_rls.sql` drops client-supplied `p_admin_id` in `approve_community()` and `reject_community()`, strictly enforcing server-side `auth.uid()` checks and revoking execute permissions from the `anon` role.
-- **Client-Side Privilege Escalation Prevention on Community Members (SEC-02)**:
-  - Hardened `community_members_insert` RLS policy to strictly require `role = 'member'`, preventing authenticated users from self-elevating into `lead` or `admin` roles.
-- **Stored XSS Protocol Whitelisting (SEC-03)**:
-  - Enforced `SafeUrlSchema` on `coverImageUrl` and `externalRegistrationUrl`, rejecting non-HTTP protocols (`javascript:`, `data:`, `vbscript:`) at the Zod validation layer.
-- **Next.js & Engine Dependency Hardening (SEC-04)**:
-  - Upgraded Next.js and `eslint-config-next` to `16.4.3` to eliminate Image Optimization remote execution / SSRF vulnerabilities (GHSA-2464-fhr4-w9xw, GHSA-673q-mjm6-r5xr, GHSA-cjq9-62q9-8jv4, GHSA-h694-7cp9-m8p3, GHSA-39w2-rjm5-chcv).
-  - Updated Vitest test runner to `5.0.5`.
-- **Production Seed Guard & Demo Account Gating (SEC-05)**:
-  - Added strict environment safeguard in `scripts/seed.js` forbidding execution when `NODE_ENV === "production"` or `process.env.VERCEL === "1"`.
-  - Configured `NEXT_PUBLIC_ENABLE_DEMO_LOGINS=false` in production environment configuration.
-- **Host Poisoning & Open Redirect Defense (SEC-06)**:
-  - Hardened `auth/callback/route.ts` against spoofed `X-Forwarded-Host` headers and enforced relative internal paths (`/` and not `//`).
-- **Strict Multi-Tenant Campus Isolation & IDOR Prevention (SEC-07)**:
-  - Enforced mandatory `campus_id` verification and boundary enforcement across all administrative endpoints:
-    - `api/admin/events/[id]` & `api/admin/events/[id]/status`
-    - `api/admin/venues` & `api/admin/venues/[id]`
-    - `api/admin/communities` & `api/admin/communities/[id]`
-    - `api/admin/users` & `api/admin/users/[id]`
-  - Endpoints reject requests lacking an active campus association with `403 Forbidden` and restrict all queries, updates, and deletions to the administrator's designated campus.
-- **Public Data Leakage Protection (SEC-08)**:
-  - Restricted public `/api/communities` queries to `status = 'approved'` only.
-- **API Error Message Sanitization & Info Leak Defense (SEC-09)**:
-  - Sanitized 500 internal server error responses across all administrative and public API handlers (`/api/admin/*`, `/api/venues`, `/api/events`, `/api/lead/*`, `/api/conflicts/*`, `/api/auth/*`), returning uniform client messages while retaining detailed logs on the server.
-- **Defensive HTTP Headers (SEC-10)**:
-  - Added `Strict-Transport-Security` (`max-age=31536000; includeSubDomains; preload`) and `X-XSS-Protection` headers in `next.config.ts`.
-- **Vercel-Ready Distributed Auth Rate Limiting & Cooldown (SEC-11)**:
-  - Added migration `012_add_auth_rate_limits.sql` and `src/lib/rate-limit.ts` providing atomic PostgreSQL upserts (`auth_rate_limits`) and L1 memory caching across ephemeral Vercel serverless function instances (3 failed attempts -> 5-minute sliding cooldown with `HTTP 429` and `Retry-After`).
+### Changed
+
+- **Next.js & Vitest Engine Upgrades**: Upgraded Next.js to `16.4.3` and Vitest to `5.0.5`.
+- **Response Headers Modernization**: Updated `X-XSS-Protection: 0` per OWASP guidance and removed `preload` from `Strict-Transport-Security`.
+- **Read-Path Campus Optimization**: Removed database mutation writes from `getPrimaryCampusId()`, caching resolved UUIDs in memory.
+- **Slug Derivation Synchronization**: Aligned slug and acronym extraction across migration scripts and `scripts/seed.js`.
+
+### Fixed
+
+- **Open Redirect Vulnerability**: Rejected backslash normalization bypasses (`/\evil.com`) in `src/app/login/page.tsx`, strictly enforcing URL origin checks.
+- **Auth Rate-Limiter Race Conditions**: Replaced multi-step read-then-write checks in `src/lib/rate-limit.ts` with atomic PostgreSQL upserts (`.insert().onConflictDoUpdate().returning()`), explicit `::timestamptz` casts, and rolling-window L1 cache preservation.
+- **Multi-Tenant Campus Isolation Leaks**: Added missing tenant guards in `src/app/api/lead/events/route.ts` (returns `403 Forbidden` for unassociated accounts) and rendered an empty desk view on `src/app/principal/page.tsx` when `campusId` is absent.
+- **Server-Side 409 Conflict Guard**: Enforced server-side double-booking and calendar-day lead-time policy validation on lead event proposals and edits.
+- **TimePicker & DatePicker Accessibility**: Added keyboard navigation (`ArrowUp`/`ArrowDown`/`Enter`/`Space`/`Escape`/`Tab`), portal auto-scroll synchronization on mount, and Escape focus restoration.
+- **DatePicker Preset Safety Guard**: Blocked date presets from selecting dates preceding `parsedMinDate`.
+- **Card Interactive Trapping**: Fixed click delegation in `<Card isClickable>` to allow nested buttons and links to trigger naturally.
+- **Admin Triage Filter Reset**: Auto-reset community filter to `"all"` when a selected club's pending proposals reach zero.
+- **Production Seed Guard Bypass**: Corrected account query filters in `scripts/seed.js` to strictly preserve live accounts in production.
+
+### Security
+
+- **RPC Identity Verification**: Revoked client-supplied `p_admin_id` and enforced server-side `auth.uid()` in `approve_community()` and `reject_community()` (migration `011`).
+- **RPC Public Execution Revocation**: Revoked `EXECUTE` privileges on community administrative RPCs from `PUBLIC`.
+- **Client-Side Privilege Escalation Guard**: Hardened `community_members_insert` RLS policy to strictly require `role = 'member'`.
+- **Stored XSS Protocol Whitelisting**: Enforced `SafeUrlSchema` on event posters and RSVP links, rejecting dangerous protocols (`javascript:`, `data:`).
+- **Public Data Leakage Protection**: Restricted public `/api/communities` queries strictly to `status = 'approved'`.
+- **Error Response Sanitization**: Stripped internal error stacks and database details from 500 error responses across all public and administrative API routes.
 
 ---
 
@@ -111,3 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Microsecond-level double-booking and cohort quiet-hour detection algorithms.
 - **Edge Incremental Static Regeneration (ISR)**:
   - 60-second revalidation pipeline for public campus notice boards.
+
+[Unreleased]: https://github.com/builderclan/save-slot/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/builderclan/save-slot/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/builderclan/save-slot/releases/tag/v0.1.0

@@ -133,6 +133,22 @@ CREATE INDEX idx_events_venue_window ON events (venue_id, start_time, end_time) 
 CREATE INDEX idx_events_community ON events (community_id);
 ```
 
+### 2.6 Table: `auth_rate_limits`
+
+Persistent rate-limiting table providing atomic lockout tracking across serverless functions (Migration `012_add_auth_rate_limits.sql`).
+
+```sql
+CREATE TABLE auth_rate_limits (
+    key VARCHAR(255) PRIMARY KEY, -- "ip:1.2.3.4" or "email:user@campus.edu"
+    failed_attempts INT NOT NULL DEFAULT 1,
+    first_failed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    locked_until TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_auth_rate_limits_locked_until ON auth_rate_limits (locked_until);
+```
+
 ---
 
 ## 3. The Safe-Slot & Conflict Resolution Engine
@@ -193,16 +209,35 @@ To prevent Time-of-Check to Time-of-Use (TOCTOU) race conditions when concurrent
 1. Approval handlers execute inside an explicit PostgreSQL transaction (`withTransaction`).
 2. The target event and colliding published events in the same venue are locked using `SELECT ... FOR UPDATE`.
 3. If a race condition publishes a collision during triage, the transaction aborts with HTTP 409 Conflict.
+4. Server-side 409 conflict checks also guard `POST /api/lead/events` and `PUT /api/lead/events/[id]`.
+
+### 4.2 Distributed Authentication Rate Limiting
+
+To defeat credential stuffing and brute-force attacks across ephemeral Vercel serverless functions:
+
+1. Rate limits are tracked by client IP (prioritizing trusted `x-real-ip`) and target email key.
+2. Failed login attempts execute an atomic PostgreSQL upsert (`.insert().onConflictDoUpdate().returning()`) with explicit `::timestamptz` casts:
+   - Exceeding 5 failed attempts inside a 15-minute rolling window triggers an immediate 5-minute lockout (`HTTP 429` with `Retry-After: 300`).
+3. An in-memory L1 cache (`Map<string, CacheEntry>`) with LRU-style eviction bounds overhead to under 1ms for benign repeated lookups while falling back to rolling-window tracking if database connectivity fluctuates.
+
+### 4.3 Multi-Tenant Campus Boundary Enforcement
+
+To support multi-campus readiness and prevent cross-institutional data leakage:
+
+1. Privileged users (Admin, Principal, Vice Principal) are verified against their associated `campus_id`.
+2. Requests lacking an active `campus_id` receive a hard `403 Forbidden` (`{ error: "Campus association required" }`) on Lead, Admin, and Principal API routes.
+3. Database queries strictly filter by `events.campus_id = campus_id`.
 
 ---
 
 ## 5. Technology Stack & Key Packages
 
-- **Framework**: Next.js 16.3.5 (App Router with Turbopack).
+- **Framework**: Next.js 16.4.3 (App Router with Turbopack).
 - **UI Library**: React 19.2.8.
 - **Styling**: Tailwind CSS v4 (`@tailwindcss/postcss`).
 - **Typography**: Inter (UI & tabular numerals) & JetBrains Mono (metrics & codes) via `next/font/google`.
-- **Database & Client**: Supabase (`@supabase/supabase-js`, `@supabase/ssr`, `pg` with TCP keepAlive & 15s timeout).
+- **Database & Client**: Supabase (`@supabase/supabase-js`, `@supabase/ssr`), Drizzle ORM (`drizzle-orm`), and `pg` with TCP keepAlive & 15s timeout.
+- **Testing**: Vitest 5.0.5 (354 tests, 42 suites).
 - **Icons & Components**: `lucide-react`, `date-fns` v4.
 - **Validation**: `zod` v4.
 
