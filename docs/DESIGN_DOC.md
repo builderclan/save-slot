@@ -1,8 +1,8 @@
 # SaveSlot System Design Document
 
 **Product**: SaveSlot — Campus Events & Scheduling Platform  
-**Target Institution**: Albertian Institute of Science & Technology (AISAT)  
-**Version**: 1.2.0 (Current Production Build)  
+**Target Institution**: Configurable Single-Instance Deployment (via `NEXT_PUBLIC_CAMPUS_NAME`, e.g. AISAT)  
+**Version**: 0.3.0 (Target Release / In Development)  
 **Status**: Implemented & Verified  
 
 ---
