@@ -47,7 +47,9 @@ CREATE TABLE campuses (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(100) UNIQUE NOT NULL,
-    timezone VARCHAR(50) DEFAULT 'UTC',
+    domain VARCHAR(255),
+    timezone VARCHAR(50) DEFAULT 'Asia/Kolkata',
+    is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
@@ -59,81 +61,119 @@ Physical locations available for booking on campus.
 ```sql
 CREATE TABLE venues (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    campus_id UUID REFERENCES campuses(id) ON DELETE CASCADE,
+    campus_id UUID NOT NULL REFERENCES campuses(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    location VARCHAR(255) NOT NULL,
-    capacity INT NOT NULL DEFAULT 50,
-    is_active BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT now()
+    building VARCHAR(255) NOT NULL,
+    capacity INT,
+    address TEXT,
+    notes TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    CONSTRAINT venues_campus_building_name_key UNIQUE (campus_id, building, name)
 );
 ```
 
 ### 2.3 Table: `communities`
 
-Recognized campus clubs, societies, and academic departments.
+Recognized campus clubs, societies, and academic departments with onboarding workflow.
 
 ```sql
 CREATE TABLE communities (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    campus_id UUID REFERENCES campuses(id) ON DELETE CASCADE,
+    campus_id UUID NOT NULL REFERENCES campuses(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
-    slug VARCHAR(100) UNIQUE NOT NULL,
-    category VARCHAR(50) NOT NULL, -- 'Tech', 'Cultural', 'Sports', 'Academic', 'Social'
+    slug VARCHAR(100) NOT NULL,
+    category VARCHAR(100) NOT NULL DEFAULT 'General',
     description TEXT,
     logo_url TEXT,
-    created_at TIMESTAMPTZ DEFAULT now()
+    banner_url TEXT,
+    website TEXT,
+    instagram VARCHAR(100),
+    status VARCHAR(50) DEFAULT 'approved',
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    applicant_name TEXT,
+    applicant_email TEXT,
+    rejection_reason TEXT,
+    reviewed_at TIMESTAMPTZ,
+    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    CONSTRAINT communities_campus_id_slug_key UNIQUE (campus_id, slug)
 );
 ```
 
 ### 2.4 Table: `users`
 
-Administrators and Community Leads (Created only by Admins; no public registration).
+Administrators, Executives, and Community Leads (Profile row linked directly to Supabase `auth.users`).
 
 ```sql
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('student', 'organizer', 'admin', 'principal', 'vice_principal')),
-    community_id UUID REFERENCES communities(id) ON DELETE SET NULL, -- Null for admins and principal
-    is_active BOOLEAN NOT NULL DEFAULT true,
+    role VARCHAR(50) NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'organizer', 'admin', 'principal', 'vice_principal')),
+    avatar_url TEXT,
+    campus_id UUID REFERENCES campuses(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
-### 2.5 Table: `events`
+### 2.5 Table: `community_members`
+
+Junction table mapping users to club leadership and memberships with role hierarchies.
+
+```sql
+CREATE TABLE community_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    community_id UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role VARCHAR(50) NOT NULL DEFAULT 'member' CHECK (role IN ('lead', 'co-lead', 'member')),
+    created_at TIMESTAMPTZ DEFAULT now(),
+    CONSTRAINT community_members_community_user_unique UNIQUE (community_id, user_id)
+);
+```
+
+### 2.6 Table: `events`
 
 Campus events submitted by Leads or created by Admins.
 
 ```sql
 CREATE TABLE events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    campus_id UUID REFERENCES campuses(id) ON DELETE CASCADE,
-    community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
-    venue_id UUID REFERENCES venues(id) ON DELETE RESTRICT,
-    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
-    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    campus_id UUID NOT NULL REFERENCES campuses(id) ON DELETE CASCADE,
+    community_id UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
+    venue_id UUID REFERENCES venues(id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
-    description TEXT,
+    slug VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
     category VARCHAR(50) NOT NULL,
+    target_audience TEXT[] NOT NULL DEFAULT ARRAY['All Students'],
+    tags TEXT[] DEFAULT ARRAY[]::TEXT[],
     start_time TIMESTAMPTZ NOT NULL,
     end_time TIMESTAMPTZ NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'published', 'rejected', 'cancelled', 'draft')),
+    timezone VARCHAR(50) DEFAULT 'Asia/Kolkata',
+    location_name VARCHAR(255) NOT NULL,
+    is_virtual BOOLEAN DEFAULT false,
+    virtual_link TEXT,
+    external_registration_url TEXT,
+    cover_image_url TEXT,
+    status VARCHAR(50) NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'pending', 'published', 'cancelled', 'rejected')),
     rejection_reason TEXT,
-    cover_image TEXT,
-    registration_url TEXT,
+    cancellation_reason TEXT,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Essential Performance Indexes for Conflict Engine & Feed
-CREATE INDEX idx_events_timeline ON events (start_time, end_time, status);
-CREATE INDEX idx_events_venue_window ON events (venue_id, start_time, end_time) WHERE status != 'rejected';
-CREATE INDEX idx_events_community ON events (community_id);
+-- Essential Performance Indexes for Calendar, Search & Conflict Engine
+CREATE INDEX idx_events_campus_status ON events (campus_id, status);
+CREATE INDEX idx_events_start_time ON events (start_time);
+CREATE INDEX idx_events_status_start_time ON events (status, start_time);
+CREATE INDEX idx_events_venue_time ON events (venue_id, start_time, end_time);
+CREATE INDEX idx_events_target_audience ON events USING gin (target_audience);
 ```
 
-### 2.6 Table: `auth_rate_limits`
+### 2.7 Table: `auth_rate_limits`
 
 Persistent rate-limiting table providing atomic lockout tracking across serverless functions (Migration `012_add_auth_rate_limits.sql`).
 
