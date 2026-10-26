@@ -9,10 +9,12 @@ A centralized, conflict-free event discovery and scheduling platform built speci
 Detailed design documents, specifications, and architecture are maintained in [`docs/`](./docs):
 
 - **[System Design Doc (`docs/DESIGN_DOC.md`)](./docs/DESIGN_DOC.md)**: Comprehensive architectural blueprint, concurrency control, connection resilience, and schema specs.
-- **[UI / UX Design System (`docs/UI_DESIGN_DOC.md`)](./docs/UI_DESIGN_DOC.md)**: Visual aesthetic, design tokens, typography pairing (Inter + JetBrains Mono), responsive breakpoints, and component specs.
+- **[Design System & UI Specification (`docs/DESIGN_SYSTEM.md`)](./docs/DESIGN_SYSTEM.md)**: Visual aesthetic, design tokens, typography pairing (Inter + JetBrains Mono), UI primitives, and application screen specifications.
 - **[Product Specification (`docs/PRODUCT_SPEC.md`)](./docs/PRODUCT_SPEC.md)**: Product philosophy, user personas, lead-time rules, and feature requirements.
 - **[System Architecture (`docs/ARCHITECTURE.md`)](./docs/ARCHITECTURE.md)**: Database ERD, deterministic conflict engine algorithms, and RBAC matrix.
 - **[Database Migrations Guide (`docs/MIGRATIONS.md`)](./docs/MIGRATIONS.md)**: Versioned SQL migrations, ledger table architecture, dev/prod workflows, and CI/CD automation.
+- **[Drizzle ORM Migration Guide (`docs/DRIZZLE_MIGRATION_GUIDE.md`)](./docs/DRIZZLE_MIGRATION_GUIDE.md)**: Type-safe Drizzle data access patterns, adapters, and route migration tracker.
+- **[REST API Reference (`docs/API_REFERENCE.md`)](./docs/API_REFERENCE.md)**: Complete endpoint contracts, query parameters, payload schemas, and status codes.
 - **[Development Plan (`docs/DEVELOPMENT_PLAN.md`)](./docs/DEVELOPMENT_PLAN.md)**: Phased implementation roadmap, milestone checklist, and test scenarios.
 - **[Changelog (`CHANGELOG.md`)](./CHANGELOG.md)**: Chronological record of vertical-slice domain architecture, features, and release milestones.
 
@@ -33,6 +35,7 @@ Detailed design documents, specifications, and architecture are maintained in [`
 | Role | Email | Password | Assigned Community |
 | :--- | :--- | :--- | :--- |
 | **College Principal** | `principal@campus.edu` | `principal123` | Institutional Authority |
+| **Vice Principal** | `viceprincipal@campus.edu` | `viceprincipal123` | Institutional Authority |
 | **Campus Admin** | `admin@campus.edu` | `admin123` | Campus-Wide Operations |
 | **Coding Club Lead** | `lead.coding@campus.edu` | `lead123` | Coding Club |
 | **Design Society Lead** | `lead.design@campus.edu` | `lead123` | Design Society |
