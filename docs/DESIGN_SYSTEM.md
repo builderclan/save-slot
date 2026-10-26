@@ -112,6 +112,12 @@ Desaturated, accessible, and high-readability category colors:
   - `shadow-sm`: `0 2px 6px -1px rgba(0, 0, 0, 0.06), 0 1px 4px -2px rgba(0, 0, 0, 0.04)`
   - `shadow-xl`: `0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05)` (Modals)
 
+### 2.6 Brand Mark & Visual Assets
+
+- **Brand Mark & Moniker**: Clean typographic lockup pairing `SaveSlot` with the configurable campus moniker (e.g. `[AISAT]`).
+- **Brand Identity Asset**: Visual sizing guide and proportions are cataloged in [`images/logo_guide.png`](./images/logo_guide.png).
+- **Application Icon**: Master high-resolution app icon asset is maintained under [`images/icon.png`](./images/icon.png).
+
 ---
 
 ## 3. UI Component Primitives & Specifications
@@ -175,62 +181,149 @@ A unified, high-craft button supporting multiple visual variants, responsive siz
 
 ---
 
-## 4. Key Application Views & Redesign Architecture
+## 4. Key Application Views & Screen Specifications
 
-### 4.1 Header & Top Navigation Bar
+### 4.1 Header & Unified Divided Navigation Bar
+
+The top application header (`src/components/layout/navbar.tsx`) provides contextual navigation without redundant tabs:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ [Logo] SaveSlot [AISAT]  │  October 2026 [<] [>] [Today]                                               │
 │                                                                                                        │
 │           ┌──────────────────────────────────────────────────────────────┐                             │
-│           │ [Month]  [Week]  [Board]   │   [Role Workspace Shortcut]     │                             │
+│           │ [📅 Month]  [📅 Week]  [⊞ Board]   │   [🎓 VP Desk]          │                             │
 │           └──────────────────────────────────────────────────────────────┘                             │
 │                                                                                                        │
 │                                                      [User Name / Role]  [Avatar]  [Sign Out / Login]  │
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Left Zone**:
-   - SaveSlot brand mark + campus moniker tag (`AISAT`).
-   - Hairline vertical separator (`h-4 w-px bg-zinc-200`).
-   - Date navigation: Month Year title with `<` and `>` chevron buttons + `Today` shortcut.
-2. **Center Zone**:
-   - Unified segmented pill: Month, Week, Board calendar views + contextual shortcut to privileged consoles (Lead Desk, Principal Desk, Admin Console).
-3. **Right Zone**:
-   - User identity pill with role chip and clean logout or login action.
+#### Anatomy & Interactive States
 
-### 4.2 Notice Board & Calendar Canvas (`/`)
+1. **Container**: `flex items-center p-1 rounded-xl bg-zinc-100/90 border border-zinc-200/80 gap-1 text-xs shadow-2xs`.
+2. **View Modes (`Month`, `Week`, `Board`)**:
+   - **Active Tab**: `bg-white text-zinc-900 font-semibold shadow-xs rounded-lg px-2.5 lg:px-3 py-1.5`.
+   - **Inactive Tab**: `text-zinc-600 hover:text-zinc-900 rounded-lg px-2.5 lg:px-3 py-1.5 transition-all`.
+3. **Hairline Divider**:
+   - `w-px h-4 bg-zinc-300/80 mx-1 shrink-0` (Rendered only when user has privileged workspace access).
+4. **Role Workspace Shortcut (`Vice Principal Desk` / `Lead Workspace` / `Admin Console`)**:
+   - Embedded directly on the right side of the divider.
+   - Text & icon inherit semantic role colorway (`text-purple-700` for VP/Principal, `text-indigo-700` for Leads, `text-amber-700` for Admin).
+   - Hover state: `hover:bg-white/80 active:scale-[0.98]`.
+5. **Contextual Route Transition**:
+   - On `/`: Displays view modes + divider + role workspace link.
+   - On `/principal`: Replaces calendar view modes with standard segmented navigation (`[📅 Calendar] [🎓 Vice Principal Desk]`), where `Vice Principal Desk` holds the active raised white pill state.
 
-1. **Sidebar Utility Rail** (`w-64` on desktop, collapsible bottom-sheet filter drawer on mobile):
-   - **Primary Action**: Minimal high-contrast `+ Create Event` button.
-   - **MiniCalendar**: Compact, frictionless month navigation calendar with today indicator.
-   - **Instant Search**: Debounced search with shortcut hint (`/`) and clear button.
-   - **Category Checklist**: All 7 categories with desaturated color dots and event counts.
-   - **Time Horizon Switcher**: Segmented toggle for `All`, `Today`, `Next 7 Days`, `Weekend`.
-   - **System Conflict Engine Status**: Subtle status badge verifying automated clash prevention is online.
-2. **Main Calendar Canvas**:
-   - **Month View**: 7-column grid with clean hairline dividers, subtle day numbering, category-tinted event pills with time and venue badges.
-   - **Week View**: Time-blocked hourly columns with clear chronological event cards.
-   - **Board View**: Category kanban swimlanes with card thumbnails, community badges, and capacity indicators.
+---
 
-### 4.3 Executive Approval Desk (`/principal`)
+### 4.2 Left Filter Sidebar (`NoticeBoardClient`)
 
-- Designed for the Principal & Vice Principal for quick, authoritative event triaging:
-  - Status overview counters (Pending Sanction, Decision History).
-  - Triage cards with real-time venue utilization metrics:
-    $$\text{Utilization} = \frac{\text{Expected Attendance}}{\text{Venue Capacity}} \times 100\%$$
-  - Lead-time compliance indicator (`7+ Days Notice` vs `Short Notice Warning`).
-  - Action buttons: Quick `Approve & Publish` (Emerald) and `Reject with Reason` (Rose outline).
+Fixed 256px utility column on desktop, converting to an edge-to-edge filter drawer on mobile:
 
-### 4.4 Lead Workspace (`/lead`)
+1. **Primary Action**: Minimal high-contrast `+ Create Event` button (`btn-primary` or custom Zinc button).
+2. **MiniCalendar**: Compact 7x6 month grid for rapid date jumping with today indicator and selected date pill.
+3. **Instant Search Field**: Left-padded search icon, debounced query input, and instant clear `(X)` button.
+4. **"My Calendars" Category Checklist**: Category row with colored indicator dot, category name, and count badges.
+5. **Time Horizon Switcher**: Segmented grid buttons: `All Dates`, `Today`, `Next 7 Days`, `Weekend`.
+6. **System Status Pill**: Bottom badge verifying automated clash-prevention engine is active (`SaveSlot™ System • Active`).
 
-- Event management for student club heads and community leads:
-  - Tabbed overview: `Active & Published`, `Pending Sanction`, `Drafts / Past`.
-  - Safe-Slot Proposal Wizard:
-    - Step 1: Basic Event Details (Title, Description, Community, Category).
-    - Step 2: Schedule & Venue with Real-Time Conflict Detection.
-    - Automatic 3-way clash resolution options when a venue double-booking occurs.
+---
+
+### 4.3 Month View Grid (`MonthView`)
+
+- **Header**: 7-column day names (`Sunday` through `Saturday`) in uppercase/semibold typography.
+- **Day Cells**:
+  - Minimum height: `110px` on desktop.
+  - Border: Hairline grid (`border-r border-b border-zinc-200/70`).
+  - Adjacent month overflow dates: Dimmed neutral (`text-zinc-400 bg-zinc-50/40`).
+  - Current day: Highlighted circular badge (`bg-indigo-600 text-white font-bold`).
+- **Event Chips**:
+  - Horizontal pill showing start time (e.g. `4:00 PM`) and truncated title.
+  - Category-themed background and border.
+  - Hover: Elevation shadow (`shadow-xs scale-[1.01]`).
+  - Overflow: `+N more` button triggering a popover listing all events for the day.
+
+---
+
+### 4.4 Week View Grid (`WeekView`)
+
+- **Header**: 7 columns mapped to active week dates with weekday abbreviation and day number.
+- **Hourly Timeline**: Vertically scrollable timeline starting at 8:00 AM through 10:00 PM with 1-hour gridlines.
+- **Event Blocks**:
+  - Absolute positioning calculated based on `start_time` and `end_time` minutes.
+  - Displays event title, venue name badge (`📍 Main Auditorium`), and category pill.
+
+---
+
+### 4.5 Board View (Kanban Swimlanes)
+
+- **Columns**: 7 columns corresponding to event categories (`Tech`, `Arts`, `Sports`, `Career`, `Academic`, `Social`, `Workshop`).
+- **Cards (`EventCard`)**:
+  - Aspect ratio cover image (with fallback category graphic).
+  - Organizer community pill with avatar/logo.
+  - Title, date & time range, and venue badge with capacity warning.
+  - Direct deep-link modal trigger on click.
+
+---
+
+### 4.6 Event Detail Modal (`EventDetailModal`)
+
+Centrally focused dialog (`max-w-xl`, backdrop blur):
+
+- **Hero Banner**: High-resolution event image with subtle gradient overlay.
+- **Metadata Grid**:
+  - Organizing club with logo.
+  - Date & localized time formatted with `date-fns`.
+  - Venue name, building, and physical address.
+  - Category badge & tags list.
+  - Registration link button (`Register Now ↗`).
+- **Export Actions**:
+  - `Add to Google Calendar` button (opens direct calendar URL in new tab).
+  - `Download .ics` button (triggers immediate download of RFC 5545 calendar file).
+
+---
+
+### 4.7 Executive Approval Desk (`/principal`)
+
+Dedicated institutional approval workspace:
+
+1. **Header**: Summary displaying real-time count of proposals requiring executive sanction.
+2. **Segmented Tab Control**: `Pending Approvals (N)` vs `Decision History (N)`.
+3. **Pending Event Triage Card**:
+   - Organizer profile and community badge.
+   - Event title, full description, and intended audience.
+   - Proposed venue with live capacity utilization meter:
+     $$\text{Utilization} = \frac{\text{Expected Attendance}}{\text{Venue Capacity}} \times 100\%$$
+   - **Lead Time Status Badge**:
+     - `✓ 7+ Days Notice` (Emerald pill): Complies with institutional booking policy.
+     - `⚠ Short Notice (< 7 Days)` (Amber pill): Flags late submissions.
+   - **Action Bar**:
+     - `Reject with Reason` (Rose outline button): Opens rationale modal.
+     - `Approve & Publish` (Emerald fill button): Commits transactional publication.
+4. **Historical Review Log**:
+   - Chronological table showing past reviews.
+   - Status badge: `Approved` (Emerald) vs `Rejected` (Rose).
+   - Reviewer identity pill: Displays `Reviewed by [Reviewer Name] ([Role])`.
+   - Rejection feedback block displaying the written rationale sent to the lead.
+
+---
+
+### 4.8 Lead Workspace Proposal Modal (`ProposeEventModal`)
+
+Wizard for submitting events with real-time clash resolution:
+
+1. **Form Fields**: Title, Community selector, Category, Venue picker, Start & End datetime pickers, Description, Virtual link, Cover image.
+2. **Live Conflict Checking**:
+   - Debounced query to `/api/conflicts/check` whenever `venue_id`, `start_time`, or `end_time` changes.
+3. **Conflict Resolution Banner**:
+   - If a double-booking is detected:
+     - Rose-bordered alert showing conflicting event title, organizer, and time window.
+     - **Safe-Slot Recommendation Cards**:
+       - `Option A`: Later today in the same venue (+30m after conflict).
+       - `Option B`: Alternative active venue of equivalent capacity at the same time.
+       - `Option C`: Next available day at the same time.
+     - **1-Click "Apply Slot"**: Updates form inputs immediately with the suggested slot.
 
 ---
 
@@ -239,7 +332,7 @@ A unified, high-craft button supporting multiple visual variants, responsive siz
 - **Mobile First Breakpoint (< 768px)**:
   - Sticky header shrinks to 48px height with clean compact brand and menu toggles.
   - Floating sticky action bar at the bottom for quick filters and event creation.
-  - Calendar converts into an edge-to-edge chronological feed with hairline separators.
+  - Calendar converts into an edge-to-edge chronological feed with hairline separators (`divide-y divide-zinc-100`).
   - Minimum touch target: `44px × 44px`.
 - **Tablet (768px - 1023px)**:
   - Center navigation condenses view switcher.
@@ -249,8 +342,20 @@ A unified, high-craft button supporting multiple visual variants, responsive siz
 
 ---
 
-## 6. Accessibility & Performance Guardrails
+## 6. Micro-Interactions & Animation Specs
 
+- **Modal Transitions**: `animate-in fade-in zoom-in-95 duration-150` with `backdrop-blur-sm bg-zinc-950/45`.
+- **Drawer Slide-ins**: `animate-in slide-in-from-top-2 duration-150` (or `slide-in-from-bottom duration-200` for mobile bottom sheets).
+- **Button Touch Feedback**: `transition-all duration-100 active:scale-[0.98]`.
+- **List Item Hover**: `transition-colors duration-150 hover:bg-zinc-50`.
+- **Focus States**: Accessible focus ring `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-900/20 focus-visible:border-zinc-400`.
+
+---
+
+## 7. Accessibility & Performance Guardrails
+
+- **Semantic Landmarks**: Strict `<header>`, `<nav aria-label="...">`, `<main>`, `<section>`, and `<footer>` elements.
+- **ARIA Attributes**: `role="tablist"`, `role="tab"`, `aria-selected="true"`, `aria-expanded`, and descriptive `aria-label` tags on all icon-only buttons.
 - **WCAG 2.1 AA Compliance**: All text pairings maintain a minimum contrast ratio of 4.5:1.
 - **Keyboard Navigation**:
   - `Esc`: Closes any open modal or drawer.
