@@ -54,6 +54,17 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Git & Workflow
 
+* **Branching Model (Two-Tier Trunk / GitFlow-Lite)**:
+  * `main`: Production branch. Protected. Direct push blocked. Triggers automated production migrations (`db-migrate.yml`) and production Vercel deployment.
+  * `develop`: Integration & Staging branch. Protected. Direct push blocked. All regular work converges here first.
+* **The Universal Rule (`feat`, `fix`, `chore`, `refactor`)**:
+  * **ALL regular work branches from `develop` and targets `develop` via PR.**
+  * **Chores are NOT exempt**: Dependency upgrades, tooling updates, and config changes must go through `develop` first to verify builds/tests in preview and avoid lockfile/branch drift.
+  * Only production releases target `main` (via PR from `develop` → `main`).
+  * **Emergency Hotfix Exception**: Only if production is actively crashing, branch `hotfix/*` from `main`, PR into `main`, and immediately backport `main` into `develop`.
+* **Merge Strategies**:
+  * **Topic branch → `develop`**: **Squash and Merge** (`gh pr merge --squash --delete-branch`) to maintain clean, atomic, conventional commit history on `develop`.
+  * **`develop` → `main`**: **Merge Commit** (`gh pr merge --merge`) to keep exact commit lineage and prevent branch divergence.
 * **Atomic Commits Only**: Never bundle unrelated concerns. Keep fixes, features, and refactors separate.
 * **Mandatory Pre-Commit Plan**: Before committing, always present a numbered plan showing:
   * Commit message (`type(scope): message`)
@@ -64,6 +75,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 * **Permissions**:
   * **Always ask before committing.**
   * **Always ask before pushing.**
+  * **Always present PR title, description, and target branch before creating a PR.**
   * Never force-push without explicit permission.
 
 ## Completion Checklist
