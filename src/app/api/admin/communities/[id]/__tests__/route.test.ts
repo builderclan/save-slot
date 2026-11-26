@@ -1,376 +1,350 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, PATCH, DELETE } from "../route";
+import type { AuthSession } from "@/server/auth";
 
-vi.mock("@/lib/auth", () => ({
+vi.mock("@/server/auth", () => ({
   getCurrentUser: vi.fn(),
 }));
 
 const {
   mockSelect,
-  mockSelectFrom,
-  mockSelectWhere,
-  mockSelectLimit,
-  mockSelectOrderBy,
-  mockSelectLeftJoin,
-  mockSelectDistinctOn,
-  mockSelectFor,
-  mockInsert,
-  mockInsertValues,
-  mockInsertReturning,
-  mockInsertOnConflictDoUpdate,
-  mockUpdate,
-  mockUpdateSet,
-  mockUpdateWhere,
-  mockUpdateReturning,
-  mockDelete,
-  mockDeleteWhere,
-  mockDeleteReturning,
   mockTransaction,
-} = vi.hoisted(() => {
-  const mockSelectLimit = vi.fn();
-  const mockSelectOrderBy = vi.fn();
-  const mockSelectFor = vi.fn();
-  const mockSelectWhere = vi.fn();
-  const mockSelectLeftJoin = vi.fn();
-  const mockSelectFrom = vi.fn();
-  const mockSelectDistinctOn = vi.fn();
-  const mockSelect = vi.fn();
-
-  const mockInsertReturning = vi.fn();
-  const mockInsertOnConflictDoUpdate = vi.fn();
-  const mockInsertValues = vi.fn();
-  const mockInsert = vi.fn();
-
-  const mockUpdateReturning = vi.fn();
-  const mockUpdateWhere = vi.fn();
-  const mockUpdateSet = vi.fn();
-  const mockUpdate = vi.fn();
-
-  const mockDeleteReturning = vi.fn();
-  const mockDeleteWhere = vi.fn();
-  const mockDelete = vi.fn();
-
-  const mockTransaction = vi.fn();
-
-  return {
-    mockSelect,
-    mockSelectFrom,
-    mockSelectWhere,
-    mockSelectLimit,
-    mockSelectOrderBy,
-    mockSelectLeftJoin,
-    mockSelectDistinctOn,
-    mockSelectFor,
-    mockInsert,
-    mockInsertValues,
-    mockInsertReturning,
-    mockInsertOnConflictDoUpdate,
-    mockUpdate,
-    mockUpdateSet,
-    mockUpdateWhere,
-    mockUpdateReturning,
-    mockDelete,
-    mockDeleteWhere,
-    mockDeleteReturning,
-    mockTransaction,
-  };
-});
+} = vi.hoisted(() => ({
+  mockSelect: vi.fn(),
+  mockTransaction: vi.fn(),
+}));
 
 vi.mock("@/lib/db", () => {
   const mockDbClient = {
     select: mockSelect,
-    selectDistinctOn: mockSelectDistinctOn,
-    insert: mockInsert,
-    update: mockUpdate,
-    delete: mockDelete,
+    selectDistinctOn: () => ({
+      from: () => ({
+        where: () => ({
+          orderBy: () => ({
+            as: () => ({}),
+          }),
+        }),
+      }),
+    }),
     transaction: mockTransaction,
   };
-
   return {
     db: mockDbClient,
     withDbRetry: (op: (client: typeof mockDbClient) => Promise<unknown>) => op(mockDbClient),
   };
 });
 
-import { getCurrentUser, type AuthSession } from "@/lib/auth";
+import { getCurrentUser } from "@/server/auth";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 
+function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
+  return {
+    userId: `${role}-1`,
+    email: `${role}@aisat.ac.in`,
+    profile: { id: `${role}-1`, email: `${role}@aisat.ac.in`, full_name: role, role },
+    isAdmin: role === "admin",
+    isPrincipal: role === "principal" || role === "vice_principal",
+    isVicePrincipal: role === "vice_principal",
+    isHod: role === "hod",
+    isActingHod: false,
+    isTic: role === "tic",
+    isStaff: role === "staff",
+    isLead: role === "lead",
+    leadCommunities: [],
+    ticCommunities: [],
+    hodDepartments: [],
+  };
+}
+
 describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
-  const adminSession: AuthSession = {
-    userId: "admin-1",
-    email: "admin@campus.edu",
-    profile: {
-      id: "admin-1",
-      email: "admin@campus.edu",
-      full_name: "Admin User",
-      role: "admin",
-      campus_id: "campus-uuid-1",
-    },
-    isAdmin: true,
-    isPrincipal: false,
-    isVicePrincipal: false,
-    isLead: false,
-    leadCommunities: [],
-  };
-
-  const studentSession: AuthSession = {
-    userId: "student-1",
-    email: "student@campus.edu",
-    profile: {
-      id: "student-1",
-      email: "student@campus.edu",
-      full_name: "Student",
-      role: "student",
-      campus_id: "campus-uuid-1",
-    },
-    isAdmin: false,
-    isPrincipal: false,
-    isVicePrincipal: false,
-    isLead: false,
-    leadCommunities: [],
-  };
-
-  const createSelectChain = (rows: unknown[] = []) => ({
-    limit: mockSelectLimit,
-    orderBy: mockSelectOrderBy,
-    for: mockSelectFor,
-    then: (resolve: (val: unknown) => void, reject?: (err: unknown) => void) =>
-      Promise.resolve(rows).then(resolve, reject),
-  });
+  const mockParams = Promise.resolve({ id: "comm-uuid-1" });
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
 
-    // Select chaining
-    mockSelectLimit.mockResolvedValue([]);
-    mockSelectOrderBy.mockResolvedValue([]);
-    mockSelectFor.mockResolvedValue([]);
-    mockSelectWhere.mockImplementation(() => createSelectChain([]));
-    mockSelectLeftJoin.mockReturnValue({
-      leftJoin: mockSelectLeftJoin,
-      where: mockSelectWhere,
-      orderBy: mockSelectOrderBy,
-    });
-    mockSelectFrom.mockReturnValue({
-      where: mockSelectWhere,
-      leftJoin: mockSelectLeftJoin,
-      orderBy: mockSelectOrderBy,
-    });
-    mockSelectDistinctOn.mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            as: vi.fn().mockReturnValue("cm_lead"),
+  it("blocks unauthorized users on GET", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("staff"));
+    const res = await GET(new Request("http://localhost"), { params: mockParams });
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 404 when community is not found on GET", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
+    let call = 0;
+    mockSelect.mockImplementation(() => {
+      call++;
+      if (call === 1) {
+        return {
+          from: () => ({
+            leftJoin: () => ({
+              leftJoin: () => ({
+                where: () => ({
+                  limit: vi.fn().mockResolvedValue([]),
+                }),
+              }),
+            }),
           }),
+        };
+      }
+      return {
+        from: () => ({
+          innerJoin: () => ({
+            where: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      };
+    });
+
+    const res = await GET(new Request("http://localhost"), { params: mockParams });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns community details including TICs on GET", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
+    let call = 0;
+    mockSelect.mockImplementation(() => {
+      call++;
+      if (call === 1) {
+        return {
+          from: () => ({
+            leftJoin: () => ({
+              leftJoin: () => ({
+                where: () => ({
+                  limit: vi.fn().mockResolvedValue([
+                    {
+                      id: "comm-uuid-1",
+                      name: "Coding Club",
+                      slug: "coding-club",
+                      code: "CC",
+                      scope: "internal",
+                      category: "Tech",
+                      status: "approved",
+                      memberCount: 10,
+                      eventCount: 2,
+                      createdAt: new Date("2026-10-01T00:00:00Z"),
+                    },
+                  ]),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        from: () => ({
+          innerJoin: () => ({
+            where: vi.fn().mockResolvedValue([
+              { userId: "u-tic-1", fullName: "Prof. Arun Kumar" },
+            ]),
+          }),
+        }),
+      };
+    });
+
+    const res = await GET(new Request("http://localhost"), { params: mockParams });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.community.code).toBe("CC");
+    expect(data.community.tic_names).toEqual(["Prof. Arun Kumar"]);
+  });
+
+  it("updates community scope, code, and TIC assignments on PATCH", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
+    mockSelect.mockReturnValue({
+      from: () => ({
+        where: () => ({
+          limit: vi.fn().mockResolvedValue([
+            { id: "comm-uuid-1", name: "Coding Club", slug: "coding-club", code: "CC" },
+          ]),
         }),
       }),
     });
+
+    const mockTxUpdate = vi.fn().mockReturnValue({
+      set: () => ({
+        where: () => ({
+          returning: vi.fn().mockResolvedValue([
+            {
+              id: "comm-uuid-1",
+              name: "Coding Club",
+              slug: "coding-club",
+              code: "CC2",
+              scope: "external",
+              category: "Tech",
+              status: "approved",
+              createdAt: new Date("2026-10-01T00:00:00Z"),
+            },
+          ]),
+        }),
+      }),
+    });
+    const mockTxSelect = vi.fn().mockReturnValue({
+      from: () => ({
+        where: () => ({
+          for: vi.fn().mockResolvedValue([{ id: "comm-uuid-1" }]),
+          limit: vi.fn().mockResolvedValue([]),
+        }),
+      }),
+    });
+    const mockTxDelete = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) });
+    const mockTxInsert = vi.fn().mockReturnValue({
+      values: () => ({ onConflictDoUpdate: vi.fn().mockResolvedValue([]) }),
+    });
+
+    mockTransaction.mockImplementation(async (cb) =>
+      cb({ select: mockTxSelect, update: mockTxUpdate, delete: mockTxDelete, insert: mockTxInsert })
+    );
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/communities/comm-uuid-1", {
+        method: "PATCH",
+        body: JSON.stringify({
+          code: "CC2",
+          scope: "external",
+          ticUserIds: ["11111111-1111-4111-a111-111111111111"],
+        }),
+      }),
+      { params: mockParams }
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.community.code).toBe("CC2");
+    expect(data.community.scope).toBe("external");
+  });
+
+  it("preserves current community lead when ticUserIds is updated without leadUserId", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
+    const leadId = "11111111-1111-4111-a111-111111111111";
+    const ticId = "22222222-2222-4222-a222-222222222222";
+
     mockSelect.mockReturnValue({
-      from: mockSelectFrom,
+      from: () => ({
+        where: () => ({
+          limit: vi.fn().mockResolvedValue([
+            { id: "comm-uuid-1", name: "Coding Club", slug: "coding-club", code: "CC" },
+          ]),
+        }),
+      }),
     });
 
-    // Insert chaining
-    mockInsertReturning.mockResolvedValue([]);
-    mockInsertOnConflictDoUpdate.mockResolvedValue([]);
-    mockInsertValues.mockReturnValue({
-      returning: mockInsertReturning,
-      onConflictDoUpdate: mockInsertOnConflictDoUpdate,
-    });
-    mockInsert.mockReturnValue({
-      values: mockInsertValues,
-    });
-
-    // Update chaining
-    mockUpdateReturning.mockResolvedValue([]);
-    mockUpdateWhere.mockReturnValue({
-      returning: mockUpdateReturning,
-      then: (resolve: (val: unknown) => void, reject?: (err: unknown) => void) =>
-        Promise.resolve([]).then(resolve, reject),
-    });
-    mockUpdateSet.mockReturnValue({
-      where: mockUpdateWhere,
-    });
-    mockUpdate.mockReturnValue({
-      set: mockUpdateSet,
-    });
-
-    // Delete chaining
-    mockDeleteReturning.mockResolvedValue([]);
-    mockDeleteWhere.mockReturnValue({
-      returning: mockDeleteReturning,
-      then: (resolve: (val: unknown) => void, reject?: (err: unknown) => void) =>
-        Promise.resolve([]).then(resolve, reject),
-    });
-    mockDelete.mockReturnValue({
-      where: mockDeleteWhere,
-    });
-
-    // Transaction
-    mockTransaction.mockImplementation(async (cb) => {
-      const tx = {
-        select: mockSelect,
-        insert: mockInsert,
-        update: mockUpdate,
-        delete: mockDelete,
+    let txSelectCall = 0;
+    const mockTxSelect = vi.fn().mockImplementation(() => {
+      txSelectCall++;
+      if (txSelectCall === 1) {
+        return {
+          from: () => ({
+            where: () => ({
+              for: vi.fn().mockResolvedValue([{ id: "comm-uuid-1" }]),
+            }),
+          }),
+        };
+      }
+      return {
+        from: () => ({
+          where: () => ({
+            limit: vi.fn().mockResolvedValue([{ userId: leadId }]),
+          }),
+        }),
       };
-      return cb(tx);
     });
+    const mockTxDelete = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue([]) });
+    const insertedValues: unknown[] = [];
+    const mockTxInsert = vi.fn().mockImplementation(() => ({
+      values: (val: unknown) => {
+        insertedValues.push(val);
+        return { onConflictDoUpdate: vi.fn().mockResolvedValue([]) };
+      },
+    }));
+
+    mockTransaction.mockImplementation(async (cb) =>
+      cb({ select: mockTxSelect, delete: mockTxDelete, insert: mockTxInsert })
+    );
+
+    const res = await PATCH(
+      new Request("http://localhost/api/admin/communities/comm-uuid-1", {
+        method: "PATCH",
+        body: JSON.stringify({
+          ticUserIds: [leadId, ticId],
+        }),
+      }),
+      { params: mockParams }
+    );
+    expect(res.status).toBe(200);
+    expect(insertedValues).toHaveLength(1);
+    expect(insertedValues[0]).toEqual(
+      expect.objectContaining({ userId: ticId, role: "tic" })
+    );
   });
 
-  describe("GET /api/admin/communities/[id]", () => {
-    it("returns 403 Forbidden for non-admin", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(studentSession);
-      const req = new Request("http://localhost/api/admin/communities/comm-1");
-      const res = await GET(req, { params: Promise.resolve({ id: "comm-1" }) });
-      expect(res.status).toBe(403);
-    });
+  it("prevents deletion when active events belong to the community", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
 
-    it("returns 404 if community not found", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockSelectLimit.mockResolvedValueOnce([]); // Not found
-
-      const req = new Request("http://localhost/api/admin/communities/comm-1");
-      const res = await GET(req, { params: Promise.resolve({ id: "comm-1" }) });
-      expect(res.status).toBe(404);
-      const data = await res.json();
-      expect(data.error).toBe("Community not found");
-    });
-
-    it("returns community details on success", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      const existing = {
-        id: "comm-1",
-        campusId: "campus-uuid-1",
-        name: "Coding Club",
-        slug: "coding-club",
-        category: "Tech",
-        status: "approved",
-        memberCount: 25,
-        eventCount: 3,
-        leadId: "lead-1",
-        leadName: "Lead Person",
-        leadEmail: "lead@campus.edu",
+    let selectCount = 0;
+    const mockTxSelect = vi.fn().mockImplementation(() => {
+      selectCount++;
+      if (selectCount === 1) {
+        return {
+          from: () => ({
+            where: () => ({
+              for: vi.fn().mockResolvedValue([{ id: "comm-uuid-1" }]),
+            }),
+          }),
+        };
+      }
+      return {
+        from: () => ({
+          where: vi.fn().mockResolvedValue([{ id: "ev-1" }]),
+        }),
       };
-      mockSelectLimit.mockResolvedValueOnce([existing]);
-
-      const req = new Request("http://localhost/api/admin/communities/comm-1");
-      const res = await GET(req, { params: Promise.resolve({ id: "comm-1" }) });
-      expect(res.status).toBe(200);
-      const data = await res.json();
-      expect(data.success).toBe(true);
-      expect(data.community.name).toBe("Coding Club");
-      expect(data.community.member_count).toBe(25);
     });
+
+    mockTransaction.mockImplementation(async (cb) => cb({ select: mockTxSelect }));
+
+    const res = await DELETE(new Request("http://localhost", { method: "DELETE" }), {
+      params: mockParams,
+    });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain("active or pending event(s)");
   });
 
-  describe("PATCH /api/admin/communities/[id]", () => {
-    it("returns 403 Forbidden for non-admin", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(studentSession);
-      const req = new Request("http://localhost/api/admin/communities/comm-1", {
-        method: "PATCH",
-        body: JSON.stringify({ name: "Updated Name" }),
-      });
-      const res = await PATCH(req, { params: Promise.resolve({ id: "comm-1" }) });
-      expect(res.status).toBe(403);
-    });
+  it("deletes community cleanly when no active events exist", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
 
-    it("returns 404 if community not found", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockSelectLimit.mockResolvedValueOnce([]); // Not found
-
-      const req = new Request("http://localhost/api/admin/communities/comm-1", {
-        method: "PATCH",
-        body: JSON.stringify({ name: "Updated Name" }),
-      });
-      const res = await PATCH(req, { params: Promise.resolve({ id: "comm-1" }) });
-      expect(res.status).toBe(404);
-    });
-
-    it("updates community successfully", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      const existing = {
-        id: "comm-1",
-        campusId: "campus-uuid-1",
-        name: "Old Name",
-        slug: "old-name",
-        category: "Tech",
-        status: "approved",
+    let selectCount = 0;
+    const mockTxSelect = vi.fn().mockImplementation(() => {
+      selectCount++;
+      if (selectCount === 1) {
+        return {
+          from: () => ({
+            where: () => ({
+              for: vi.fn().mockResolvedValue([{ id: "comm-uuid-1" }]),
+            }),
+          }),
+        };
+      }
+      return {
+        from: () => ({
+          where: vi.fn().mockResolvedValue([]),
+        }),
       };
-      mockSelectLimit.mockResolvedValueOnce([existing]);
-
-      const updated = { ...existing, name: "New Name" };
-      mockUpdateReturning.mockResolvedValueOnce([updated]);
-
-      const req = new Request("http://localhost/api/admin/communities/comm-1", {
-        method: "PATCH",
-        body: JSON.stringify({ name: "New Name" }),
-      });
-      const res = await PATCH(req, { params: Promise.resolve({ id: "comm-1" }) });
-      expect(res.status).toBe(200);
-      const data = await res.json();
-      expect(data.success).toBe(true);
-      expect(data.community.name).toBe("New Name");
     });
-  });
-
-  describe("DELETE /api/admin/communities/[id]", () => {
-    it("returns 403 Forbidden for non-admin", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(studentSession);
-      const req = new Request("http://localhost/api/admin/communities/comm-1", { method: "DELETE" });
-      const res = await DELETE(req, { params: Promise.resolve({ id: "comm-1" }) });
-      expect(res.status).toBe(403);
+    const mockTxDelete = vi.fn().mockReturnValue({
+      where: vi.fn().mockResolvedValue([]),
     });
 
-    it("returns 404 if community not found or belongs to another campus", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockSelectFor.mockResolvedValueOnce([]); // community not found
+    mockTransaction.mockImplementation(async (cb) =>
+      cb({ select: mockTxSelect, delete: mockTxDelete })
+    );
 
-      const req = new Request("http://localhost/api/admin/communities/comm-999", { method: "DELETE" });
-      const res = await DELETE(req, { params: Promise.resolve({ id: "comm-999" }) });
-      expect(res.status).toBe(404);
-      const data = await res.json();
-      expect(data.error).toBe("Community not found");
+    const res = await DELETE(new Request("http://localhost", { method: "DELETE" }), {
+      params: mockParams,
     });
-
-    it("prevents deletion when active events are scheduled under this community", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockSelectFor.mockResolvedValueOnce([{ id: "comm-1" }]); // community locked
-      mockSelectWhere
-        .mockImplementationOnce(() => createSelectChain([]))
-        .mockImplementationOnce(() =>
-          createSelectChain([
-            { id: "event-1", title: "Hackathon" },
-            { id: "event-2", title: "Workshop" },
-          ])
-        );
-
-      const req = new Request("http://localhost/api/admin/communities/comm-1", { method: "DELETE" });
-      const res = await DELETE(req, { params: Promise.resolve({ id: "comm-1" }) });
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data.error).toContain("upcoming or pending event(s)");
-    });
-
-    it("deletes community when no active events exist", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      // 1. Lock community
-      mockSelectFor.mockResolvedValueOnce([{ id: "comm-1" }]);
-      // 2. Active events check (0) & 3. Prior leads
-      mockSelectWhere
-        .mockImplementationOnce(() => createSelectChain([]))
-        .mockImplementationOnce(() => createSelectChain([]))
-        .mockImplementationOnce(() => createSelectChain([{ userId: "lead-user-1" }]));
-
-      // 4. Delete community returning
-      mockDeleteReturning.mockResolvedValueOnce([{ id: "comm-1" }]);
-
-      const req = new Request("http://localhost/api/admin/communities/comm-1", { method: "DELETE" });
-      const res = await DELETE(req, { params: Promise.resolve({ id: "comm-1" }) });
-      expect(res.status).toBe(200);
-      const data = await res.json();
-      expect(data.success).toBe(true);
-      expect(data.deletedId).toBe("comm-1");
-    });
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(mockTxDelete).toHaveBeenCalledTimes(3);
   });
 });

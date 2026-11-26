@@ -9,16 +9,17 @@ export async function GET() {
       client
         .select({
           id: communities.id,
-          campus_id: communities.campusId,
           name: communities.name,
           slug: communities.slug,
+          code: communities.code,
+          scope: communities.scope,
           category: communities.category,
           description: communities.description,
           logo_url: communities.logoUrl,
         })
         .from(communities)
         .where(eq(communities.status, "approved"))
-        .orderBy(asc(communities.name))
+        .orderBy(asc(communities.name)),
     );
 
     return NextResponse.json(
@@ -27,10 +28,13 @@ export async function GET() {
         headers: {
           "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
         },
-      }
+      },
     );
   } catch (err: unknown) {
     console.error("[GET /api/communities] Error:", err);
-    return NextResponse.json({ error: "Failed to load communities" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to load communities" },
+      { status: 500 },
+    );
   }
 }

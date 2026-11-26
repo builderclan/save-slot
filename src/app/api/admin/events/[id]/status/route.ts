@@ -14,18 +14,14 @@ export async function POST(
 ) {
   try {
     const session = await getCurrentUser();
-    if (!session || (!session.isAdmin && !session.isPrincipal)) {
+    if (!session || !session.isPrincipal) {
       return NextResponse.json(
-        { error: "Unauthorized access: Principal or Admin approval authority required" },
+        { error: "Unauthorized access: Principal or Vice Principal approval authority required" },
         { status: 403 }
       );
     }
 
     const { id } = await params;
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
 
     const rawBody = await request.json().catch(() => null);
     const parsed = UpdateEventStatusSchema.safeParse(rawBody);
@@ -49,12 +45,7 @@ export async function POST(
           targetAudience: events.targetAudience,
         })
         .from(events)
-        .where(
-          and(
-            eq(events.id, id),
-            eq(events.campusId, campusId)
-          )
-        )
+        .where(eq(events.id, id))
         .limit(1)
     );
 
@@ -131,12 +122,7 @@ export async function POST(
             reviewedBy: session.userId,
             updatedAt: new Date(),
           })
-          .where(
-            and(
-              eq(events.id, id),
-              eq(events.campusId, campusId)
-            )
-          )
+          .where(eq(events.id, id))
           .returning();
 
         return res;
