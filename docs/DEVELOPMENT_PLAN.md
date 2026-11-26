@@ -1,5 +1,17 @@
 # SaveSlot — Development & Rebuild Plan (`v1.0.0`)
 
+## Roadmap Overview
+
+| Milestone | Scope | Status | PR / Notes |
+| :--- | :--- | :--- | :--- |
+| **`v0.3.0` POC** | Public Notice Board, Safe-Slot Engine, Lead / Principal / Admin POC | Done | Baseline release |
+| **Phase 1: Schema, Roles & Admin Setup** | Single-college DB (`013`), Drizzle schema, effective RBAC auth, IT & Ops `/admin` console, AISAT seed | Done | `#80`, `#81` |
+| **Phase 2: Multi-Stage Approvals & Overrides** | Unified Proposer (`/lead`, `/staff`), Stage 2 desks (`/hod`, `/tic`), P/VP overrides, soft locks, inbox | Next | — |
+| **Phase 3: Closure Reports & Printable Dossiers** | Atomic ref numbers, NAAC/NBA closure reports, A4 print dossiers, consolidated register, QR `/verify/[code]` | Planned | — |
+| **Phase 4: Public Notice Board & Full QA** | Origin & Department filters on `/`, Internal/External badges, 360px/desktop QA, `pnpm validate` | Planned | — |
+
+---
+
 ## 1. Where We Are Coming From: `v0.3.0` POC (Completed)
 
 The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical stack (Next.js 16, React 19, Tailwind v4, Drizzle ORM, Supabase PostgreSQL, Vitest):
@@ -19,10 +31,10 @@ The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical st
 - **Goal:** Put the new data model in place and separate IT setup from event approvals.
 
 - **Deliverables:**
-  - [ ] Fresh `v1.0.0` SQL migrations and Drizzle schema (`src/db/schema/*`): `college_settings` (replaces `campuses`), `departments`, updated `communities` (`scope`, `code`), expanded `users`, updated `events`, `event_stage2_approvals`, `event_approvals`, `event_mentors`, `event_reports`, `event_reference_counters`, and `notifications` (removing `campus_id` across tables, queries, and RLS).
-  - [ ] Server-only auth & effective-role helpers (`src/server/auth/`, retaining Supabase Auth for `v1.0.0`) so faculty (`staff`) assigned as `tic` or active `acting_hod` automatically unlock those desks without needing duplicate logins.
-  - [ ] Admin Console (`/admin`) updates: College Settings (name, prefix, letterhead, logo), Departments CRUD (`ECE`, `EEE`, `CSE`, `AI`, `ME`, `CE`), Internal/External Communities CRUD (also accessible to P/VP), multi-TIC & Dept Staff/Student Coordinator assignments, emergency Acting HOD toggle, and **removal of all event approval actions from Admin**.
-  - [ ] Clean `v1.0.0` seed script (`scripts/seed.js`) covering all 7 roles plus an Acting HOD test scenario.
+  - [x] Fresh `v1.0.0` SQL migrations and Drizzle schema (`src/db/schema/*`): `college_settings` (replaces `campuses`), `departments`, updated `communities` (`scope`, `code`), expanded `users`, updated `events`, `event_stage2_approvals`, `event_approvals`, `event_mentors`, `event_reports`, `event_reference_counters`, and `notifications` (removing `campus_id` across tables, queries, and RLS).
+  - [x] Server-only auth & effective-role helpers (`src/server/auth/`, retaining Supabase Auth for `v1.0.0`) so faculty (`staff`) assigned as `tic` or active `acting_hod` automatically unlock those desks without needing duplicate logins.
+  - [x] Admin Console (`/admin`) updates: College Settings (name, prefix, letterhead, logo), Departments CRUD (`ECE`, `EEE`, `CSE`, `AI`, `ME`, `CE`), Internal/External Communities CRUD (also accessible to P/VP), multi-TIC & Dept Staff/Student Coordinator assignments, emergency Acting HOD toggle, and **removal of all event approval actions from Admin**.
+  - [x] Clean `v1.0.0` seed script (`scripts/seed.js`) covering all 7 roles plus an Acting HOD test scenario.
 
 ### Phase 2: Multi-Stage Approvals, Overrides & Notifications
 
