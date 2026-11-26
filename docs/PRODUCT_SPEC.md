@@ -1,133 +1,128 @@
-# Campus Notice Board & Safe-Slot Calendar SaaS — Product Specification
+# SaveSlot v1.0.0 — Product Specification
 
-## 1. Executive Summary
-
-Campus event scheduling is notoriously plagued by double-booked auditoriums, clashing club activities, fragmented WhatsApp announcements, and last-minute event notices that leave students uninformed and split attendance.
-
-This platform is a **single-campus SaaS** designed as an **Interactive Student Notice Board** coupled with a **Deterministic Safe-Slot & Conflict Resolution Engine**. It provides a frictionless experience for students to discover verified campus events while empowering campus administrations and community leads to coordinate without collisions.
-
----
-
-## 2. Core Philosophy: The "Safe Slot" Principle
-
-Every campus event must be guaranteed a **"Safe Slot"**:
-
-1. **Zero Venue Collision**: The physical venue (e.g. Auditorium, Tech Lab) cannot be booked by any other event during that timeframe.
-2. **Audience Protection**: Community events are scheduled to minimize major timing conflicts, ensuring maximum student turnout.
-3. **The 7-Day Prior Notice Rule**: Community leads must submit event proposals at least **7 full calendar days in advance**. This eliminates last-minute scrambles, enables timely administrative review, and gives students adequate notice to plan their attendance.
+**Product:** SaveSlot — College Event Scheduling, Approval & NAAC/NBA Reporting  
+**College:** Albertian Institute of Science & Technology (AISAT) *(Dedicated Single-College Host & DB)*  
+**Version:** `1.0.0` *(Full-System Spec — Rebuilt from the `v0.3.0` POC)*  
+**Academic Year:** July 1 – June 30  
 
 ---
 
-## 3. User Personas & Permissions
+## 1. Why We Are Rebuilding
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                              1. ADMIN                                  │
-│  - Full administrative authority over the entire campus instance       │
-│  - Full CRUD on All Events (Approve, Reject with reasons, Edit, Delete) │
-│  - Full CRUD on Users (Add/edit Leads and Admins; no public signups)   │
-│  - Full CRUD on Venues (Auditoriums, Labs, Amphitheater, etc.)         │
-│  - Full CRUD on Campus Communities & Clubs                             │
-│  - Operations Console: Facility readiness and account management       │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ manages
-┌───────────────────────────────────▼────────────────────────────────────┐
-│               2. COLLEGE PRINCIPAL & VICE PRINCIPAL                    │
-│  - Institutional executive approval authority (/principal)             │
-│  - Dual executive oversight: Principal & Vice Principal hold identical  │
-│    college sign-off and safe-slot triage powers                         │
-│  - Triage Console: Review Safe-Slot cleared proposals from Leads       │
-│  - Grant institutional authorization or decline with feedback presets  │
-│  - Master campus schedule overview across all clubs and departments    │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ oversees
-┌───────────────────────────────────▼────────────────────────────────────┐
-│                        3. COMMUNITY LEADS                              │
-│  - Authenticated leaders of recognized campus clubs and societies      │
-│  - Added directly by Campus Admin (no public registration form)        │
-│  - Scoped access: Can only submit/edit events for assigned community   │
-│  - Enforced 7-day prior notice policy on submissions                   │
-│  - Real-time Safe Slot Assistant: warns of venue/time clashes and      │
-│    proposes 3 viable alternative slots                                 │
-│  - Track status of submissions (Pending, Approved, Rejected)           │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ publishes to
-┌───────────────────────────────────▼────────────────────────────────────┐
-│                    4. STUDENTS (PUBLIC NOTICE BOARD)                   │
-│  - 100% Public Access: Zero login or registration barrier               │
-│  - Multi-View Calendar & Notice Board: Month Grid, Week Timeline,      │
-│    and Visual Event Poster Card Feed                                   │
-│  - Real-time search, category filters (Tech, Arts, Sports, Career, etc.)│
-│  - Detailed Event Modal: venue, timings, host club, RSVP links         │
-│  - One-click "Add to Google Calendar" and Apple Calendar (.ics export) │
-└────────────────────────────────────────────────────────────────────────┘
-```
+The `v0.3.0` POC proved out the public student notice board and the venue conflict checker, and the college loved it. Now they want to replace all paper slips, scattered WhatsApp threads, and manual spreadsheets across AISAT with one digital workflow.
+
+To run the whole college on SaveSlot, `v1.0.0` expands the POC in five practical ways:
+
+1. **Three Event Origins:** Separate workflows for **Community** events (both internal clubs and outside organizations), **Department** events (`ECE`, `EEE`, `CSE`, `AI`, `ME`, `CE`, etc.), and **College** events (Annual Day, Sports Day, Convocation).
+2. **Multi-Stage & Joint Approvals:** Events route through the right people—Teacher-in-Charge or HOD first, then Principal or Vice Principal—and co-hosted events wait for every participating host to sign off.
+3. **Soft vs. Hard Venue Holds:** Pending requests hold a slot privately so nobody else double-books it, while only Principal/VP-approved events appear on the public notice board.
+4. **Post-Event Closure Reports:** Once an event ends, organizers must log attendance, mentors/resource persons, and total funds used before they can propose another event.
+5. **Printable Filing & QR Verification:** Every approved event gets a formal AISAT reference number (`AISAT/2026-27/CSE/014`), an A4 print-ready dossier for physical NAAC/NBA files, and a QR code anyone can scan to verify authenticity.
 
 ---
 
-## 4. Detailed Feature Requirements
+## 2. Scheduling & Conflict Rules ("Safe Slot")
 
-### 4.1 Public Student Notice Board (Frontend)
-
-* **View Modes**:
-  * **Visual Notice Board (Default)**: Visual event cards with cover imagery, date badges, host community tags, and quick-action buttons.
-  * **Month Calendar Grid**: High-level overview of the month showing event density dots and compact titles.
-  * **Week Timeline**: Hour-by-hour visual schedule of campus activities to quickly spot free slots and daily highlights.
-  * **Board View (Kanban Swimlanes)**: Category-grouped swimlanes ideal for scanning campus activities by discipline (Tech, Arts, Sports, Career, Academic, Workshop, Social).
-* **Filtering & Discovery**:
-  * **Search Bar**: Debounced search by title, description, or host name.
-  * **Category Filter**: Filter by tags (`Technical`, `Cultural`, `Sports`, `Career/Workshop`, `Social`, `Academic`).
-  * **Community Filter**: Filter events by specific clubs (e.g., Coding Club, Robotics, Debating Society).
-  * **Date Quick-Selectors**: "Today", "This Weekend", "Next 7 Days", "This Month".
-* **Event Detail Drawer / Modal**:
-  * Rich event banner/poster.
-  * Date, exact time range, and duration.
-  * Venue details with location / hall guidance.
-  * Organizing community info and contact.
-  * External registration / ticket link (optional).
-  * "Add to Calendar" (.ics download & direct Google Calendar link).
+1. **Soft Reservations (`pending_stage2`, `pending_executive`):** While an event is waiting for approval, its venue and time are soft-reserved. Other organizers cannot book that slot, and approvers can see the hold, but students browsing `/` do not see unapproved events.
+2. **Hard Reservations (`published`):** Once the Principal or Vice Principal approves (or creates a College event), the slot locks permanently and goes live on the public notice board.
+3. **7-Day Advance Notice:** Community and Department events must be submitted at least 7 days ahead. The Principal or Vice Principal can override this rule if needed—the system shows a clear warning first and records the override in the audit log.
+4. **College Event Priority:** When the Principal or VP schedules a College-wide event that overlaps existing Community or Department bookings, they can bump the conflicting events (`needs_reschedule`) and notify those organizers to pick a new slot.
 
 ---
 
-### 4.2 Community Lead Portal
+## 3. People, Accounts & Permissions
 
-* **Dashboard Overview**:
-  * Summary cards: Total Events Hosted, Upcoming Approved, Submissions In Review, Rejected.
-  * List of community's events with status badges (`Pending Review`, `Approved`, `Rejected`).
-* **Event Submission Workflow**:
-  * Fields: Title, Category, Target Venue, Start Time, End Time, Description, Registration URL, Cover Image.
-  * **Rule Enforcement**: System prevents submission if `start_date < current_date + 7 days` (with visual feedback explaining the 1-week policy).
-  * **Live Conflict Engine**:
-    * As the lead selects Venue + Date + Time, the engine actively queries existing approved/pending events.
-    * If a clash is detected, displays an alert: *"Main Auditorium is already booked by Robotics Club from 2:00 PM – 5:00 PM."*
-    * Instantly computes and displays **3 Alternate Safe Slots** (e.g. *"Same venue at 5:30 PM"*, *"Seminar Hall A at 2:00 PM"*, or *"Next day at 2:00 PM"*).
-  * Lead submits $\rightarrow$ Event is saved with status `pending`.
+Students browse the public notice board and verify QR codes **without logging in**. Accounts are created by Admin (email + password, with self-service password reset) only for staff, leads, and approvers.
 
----
-
-### 4.3 Admin Management Console
-
-* **Event Review & Triage Queue**:
-  * Dedicated triage feed for all `pending` submissions.
-  * Detailed conflict breakdown if any soft overlap exists.
-  * Actions:
-    * **Approve**: Immediately publishes event to the Public Notice Board.
-    * **Reject with Note**: Opens a feedback modal to specify reasons (e.g., *"Auditorium undergoing maintenance; please select Seminar Hall"*).
-    * **Reschedule / Override**: Admin can manually adjust venue or timings if needed.
-* **User Management (CRUD)**:
-  * Table of all system users.
-  * Admin action: "Add User" (Name, Email, Temporary Password, Role: Admin or Community Lead, Assigned Community).
-  * Ability to deactivate, edit, or reset passwords.
-* **Venue Management (CRUD)**:
-  * Manage campus venues (Name, Location, Capacity, Equipment/Amenities, Active Status).
-* **Community Management (CRUD)**:
-  * Manage recognized student clubs and organizations (Name, Category, Description, Logo, Assigned Lead).
+| Role | Who They Are | What They Can Do | Guardrails |
+| :--- | :--- | :--- | :--- |
+| **`admin`** | Campus IT / Operations | Manage Departments, Communities (Internal/External), Venues, and User accounts; assign HODs, Acting HODs, TICs, Staff, and Leads; flip the emergency Acting HOD toggle; configure campus settings. | **Cannot approve or reject events.** Keeps IT setup separate from college governance. |
+| **`principal`** / **`vice_principal`** | Executive Leadership | Give final approval (or reject) for Community, Dept, and Joint events; create and auto-publish College events; assign a Staff coordinator to close out College events; override the 7-day rule or bump conflicting events; create Communities; view/print all reports; emergency Acting HOD toggle. | Either Principal or VP can act—whichever reviews it first completes the executive step. Exempt from overdue report blocks. |
+| **`hod`** *(+ Acting HOD)* | Department Head | Stage 2 approval/rejection for Department and Joint events; quick-verify post-event reports; toggle **Acting HOD** mode on/off themselves when going on leave; print Department reports. | Scoped to their own Department. |
+| **`tic`** | Teacher-in-Charge | Stage 2 approval/rejection for assigned Community and Joint events; quick-verify post-event reports; print assigned Community reports. One TIC can oversee multiple communities, and a community can have multiple TICs. | Scoped to assigned Communities. *(Note: a Staff faculty member can also hold TIC or Acting HOD duties without needing a second account.)* |
+| **`staff`** | Department Faculty | Propose Department or Joint events; edit or delete rejected proposals; submit post-event NAAC/NBA closure reports and funds used (including assigned College events). | Blocked from proposing new events if any past event has an unsubmitted closure report. |
+| **`lead`** | Community Lead or Dept Student Coordinator | Propose events for their Community or Department (including Joint events); see soft-reserved slots; edit/delete rejected proposals; submit post-event reports. | Blocked from proposing new events if any past event has an unsubmitted closure report. |
+| **Public** | Students & Visitors | Browse `/` (Month, Week, Board), filter by Origin/Dept/Community/Category, export `.ics` or Google Calendar, verify printed sheets at `/verify/[code]`. | No login needed; cannot see drafts, soft holds, or financial/rejection details. |
 
 ---
 
-## 5. Non-Functional Requirements & Performance
+## 4. Event Types & Approval Chains
 
-* **Page Load Speed**: Fast initial load (< 1s) with Server-Side Rendering (SSR) for public notice board routes.
-* **Instant Optimistic Interactivity**: Tab and filter switches respond in < 50ms without full-page reloads.
-* **Responsive Layout**: 100% mobile-optimized for students checking the notice board on their smartphones.
-* **Data Security & Privacy**: Admin and Lead endpoints protected with session validation; no sensitive user data exposed to public endpoints.
+### 4.1 Event Origins
+
+1. **Community (`community`)**
+   - Tagged as either **`internal`** (college clubs/societies) or **`external`** (outside organizations visiting campus). Both labels are clearly shown on the UI and printed reports.
+   - Communities are added and managed by Admin or Principal/VP.
+   - **Flow:** `Lead` $\rightarrow$ `Teacher-in-Charge (any assigned TIC)` $\rightarrow$ `Principal / VP`
+
+2. **Department (`department`)**
+   - Belongs to an academic department (`ECE`, `EEE`, `CSE`, `AI`, `Mechanical`, `Civil`, or any department added by Admin).
+   - **Flow:** `Staff / Dept Student Coordinator` $\rightarrow$ `HOD (or active Acting HOD)` $\rightarrow$ `Principal / VP`
+
+3. **College (`college`)**
+   - Institutional events like Annual Day, Sports Day, or Convocation.
+   - Created directly by **Principal** or **Vice Principal** and **auto-published immediately**.
+   - P/VP can assign a **Staff Coordinator** who handles the post-event NAAC/NBA closure report afterward.
+
+4. **Joint / Co-Hosted Events**
+   - One primary host (Department or Community) initiates the proposal and tags one or more co-hosts (e.g., `CSE` hosting with `AI`, or a `Community` hosting with `CSE`).
+   - **Reference Number Prefix:** Uses the primary initiating host's code (e.g., `AISAT/2026-27/CSE/014`).
+   - **Parallel Sign-Off:** Every participating host must approve Stage 2 (`CSE HOD` **and** `AI HOD`, or `TIC` **and** `HOD`) before the proposal moves to Principal/VP. If any one approver rejects, the whole proposal returns to `rejected`.
+   - **Parallel Closure Verification:** After the event, every participating host's HOD/TIC must verify the post-event report before it locks as `completed`.
+
+### 4.2 Event Lifecycle States
+
+- `draft`: Saved, not yet submitted.
+- `pending_stage2`: Submitted for Stage 2 review; venue is soft-reserved.
+- `pending_executive`: All Stage 2 approvers signed off; waiting on Principal or VP (still soft-reserved).
+- `published`: Approved by P/VP (or created as a College event). Reference number generated; venue hard-locked; live on `/`.
+- `needs_reschedule`: Bumped by a College-level event; organizer must pick a new time/venue and resubmit.
+- `rejected`: Returned by Stage 2 or Executive with a mandatory reason. The organizer can delete it or edit and resubmit (restarting from Stage 2).
+- `cancelled`: Withdrawn by the organizer or cancelled by P/VP.
+- `pending_report_verification`: Event ended and organizer submitted the post-event report; waiting for HOD/TIC (or P/VP for College events) to verify.
+- `completed`: Closure report verified and locked for physical filing.
+
+---
+
+## 5. Pre-Event Proposals & Post-Event NAAC/NBA Reports
+
+### Phase 1 — Before the Event (Proposal)
+
+- Event basics: Title, Description, Origin, Primary Host + Co-hosts, Category, Target Audience, Venue & Time, Cover Poster, Registration URL.
+- **Planned Mentors / Resource Persons:** Name, Role/Designation, Organization/Company, and whether they are `Internal` or `External`.
+- **Estimated Budget:** Planned amount (INR) and Funding Source (`College Fund`, `Department Fund`, `Sponsor / External`, `Self-Funded`, `No Cost`).
+
+### Phase 2 — After the Event (Closure Report)
+
+- **Immediate Submission Gate:** As soon as an event's `end_time` passes, its organizer (`Lead` or `Staff`) cannot submit any new event proposals until they file the overdue post-event report. *(Principal and VP are exempt.)*
+- **What Gets Recorded:**
+  - Confirmed Mentors / Resource Persons (Name, Role, Company/Organization, Internal/External).
+  - **Total Fund Used:** Final spending figure (INR), Funding Source, and brief notes *(no bill uploads needed in `v1.0.0`; itemized billing will be reviewed later with college finance)*.
+  - Attendance counts: Students, Faculty, and External guests.
+  - NAAC/NBA Summary, Outcomes, and optional link to photos or attendance sheets.
+- **Verification:** Submitting moves the event to `pending_report_verification`. Required HODs/TICs (or P/VP if a Staff coordinator closes a College event) verify and lock it as `completed`. If P/VP closes a College event directly, it moves straight to `completed`.
+
+---
+
+## 6. Reference Numbers, Printable Filing & QR Verification
+
+1. **Reference Numbers (`AISAT/2026-27/CSE/014`):**
+   - Academic year runs **July 1 – June 30**.
+   - Numbers are generated **only when P/VP grants final approval** (or creates a College event), so rejected or deleted drafts never leave gaps.
+   - The sequential counter (`001`, `002`, ...) resets per **primary host code per academic year**.
+2. **Individual Event Dossier (`/reports/events/[id]`):**
+   - Clean A4 print layout (`Save as PDF` or direct print) showing the AISAT header, Reference Number, Origin & Internal/External label, Venue & Schedule, Mentors table, Estimated vs. Actual Funds Used, Attendance, NAAC/NBA Summary, and the full **Timestamped Approval Log** (Stage, Person, Role/Acting HOD note, Exact Timestamp, Remarks, Rule Overrides).
+   - Bottom stamp: *"Electronically Approved via SaveSlot — No Physical Signature Required"* alongside a QR code pointing to `/verify/[code]`.
+3. **Consolidated Register (`/reports/summary`):**
+   - Filterable by Academic Year, Date Range, Origin, Internal/External Community, Department, and Status, with totals (Events, Participants, Funds Used), A4 print table, and CSV export.
+4. **Public QR Verification (`/verify/[code]`):**
+   - Anyone scanning the printed QR code sees: Reference Number, Title, Date/Time, Venue, Origin & Host(s), Approval Chain (Names, Roles, Timestamps), and Status.
+   - Financial numbers, rejection remarks, and personal contact details are **never** shown publicly.
+
+---
+
+## 7. Notifications & Technical Targets
+
+- **In-App Inbox (`v1.0.0`):** Real-time notifications for pending approvals, rejections, bumped slots, Acting HOD toggles, and overdue closure reports.
+- **WhatsApp (Roadmap TODO):** Kept out of `v1.0.0` due to messaging cost, behind a clean notification interface for easy plug-in later.
+- **Reliability & UX:** Fast SSR notice board (`/`), clean 360px mobile & 1280px desktop layouts, transactional double-booking locks, and login rate-limiting.

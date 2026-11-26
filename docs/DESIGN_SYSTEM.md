@@ -1,9 +1,9 @@
 # SaveSlot Design System & UI Specification
 
-**System**: SaveSlot Design System (SDS)  
+**System:** SaveSlot Design System (SDS)  
 **Philosophy**: Minimalist SaaS • Quiet Precision • High-Craft Ergonomics (Linear / Apple / Raycast aesthetic)  
 **Stack**: Next.js 16 (App Router), React 19, Tailwind CSS v4, Lucide Icons, date-fns  
-**Version**: 2.0.0  
+**Version**: 2.1.0 *(Aligned with SaveSlot v1.0.0 Full College System)*  
 **Target Institution**: Albertian Institute of Science & Technology (AISAT)  
 
 ---
@@ -57,31 +57,28 @@ The typography pairs **Inter** for clean readability and **JetBrains Mono** for 
 
 SaveSlot employs a restrained monochrome base with purposeful semantic accents:
 
-#### Role Brand Accents
+#### Role Brand Accents (`v1.0.0`)
 
-- **Executive Principal / VP**: Subtle executive violet/purple
-  - Text: `text-purple-700`
-  - Fill / Tint: `bg-purple-50`
-  - Border: `border-purple-200/80`
-- **Community Leads**: Refined indigo
-  - Text: `text-indigo-700`
-  - Fill / Tint: `bg-indigo-50`
-  - Border: `border-indigo-200/80`
-- **Campus Admin**: Warm institutional amber
-  - Text: `text-amber-700`
-  - Fill / Tint: `bg-amber-50`
-  - Border: `border-amber-200/80`
+- **Executive Principal / VP**: Subtle executive violet/purple (`text-purple-700 bg-purple-50 border-purple-200/80`)
+- **HOD / Acting HOD**: Deep slate-teal (`text-teal-700 bg-teal-50 border-teal-200/80`)
+- **Teacher-in-Charge (`tic`)**: Warm sky-blue (`text-sky-700 bg-sky-50 border-sky-200/80`)
+- **Community Leads & Dept Coordinators / Staff**: Refined indigo (`text-indigo-700 bg-indigo-50 border-indigo-200/80`)
+- **Campus Admin (IT / Ops)**: Warm institutional amber (`text-amber-700 bg-amber-50 border-amber-200/80`)
 
-#### Status & State Tokens
+#### Event Origin Badges (`v1.0.0`)
 
-- **Published / Approved / Safe**: Emerald
-  - `bg-emerald-50 text-emerald-700 border-emerald-200/80`
-- **Pending Sanction**: Amber
-  - `bg-amber-50 text-amber-700 border-amber-200/80`
-- **Rejected / Clash / Danger**: Rose / Crimson
-  - `bg-rose-50 text-rose-700 border-rose-200/80`
-- **Draft / Inactive / Withdrawn**: Neutral Slate/Zinc
-  - `bg-zinc-100 text-zinc-600 border-zinc-200/80`
+- **College Event**: `bg-purple-50 text-purple-700 border-purple-200/80` (`College`)
+- **Department Event**: `bg-teal-50 text-teal-700 border-teal-200/80` (`Dept • CSE`)
+- **Community (Internal)**: `bg-indigo-50 text-indigo-700 border-indigo-200/80` (`College Community`)
+- **Community (External)**: `bg-slate-100 text-slate-700 border-slate-300/80` (`External Community`)
+
+#### Status & State Tokens (`v1.0.0`)
+
+- **Published / Completed / Verified**: Emerald (`bg-emerald-50 text-emerald-700 border-emerald-200/80`)
+- **Pending Stage 2 / Pending Executive / Pending Report Verify**: Amber (`bg-amber-50 text-amber-700 border-amber-200/80`)
+- **Soft Reserved (Internal Only)**: Subtle dashed amber/slate pill (`border-dashed bg-amber-50/50 text-amber-700 border-amber-300`)
+- **Rejected / Needs Reschedule / Overdue Report Block**: Rose / Crimson (`bg-rose-50 text-rose-700 border-rose-200/80`)
+- **Draft / Cancelled / Withdrawn**: Neutral Slate/Zinc (`bg-zinc-100 text-zinc-600 border-zinc-200/80`)
 
 ### 2.4 Event Category Matrix
 
@@ -207,13 +204,13 @@ The top application header (`src/components/layout/navbar.tsx`) provides context
    - **Inactive Tab**: `text-zinc-600 hover:text-zinc-900 rounded-lg px-2.5 lg:px-3 py-1.5 transition-all`.
 3. **Hairline Divider**:
    - `w-px h-4 bg-zinc-300/80 mx-1 shrink-0` (Rendered only when user has privileged workspace access).
-4. **Role Workspace Shortcut (`Vice Principal Desk` / `Lead Workspace` / `Admin Console`)**:
-   - Embedded directly on the right side of the divider.
-   - Text & icon inherit semantic role colorway (`text-purple-700` for VP/Principal, `text-indigo-700` for Leads, `text-amber-700` for Admin).
+4. **Role Workspace Shortcut (`VP Desk` / `HOD Desk` / `TIC Desk` / `Workspace` / `Admin Console`)**:
+   - Embedded directly on the right side of the divider, alongside an in-app **Notification Bell** with unread count.
+   - Text & icon inherit semantic role colorway (`text-purple-700` for VP/Principal, `text-teal-700` for HOD, `text-sky-700` for TIC, `text-indigo-700` for Staff/Leads, `text-amber-700` for Admin).
    - Hover state: `hover:bg-white/80 active:scale-[0.98]`.
 5. **Contextual Route Transition**:
    - On `/`: Displays view modes + divider + role workspace link.
-   - On `/principal`: Replaces calendar view modes with standard segmented navigation (`[📅 Calendar] [🎓 Vice Principal Desk]`), where `Vice Principal Desk` holds the active raised white pill state.
+   - On `/principal`, `/hod`, `/tic`, `/lead`, `/staff`: Replaces calendar view modes with `[📅 Calendar]` + active workspace tabs (including `Reports` where permitted).
 
 ---
 
@@ -221,12 +218,13 @@ The top application header (`src/components/layout/navbar.tsx`) provides context
 
 Fixed 256px utility column on desktop, converting to an edge-to-edge filter drawer on mobile:
 
-1. **Primary Action**: Minimal high-contrast `+ Create Event` button (`btn-primary` or custom Zinc button).
+1. **Primary Action**: Minimal high-contrast `+ Propose Event` (or `+ College Event` for P/VP) button for signed-in organizers.
 2. **MiniCalendar**: Compact 7x6 month grid for rapid date jumping with today indicator and selected date pill.
 3. **Instant Search Field**: Left-padded search icon, debounced query input, and instant clear `(X)` button.
-4. **"My Calendars" Category Checklist**: Category row with colored indicator dot, category name, and count badges.
-5. **Time Horizon Switcher**: Segmented grid buttons: `All Dates`, `Today`, `Next 7 Days`, `Weekend`.
-6. **System Status Pill**: Bottom badge verifying automated clash-prevention engine is active (`SaveSlot™ System • Active`).
+4. **Origin & Department Filters (`v1.0.0`)**: Filter by Event Origin (`College`, `Department`, `Community - Internal`, `Community - External`) and Department (`CSE`, `ECE`, `EEE`, `AI`, `ME`, `CE`).
+5. **Category Checklist**: Category row with colored indicator dot, category name, and count badges.
+6. **Time Horizon Switcher**: Segmented grid buttons: `All Dates`, `Today`, `Next 7 Days`, `Weekend`.
+7. **System Status Pill**: Bottom badge verifying clash-prevention engine is active (`SaveSlot™ System • Active`).
 
 ---
 
@@ -271,12 +269,12 @@ Fixed 256px utility column on desktop, converting to an edge-to-edge filter draw
 
 Centrally focused dialog (`max-w-xl`, backdrop blur):
 
-- **Hero Banner**: High-resolution event image with subtle gradient overlay.
+- **Hero Banner**: High-resolution event image with subtle gradient overlay, Origin badge (`College`, `Dept • CSE`, `College Community`, or `External Community`), and official Reference Number (if published).
 - **Metadata Grid**:
-  - Organizing club with logo.
+  - Primary Host & Co-Hosts (with logos/codes).
   - Date & localized time formatted with `date-fns`.
   - Venue name, building, and physical address.
-  - Category badge & tags list.
+  - Category badge, Target Audience, and Public Resource Persons / Mentors (without private contacts).
   - Registration link button (`Register Now ↗`).
 - **Export Actions**:
   - `Add to Google Calendar` button (opens direct calendar URL in new tab).
@@ -284,46 +282,40 @@ Centrally focused dialog (`max-w-xl`, backdrop blur):
 
 ---
 
-### 4.7 Executive Approval Desk (`/principal`)
+### 4.7 Approval Desks (`/hod`, `/tic`, `/principal`)
 
-Dedicated institutional approval workspace:
+Role-scoped approval queues sharing a consistent split-pane layout:
 
-1. **Header**: Summary displaying real-time count of proposals requiring executive sanction.
-2. **Segmented Tab Control**: `Pending Approvals (N)` vs `Decision History (N)`.
+1. **Header**: Summary count of proposals awaiting sign-off, post-event reports awaiting verification, and (on `/hod`) the **Acting HOD** leave toggle.
+2. **Segmented Tab Control**: `Pending Approvals (N)` • `Report Verification (N)` • `Decision History (N)` (plus `College Events` & `Reports` on `/principal`).
 3. **Pending Event Triage Card**:
-   - Organizer profile and community badge.
-   - Event title, full description, and intended audience.
+   - Origin & Internal/External badge, Primary Host + Co-host sign-off checklist (showing which HODs/TICs have already approved).
+   - Event title, description, planned Mentors (`Internal`/`External`), Estimated Budget, and intended audience.
    - Proposed venue with live capacity utilization meter:
      $$\text{Utilization} = \frac{\text{Expected Attendance}}{\text{Venue Capacity}} \times 100\%$$
    - **Lead Time Status Badge**:
      - `✓ 7+ Days Notice` (Emerald pill): Complies with institutional booking policy.
-     - `⚠ Short Notice (< 7 Days)` (Amber pill): Flags late submissions.
+     - `⚠ Short Notice (< 7 Days)` (Amber pill): Flags late submissions (overridable by P/VP with explicit confirmation).
    - **Action Bar**:
      - `Reject with Reason` (Rose outline button): Opens rationale modal.
-     - `Approve & Publish` (Emerald fill button): Commits transactional publication.
+     - `Approve` / `Approve & Publish` (Emerald fill button): Advances Stage 2 or commits P/VP publication & reference number.
 4. **Historical Review Log**:
-   - Chronological table showing past reviews.
-   - Status badge: `Approved` (Emerald) vs `Rejected` (Rose).
-   - Reviewer identity pill: Displays `Reviewed by [Reviewer Name] ([Role])`.
-   - Rejection feedback block displaying the written rationale sent to the lead.
+   - Chronological audit table showing every Stage 2 & Executive action (`Actor Name`, `Role / Acting HOD`, `Timestamp`, `Remarks`, `Override Flags`), plus a `Print Dossier` shortcut.
 
 ---
 
-### 4.8 Lead Workspace Proposal Modal (`ProposeEventModal`)
+### 4.8 Proposer Workspace Modal (`ProposeEventModal`)
 
-Wizard for submitting events with real-time clash resolution:
+Wizard for `lead` and `staff` proposers (plus P/VP College event creation):
 
-1. **Form Fields**: Title, Community selector, Category, Venue picker, Start & End datetime pickers, Description, Virtual link, Cover image.
-2. **Live Conflict Checking**:
-   - Debounced query to `/api/conflicts/check` whenever `venue_id`, `start_time`, or `end_time` changes.
-3. **Conflict Resolution Banner**:
+1. **Overdue Report Gate Banner**: If any past event owned/coordinated by the user is missing a post-event closure report, displays a rose blocker banner listing overdue events with direct `Submit Closure Report` actions.
+2. **Form Fields**: Origin (`Community` / `Department`), Primary Host + Co-Host multi-select, Title, Category, Venue picker, Start & End datetime pickers, Planned Mentors (`Internal`/`External`, Role, Organization), Estimated Budget & Funding Source, Description, Cover image.
+3. **Live Conflict Checking**:
+   - Debounced query to `/api/conflicts/check` covering both Soft (`pending_stage2`, `pending_executive`) and Hard (`published`) reservations.
+4. **Conflict Resolution Banner**:
    - If a double-booking is detected:
-     - Rose-bordered alert showing conflicting event title, organizer, and time window.
-     - **Safe-Slot Recommendation Cards**:
-       - `Option A`: Later today in the same venue (+30m after conflict).
-       - `Option B`: Alternative active venue of equivalent capacity at the same time.
-       - `Option C`: Next available day at the same time.
-     - **1-Click "Apply Slot"**: Updates form inputs immediately with the suggested slot.
+     - Rose-bordered alert showing conflicting slot window (P/VP creating a `college` event can choose `Bump Conflicting Events`).
+     - **Safe-Slot Recommendation Cards** (`Option A`: Same Venue Later Today, `Option B`: Alternative Active Venue, `Option C`: Next Available Day) with 1-click **"Apply Slot"**.
 
 ---
 
@@ -365,3 +357,13 @@ Wizard for submitting events with real-time clash resolution:
   - Zero heavy unindexed database queries.
   - Sub-50ms render response using React 19 memoization (`useMemo`, `useCallback`).
   - Bundle size maintained strictly under control by utilizing built-in Tailwind CSS v4 and standard Lucide icons without bulky external UI libraries.
+
+---
+
+## 8. Print & Physical Filing Standards (`v1.0.0` A4 Dossiers)
+
+- **Page Geometry**: `@page { size: A4 portrait; margin: 14mm; }` for Individual Event Dossiers (`/reports/events/[id]`) and `@page { size: A4 landscape; margin: 12mm; }` for Consolidated Registers (`/reports/summary`).
+- **Print Isolation**: Navigation bars, sidebars, filter controls, and action buttons carry `print:hidden`. Printable tables use `break-inside-avoid` on audit rows and signature/QR footers.
+- **Official Header & Footer**:
+  - Top: AISAT Institutional Header + monospace Reference Number (`AISAT/2026-27/CSE/014`).
+  - Bottom: *"Electronically Approved via SaveSlot — No Physical Signature Required"* alongside a high-contrast vector QR code pointing to `/verify/[code]`.
