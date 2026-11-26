@@ -33,7 +33,7 @@ export function AdminCommunitiesView({
         (c.code || "").toLowerCase().includes(q) ||
         c.category.toLowerCase().includes(q) ||
         (c.lead_name || "").toLowerCase().includes(q) ||
-        (c.tic_names || []).some((n) => n.toLowerCase().includes(q))
+        (c.fic_names || []).some((n) => n.toLowerCase().includes(q))
       );
     });
   }, [communities, searchQuery, scopeFilter]);
@@ -85,7 +85,7 @@ export function AdminCommunitiesView({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search name, code, TIC, lead..."
+                  placeholder="Search name, code, FIC, lead..."
                   className="w-full pl-8.5 pr-8 py-1.5 rounded-lg border border-zinc-200 bg-zinc-50 text-xs text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-zinc-900 transition-colors h-8"
                 />
                 {searchQuery && (
@@ -129,7 +129,7 @@ export function AdminCommunitiesView({
               </div>
               <h4 className="text-sm font-bold text-zinc-800 mb-1">No communities found</h4>
               <p className="text-xs text-zinc-500 max-w-xs mb-4">
-                Register internal student clubs and external society chapters with assigned Faculty TICs.
+                Register internal student clubs and external society chapters with assigned Faculty-in-Charge.
               </p>
               <button
                 type="button"
@@ -182,10 +182,10 @@ export function AdminCommunitiesView({
                       </span>
 
                       <span>
-                        <span className="text-zinc-500">TIC(s):</span>{" "}
+                        <span className="text-zinc-500">FIC(s):</span>{" "}
                         <strong className="font-medium text-zinc-800">
-                          {comm.tic_names && comm.tic_names.length > 0
-                            ? comm.tic_names.join(", ")
+                          {comm.fic_names && comm.fic_names.length > 0
+                            ? comm.fic_names.join(", ")
                             : "None"}
                         </strong>
                       </span>

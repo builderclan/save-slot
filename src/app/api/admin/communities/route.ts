@@ -25,7 +25,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized access" }, { status: 403 });
     }
 
-    const [rows, ticRows] = await withDbRetry(async (client) => {
+    const [rows, ficRows] = await withDbRetry(async (client) => {
       const leadSubquery = client
         .selectDistinctOn([communityMembers.communityId], {
           communityId: communityMembers.communityId,
@@ -70,24 +70,24 @@ export async function GET() {
           })
           .from(communityMembers)
           .innerJoin(users, eq(users.id, communityMembers.userId))
-          .where(eq(communityMembers.role, "tic")),
+          .where(eq(communityMembers.role, "fic")),
       ]);
     });
 
-    const ticsByCommunity = new Map<string, { ids: string[]; names: string[] }>();
-    for (const row of ticRows) {
-      const entry = ticsByCommunity.get(row.communityId) ?? { ids: [], names: [] };
+    const ficsByCommunity = new Map<string, { ids: string[]; names: string[] }>();
+    for (const row of ficRows) {
+      const entry = ficsByCommunity.get(row.communityId) ?? { ids: [], names: [] };
       entry.ids.push(row.userId);
       entry.names.push(row.fullName);
-      ticsByCommunity.set(row.communityId, entry);
+      ficsByCommunity.set(row.communityId, entry);
     }
 
     const formatted = rows.map((row) => {
-      const tics = ticsByCommunity.get(row.id);
+      const fics = ficsByCommunity.get(row.id);
       return formatAdminCommunity({
         ...row,
-        ticIds: tics?.ids ?? [],
-        ticNames: tics?.names ?? [],
+        ficIds: fics?.ids ?? [],
+        ficNames: fics?.names ?? [],
       });
     });
 
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       website,
       instagram,
       leadUserId,
-      ticUserIds,
+      ficUserIds,
     } = parsed.data;
     const rawSlug = parsed.data.slug?.trim();
     const slug = rawSlug && rawSlug.length > 0 ? rawSlug.toLowerCase() : generateSlug(name);
@@ -187,20 +187,20 @@ export async function POST(request: Request) {
             });
         }
 
-        if (ticUserIds && ticUserIds.length > 0) {
-          const uniqueTics = [...new Set(ticUserIds.filter((uid) => uid && uid !== leadUserId))];
-          for (const ticId of uniqueTics) {
+        if (ficUserIds && ficUserIds.length > 0) {
+          const uniqueFics = [...new Set(ficUserIds.filter((uid) => uid && uid !== leadUserId))];
+          for (const ficId of uniqueFics) {
             await tx
               .insert(communityMembers)
               .values({
                 communityId: comm.id,
-                userId: ticId,
-                role: "tic",
+                userId: ficId,
+                role: "fic",
                 status: "active",
               })
               .onConflictDoUpdate({
                 target: [communityMembers.communityId, communityMembers.userId],
-                set: { role: "tic", status: "active" },
+                set: { role: "fic", status: "active" },
               });
           }
         }

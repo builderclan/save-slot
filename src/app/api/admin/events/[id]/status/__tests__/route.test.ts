@@ -95,11 +95,11 @@ function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
     isVicePrincipal: role === "vice_principal",
     isHod: role === "hod",
     isActingHod: false,
-    isTic: role === "tic",
+    isFic: role === "fic",
     isStaff: role === "staff",
     isLead: role === "lead",
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
   };
 }

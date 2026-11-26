@@ -52,14 +52,14 @@ function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
       role,
     },
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
     isAdmin: role === "admin",
     isPrincipal: role === "principal" || role === "vice_principal",
     isVicePrincipal: role === "vice_principal",
     isHod: role === "hod",
     isActingHod: false,
-    isTic: role === "tic",
+    isFic: role === "fic",
     isStaff: role === "staff",
     isLead: role === "lead",
   };
@@ -123,8 +123,8 @@ describe("POST /api/auth/login (v1.0.0)", () => {
     expect(data.error).toContain("Account is inactive or not provisioned");
   });
 
-  it("redirects faculty/TIC/HOD/lead accounts to /lead", async () => {
-    for (const role of ["staff", "tic", "hod", "lead"] as const) {
+  it("redirects faculty/FIC/HOD/lead accounts to /lead", async () => {
+    for (const role of ["staff", "fic", "hod", "lead"] as const) {
       mockSignInWithPassword.mockResolvedValueOnce({
         data: { user: { id: `${role}-1`, email: `${role}@aisat.ac.in` } },
         error: null,

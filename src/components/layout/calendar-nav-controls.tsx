@@ -9,6 +9,8 @@ import {
   ChevronRight,
   GraduationCap,
   Shield,
+  Building2,
+  UserCheck,
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isSameMonth, isSameYear } from "date-fns";
 import { useCalendar } from "@/context/calendar-context";
@@ -144,11 +146,18 @@ export function CalendarViewSwitcher({ user }: { user: AuthUser | null }) {
       </button>
 
       {/* Hairline Divider & Workspace Shortcuts */}
-      {(user?.isPrincipal || user?.isLead || user?.isAdmin) && (
+      {(user?.isPrincipal ||
+        user?.isVicePrincipal ||
+        user?.isHod ||
+        user?.isActingHod ||
+        user?.isFic ||
+        user?.isLead ||
+        user?.isStaff ||
+        user?.isAdmin) && (
         <>
           <div className="w-px h-4 bg-zinc-300/80 mx-1 shrink-0" aria-hidden="true" />
 
-          {user?.isPrincipal && (
+          {(user?.isPrincipal || user?.isVicePrincipal) && (
             <Link
               href="/principal"
               className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-purple-900 hover:bg-white/80 hover:text-purple-950 active:scale-[0.98]"
@@ -159,14 +168,36 @@ export function CalendarViewSwitcher({ user }: { user: AuthUser | null }) {
             </Link>
           )}
 
-          {user?.isLead && (
+          {(user?.isHod || user?.isActingHod) && (
+            <Link
+              href="/hod"
+              className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-teal-900 hover:bg-white/80 hover:text-teal-950 active:scale-[0.98]"
+              title="HOD Approval Desk"
+            >
+              <Building2 className="w-3.5 h-3.5 text-teal-600" />
+              <span>HOD Desk</span>
+            </Link>
+          )}
+
+          {user?.isFic && (
+            <Link
+              href="/fic"
+              className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-cyan-900 hover:bg-white/80 hover:text-cyan-950 active:scale-[0.98]"
+              title="FIC Approval Desk"
+            >
+              <UserCheck className="w-3.5 h-3.5 text-cyan-600" />
+              <span>FIC Desk</span>
+            </Link>
+          )}
+
+          {(user?.isLead || user?.isStaff) && (
             <Link
               href="/lead"
               className="px-2.5 lg:px-3 py-1.5 rounded-lg font-medium transition-all cursor-pointer flex items-center gap-1.5 text-indigo-900 hover:bg-white/80 hover:text-indigo-950 active:scale-[0.98]"
-              title="Lead Workspace"
+              title="Proposer Workspace"
             >
               <LayoutGrid className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Lead Workspace</span>
+              <span>{user?.isLead ? "Lead Workspace" : "Workspace"}</span>
             </Link>
           )}
 

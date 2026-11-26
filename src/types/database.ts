@@ -3,7 +3,7 @@ export type UserRole =
   | "principal"
   | "vice_principal"
   | "hod"
-  | "tic"
+  | "fic"
   | "staff"
   | "lead";
 
@@ -94,8 +94,8 @@ export interface AdminCommunityRow extends Community {
   lead_id?: string | null;
   lead_name?: string | null;
   lead_email?: string | null;
-  tic_ids?: string[];
-  tic_names?: string[];
+  fic_ids?: string[];
+  fic_names?: string[];
   member_count: number;
   event_count: number;
 }
@@ -104,7 +104,7 @@ export interface CommunityMember {
   id: string;
   community_id: string;
   user_id: string;
-  role: "lead" | "tic" | "member";
+  role: "lead" | "fic" | "member";
   status: "active" | "invited";
   created_at?: string;
 }
@@ -126,7 +126,7 @@ export interface AdminUserRow extends UserProfile {
   department_code?: string | null;
   community_id?: string | null;
   community_name?: string | null;
-  community_member_role?: "lead" | "tic" | "member" | null;
+  community_member_role?: "lead" | "fic" | "member" | null;
 }
 
 export type TargetAudience =

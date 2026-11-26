@@ -51,11 +51,11 @@ function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
     isVicePrincipal: role === "vice_principal",
     isHod: role === "hod",
     isActingHod: false,
-    isTic: role === "tic",
+    isFic: role === "fic",
     isStaff: role === "staff",
     isLead: role === "lead",
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
   };
 }
@@ -71,7 +71,7 @@ describe("Admin Communities API (/api/admin/communities)", () => {
     expect(res.status).toBe(403);
   });
 
-  it("lists communities with code, scope, lead, and TICs on GET", async () => {
+  it("lists communities with code, scope, lead, and FICs on GET", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
 
     let selectCount = 0;
@@ -108,7 +108,7 @@ describe("Admin Communities API (/api/admin/communities)", () => {
         from: () => ({
           innerJoin: () => ({
             where: vi.fn().mockResolvedValue([
-              { communityId: "comm-1", userId: "u-tic-1", fullName: "Prof. Deepa George" },
+              { communityId: "comm-1", userId: "u-fic-1", fullName: "Prof. Deepa George" },
             ]),
           }),
         }),
@@ -121,8 +121,8 @@ describe("Admin Communities API (/api/admin/communities)", () => {
     expect(data.communities).toHaveLength(1);
     expect(data.communities[0].code).toBe("IEEE");
     expect(data.communities[0].scope).toBe("external");
-    expect(data.communities[0].tic_ids).toEqual(["u-tic-1"]);
-    expect(data.communities[0].tic_names).toEqual(["Prof. Deepa George"]);
+    expect(data.communities[0].fic_ids).toEqual(["u-fic-1"]);
+    expect(data.communities[0].fic_names).toEqual(["Prof. Deepa George"]);
   });
 
   it("rejects assigned leadUserId that is not a Lead or Staff account", async () => {
@@ -151,7 +151,7 @@ describe("Admin Communities API (/api/admin/communities)", () => {
     expect(data.error).toContain("Lead or Staff");
   });
 
-  it("creates community with scope, code, lead, and multi-TIC links on POST", async () => {
+  it("creates community with scope, code, lead, and multi-FIC links on POST", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
 
     const mockTxInsert = vi.fn().mockImplementation(() => ({
@@ -182,7 +182,7 @@ describe("Admin Communities API (/api/admin/communities)", () => {
           code: "nss",
           scope: "external",
           category: "Social",
-          ticUserIds: ["22222222-2222-4222-a222-222222222222"],
+          ficUserIds: ["22222222-2222-4222-a222-222222222222"],
         }),
       })
     );

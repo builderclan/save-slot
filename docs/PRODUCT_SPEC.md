@@ -14,7 +14,7 @@ The `v0.3.0` POC proved out the public student notice board and the venue confli
 To run the whole college on SaveSlot, `v1.0.0` expands the POC in five practical ways:
 
 1. **Three Event Origins:** Separate workflows for **Community** events (both internal clubs and outside organizations), **Department** events (`ECE`, `EEE`, `CSE`, `AI`, `ME`, `CE`, etc.), and **College** events (Annual Day, Sports Day, Convocation).
-2. **Multi-Stage & Joint Approvals:** Events route through the right people—Teacher-in-Charge or HOD first, then Principal or Vice Principal—and co-hosted events wait for every participating host to sign off.
+2. **Multi-Stage & Joint Approvals:** Events route through the right people—Faculty-in-Charge or HOD first, then Principal or Vice Principal—and co-hosted events wait for every participating host to sign off.
 3. **Soft vs. Hard Venue Holds:** Pending requests hold a slot privately so nobody else double-books it, while only Principal/VP-approved events appear on the public notice board.
 4. **Post-Event Closure Reports:** Once an event ends, organizers must log attendance, mentors/resource persons, and total funds used before they can propose another event.
 5. **Printable Filing & QR Verification:** Every approved event gets a formal AISAT reference number (`AISAT/2026-27/CSE/014`), an A4 print-ready dossier for physical NAAC/NBA files, and a QR code anyone can scan to verify authenticity.
@@ -36,10 +36,10 @@ Students browse the public notice board and verify QR codes **without logging in
 
 | Role | Who They Are | What They Can Do | Guardrails |
 | :--- | :--- | :--- | :--- |
-| **`admin`** | Campus IT / Operations | Manage Departments, Communities (Internal/External), Venues, and User accounts; assign HODs, Acting HODs, TICs, Staff, and Leads; flip the emergency Acting HOD toggle; configure campus settings. | **Cannot approve or reject events.** Keeps IT setup separate from college governance. |
+| **`admin`** | Campus IT / Operations | Manage Departments, Communities (Internal/External), Venues, and User accounts; assign HODs, Acting HODs, FICs, Staff, and Leads; flip the emergency Acting HOD toggle; configure campus settings. | **Cannot approve or reject events.** Keeps IT setup separate from college governance. |
 | **`principal`** / **`vice_principal`** | Executive Leadership | Give final approval (or reject) for Community, Dept, and Joint events; create and auto-publish College events; assign a Staff coordinator to close out College events; override the 7-day rule or bump conflicting events; create Communities; view/print all reports; emergency Acting HOD toggle. | Either Principal or VP can act—whichever reviews it first completes the executive step. Exempt from overdue report blocks. |
 | **`hod`** *(+ Acting HOD)* | Department Head | Stage 2 approval/rejection for Department and Joint events; quick-verify post-event reports; toggle **Acting HOD** mode on/off themselves when going on leave; print Department reports. | Scoped to their own Department. |
-| **`tic`** | Teacher-in-Charge | Stage 2 approval/rejection for assigned Community and Joint events; quick-verify post-event reports; print assigned Community reports. One TIC can oversee multiple communities, and a community can have multiple TICs. | Scoped to assigned Communities. *(Note: a Staff faculty member can also hold TIC or Acting HOD duties without needing a second account.)* |
+| **`fic`** | Faculty-in-Charge | Stage 2 approval/rejection for assigned Community and Joint events; quick-verify post-event reports; print assigned Community reports. One FIC can oversee multiple communities, and a community can have multiple FICs. | Scoped to assigned Communities. *(Note: a Staff faculty member can also hold FIC or Acting HOD duties without needing a second account.)* |
 | **`staff`** | Department Faculty | Propose Department or Joint events; edit or delete rejected proposals; submit post-event NAAC/NBA closure reports and funds used (including assigned College events). | Blocked from proposing new events if any past event has an unsubmitted closure report. |
 | **`lead`** | Community Lead or Dept Student Coordinator | Propose events for their Community or Department (including Joint events); see soft-reserved slots; edit/delete rejected proposals; submit post-event reports. | Blocked from proposing new events if any past event has an unsubmitted closure report. |
 | **Public** | Students & Visitors | Browse `/` (Month, Week, Board), filter by Origin/Dept/Community/Category, export `.ics` or Google Calendar, verify printed sheets at `/verify/[code]`. | No login needed; cannot see drafts, soft holds, or financial/rejection details. |
@@ -53,7 +53,7 @@ Students browse the public notice board and verify QR codes **without logging in
 1. **Community (`community`)**
    - Tagged as either **`internal`** (college clubs/societies) or **`external`** (outside organizations visiting campus). Both labels are clearly shown on the UI and printed reports.
    - Communities are added and managed by Admin or Principal/VP.
-   - **Flow:** `Lead` $\rightarrow$ `Teacher-in-Charge (any assigned TIC)` $\rightarrow$ `Principal / VP`
+   - **Flow:** `Lead` $\rightarrow$ `Faculty-in-Charge (any assigned FIC)` $\rightarrow$ `Principal / VP`
 
 2. **Department (`department`)**
    - Belongs to an academic department (`ECE`, `EEE`, `CSE`, `AI`, `Mechanical`, `Civil`, or any department added by Admin).
@@ -67,8 +67,8 @@ Students browse the public notice board and verify QR codes **without logging in
 4. **Joint / Co-Hosted Events**
    - One primary host (Department or Community) initiates the proposal and tags one or more co-hosts (e.g., `CSE` hosting with `AI`, or a `Community` hosting with `CSE`).
    - **Reference Number Prefix:** Uses the primary initiating host's code (e.g., `AISAT/2026-27/CSE/014`).
-   - **Parallel Sign-Off:** Every participating host must approve Stage 2 (`CSE HOD` **and** `AI HOD`, or `TIC` **and** `HOD`) before the proposal moves to Principal/VP. If any one approver rejects, the whole proposal returns to `rejected`.
-   - **Parallel Closure Verification:** After the event, every participating host's HOD/TIC must verify the post-event report before it locks as `completed`.
+   - **Parallel Sign-Off:** Every participating host must approve Stage 2 (`CSE HOD` **and** `AI HOD`, or `FIC` **and** `HOD`) before the proposal moves to Principal/VP. If any one approver rejects, the whole proposal returns to `rejected`.
+   - **Parallel Closure Verification:** After the event, every participating host's HOD/FIC must verify the post-event report before it locks as `completed`.
 
 ### 4.2 Event Lifecycle States
 
@@ -79,7 +79,7 @@ Students browse the public notice board and verify QR codes **without logging in
 - `needs_reschedule`: Bumped by a College-level event; organizer must pick a new time/venue and resubmit.
 - `rejected`: Returned by Stage 2 or Executive with a mandatory reason. The organizer can delete it or edit and resubmit (restarting from Stage 2).
 - `cancelled`: Withdrawn by the organizer or cancelled by P/VP.
-- `pending_report_verification`: Event ended and organizer submitted the post-event report; waiting for HOD/TIC (or P/VP for College events) to verify.
+- `pending_report_verification`: Event ended and organizer submitted the post-event report; waiting for HOD/FIC (or P/VP for College events) to verify.
 - `completed`: Closure report verified and locked for physical filing.
 
 ---
@@ -100,7 +100,7 @@ Students browse the public notice board and verify QR codes **without logging in
   - **Total Fund Used:** Final spending figure (INR), Funding Source, and brief notes *(no bill uploads needed in `v1.0.0`; itemized billing will be reviewed later with college finance)*.
   - Attendance counts: Students, Faculty, and External guests.
   - NAAC/NBA Summary, Outcomes, and optional link to photos or attendance sheets.
-- **Verification:** Submitting moves the event to `pending_report_verification`. Required HODs/TICs (or P/VP if a Staff coordinator closes a College event) verify and lock it as `completed`. If P/VP closes a College event directly, it moves straight to `completed`.
+- **Verification:** Submitting moves the event to `pending_report_verification`. Required HODs/FICs (or P/VP if a Staff coordinator closes a College event) verify and lock it as `completed`. If P/VP closes a College event directly, it moves straight to `completed`.
 
 ---
 

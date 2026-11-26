@@ -20,7 +20,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   principal: "Principal",
   vice_principal: "Vice Principal",
   hod: "HOD",
-  tic: "TIC",
+  fic: "FIC",
   staff: "Faculty / Staff",
   lead: "Student Lead",
 };
@@ -30,7 +30,7 @@ const ROLE_BADGE_CLASSES: Record<UserRole, string> = {
   principal: "bg-indigo-50 text-indigo-700 border-indigo-200/80",
   vice_principal: "bg-violet-50 text-violet-700 border-violet-200/80",
   hod: "bg-teal-50 text-teal-700 border-teal-200/80",
-  tic: "bg-sky-50 text-sky-700 border-sky-200/80",
+  fic: "bg-sky-50 text-sky-700 border-sky-200/80",
   staff: "bg-zinc-100 text-zinc-700 border-zinc-200/80",
   lead: "bg-emerald-50 text-emerald-700 border-emerald-200/80",
 };
@@ -148,7 +148,7 @@ export function AdminUsersView({
               </div>
               <h4 className="text-sm font-bold text-zinc-800 mb-1">No matching accounts</h4>
               <p className="text-xs text-zinc-500 max-w-xs mb-4">
-                Provision faculty, HOD, TIC, executive, or student lead accounts to assign responsibilities.
+                Provision faculty, HOD, FIC, executive, or student lead accounts to assign responsibilities.
               </p>
               <button
                 type="button"

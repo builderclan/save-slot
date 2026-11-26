@@ -146,7 +146,7 @@ export async function PATCH(
           await tx.delete(communityMembers).where(eq(communityMembers.userId, id));
           if (communityId && communityId.trim() !== "") {
             const memberRole =
-              communityMemberRole || (effectiveRole === "tic" ? "tic" : "lead");
+              communityMemberRole || (effectiveRole === "fic" ? "fic" : "lead");
             await tx
               .insert(communityMembers)
               .values({

@@ -274,7 +274,7 @@ export function useAdminDashboard() {
       const fallback =
         user.isPrincipal || user.isVicePrincipal
           ? "/principal"
-          : user.isHod || user.isTic || user.isStaff || user.isLead
+          : user.isHod || user.isFic || user.isStaff || user.isLead
             ? "/lead"
             : "/";
       router.replace(fallback);
@@ -510,7 +510,7 @@ export function useAdminDashboard() {
           website: data.website || null,
           instagram: data.instagram || null,
           leadUserId: data.leadUserId || null,
-          ticUserIds: data.ticUserIds,
+          ficUserIds: data.ficUserIds,
         });
         const refreshed = await loadData(true);
         setShowAddCommunityModal(false);
@@ -550,7 +550,7 @@ export function useAdminDashboard() {
           website: data.website || null,
           instagram: data.instagram || null,
           leadUserId: data.leadUserId || null,
-          ticUserIds: data.ticUserIds,
+          ficUserIds: data.ficUserIds,
         });
         const refreshed = await loadData(true);
         setEditingCommunity(null);

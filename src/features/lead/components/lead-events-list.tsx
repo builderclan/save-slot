@@ -16,6 +16,8 @@ import {
   ExternalLink,
   ShieldAlert,
   Users,
+  Send,
+  Ban,
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "@/features/events";
@@ -27,6 +29,8 @@ export interface LeadEventsListProps {
   onEdit: (event: CampusEvent) => void;
   onWithdraw: (event: CampusEvent) => void;
   onShowRejectionNotice?: (event: CampusEvent) => void;
+  onSubmitDraft?: (event: CampusEvent) => void;
+  onCancelPublished?: (event: CampusEvent) => void;
   onProposeNew: () => void;
   onResetFilters: () => void;
 }
@@ -67,6 +71,8 @@ export function LeadEventsList({
   onEdit,
   onWithdraw,
   onShowRejectionNotice,
+  onSubmitDraft,
+  onCancelPublished,
   onProposeNew,
   onResetFilters,
 }: LeadEventsListProps) {
@@ -123,11 +129,34 @@ export function LeadEventsList({
               <div className="flex items-center gap-2 flex-wrap">
                 <CategoryBadge category={ev.category} size="sm" />
 
+                {/* Origin Badge */}
+                {ev.origin_type === "department" && ev.department && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-200/80 text-[10px] font-semibold">
+                    Dept · {ev.department.code}
+                  </span>
+                )}
+                {ev.origin_type === "community" && ev.community && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200/80 text-[10px] font-semibold">
+                    {ev.community.code} ({ev.community.scope})
+                  </span>
+                )}
+                {ev.reference_number && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 border border-zinc-200 font-mono text-[10px] font-semibold">
+                    {ev.reference_number}
+                  </span>
+                )}
+
                 {/* Status Chip */}
                 {ev.status === "published" && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 text-[10px] font-medium">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                     <span>Approved & Live</span>
+                  </span>
+                )}
+
+                {ev.status === "draft" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-zinc-200 bg-zinc-100 text-zinc-700 text-[10px] font-medium">
+                    <span>Draft</span>
                   </span>
                 )}
 
@@ -137,6 +166,19 @@ export function LeadEventsList({
                     <span>
                       {ev.status === "pending_stage2" ? "Pending Stage 2 Review" : "Pending Executive"}
                     </span>
+                  </span>
+                )}
+
+                {ev.status === "needs_reschedule" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-orange-200 bg-orange-50 text-orange-800 text-[10px] font-medium">
+                    <ShieldAlert className="w-3 h-3 text-orange-600" />
+                    <span>Reschedule Required</span>
+                  </span>
+                )}
+
+                {ev.status === "cancelled" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-zinc-300 bg-zinc-100 text-zinc-600 text-[10px] font-medium">
+                    <span>Cancelled</span>
                   </span>
                 )}
 
@@ -198,8 +240,29 @@ export function LeadEventsList({
                 )}
               </div>
 
-              {/* Inline Administrative Feedback Snippet for Rejected Events */}
-              {ev.status === "rejected" && ev.rejection_reason && (
+              {/* Stage 2 Co-Host Progress Pills */}
+              {ev.stage2_approvals && ev.stage2_approvals.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  {ev.stage2_approvals.map((s2) => (
+                    <span
+                      key={s2.id}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium ${
+                        s2.approval_status === "approved"
+                          ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                          : s2.approval_status === "rejected"
+                          ? "bg-rose-50 border-rose-200 text-rose-700"
+                          : "bg-zinc-50 border-zinc-200 text-zinc-600"
+                      }`}
+                    >
+                      <span>{s2.entity_code || s2.entity_name || s2.entity_type}:</span>
+                      <span className="capitalize">{s2.approval_status}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Inline Feedback Snippet for Rejected / Needs Reschedule Events */}
+              {(ev.status === "rejected" || ev.status === "needs_reschedule") && ev.rejection_reason && (
                 <div
                   onClick={() => onShowRejectionNotice?.(ev)}
                   className="mt-2 p-3 rounded-xl bg-rose-50/80 border border-rose-200/90 text-xs text-rose-900 flex items-start gap-2.5 cursor-pointer hover:bg-rose-100/70 transition-colors"
@@ -207,7 +270,9 @@ export function LeadEventsList({
                   <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <div className="space-y-0.5 flex-1 min-w-0">
                     <strong className="font-semibold block text-rose-950">
-                      Administrator Feedback (click to view full notice):
+                      {ev.status === "needs_reschedule"
+                        ? "Executive Reschedule Notice (click to view):"
+                        : "Reviewer Feedback (click to view full notice):"}
                     </strong>
                     <p className="text-rose-900/90 leading-relaxed line-clamp-2">
                       {ev.rejection_reason}
@@ -230,34 +295,56 @@ export function LeadEventsList({
                 <span>Preview</span>
               </button>
 
-              {/* View Live for Published Events */}
+              {/* View Live + Cancel for Published Events */}
               {ev.status === "published" && (
-                <Link
-                  href="/"
-                  title="View on Campus Notice Board"
-                  className="px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors flex items-center gap-1.5 shadow-2xs active:scale-[0.98]"
-                >
-                  <span>View Live</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-                </Link>
+                <>
+                  <Link
+                    href="/"
+                    title="View on Campus Notice Board"
+                    className="px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors flex items-center gap-1.5 shadow-2xs active:scale-[0.98]"
+                  >
+                    <span>View Live</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                  </Link>
+                  {onCancelPublished && !ev.report && (
+                    <button
+                      type="button"
+                      onClick={() => onCancelPublished(ev)}
+                      className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-xs font-medium text-rose-700 transition-colors flex items-center gap-1.5 cursor-pointer active:scale-[0.98]"
+                    >
+                      <Ban className="w-3.5 h-3.5" />
+                      <span>Cancel Event</span>
+                    </button>
+                  )}
+                </>
               )}
 
-              {/* Revise & Resubmit for Rejected Events */}
-              {ev.status === "rejected" && (
+              {/* Submit Draft Quick Action */}
+              {ev.status === "draft" && onSubmitDraft && (
+                <button
+                  type="button"
+                  onClick={() => onSubmitDraft(ev)}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-[0.98]"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Submit</span>
+                </button>
+              )}
+
+              {/* Revise & Resubmit for Rejected / Needs Reschedule Events */}
+              {(ev.status === "rejected" || ev.status === "needs_reschedule") && (
                 <button
                   type="button"
                   onClick={() => onEdit(ev)}
                   className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-[0.98]"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Revise & Resubmit</span>
+                  <span>{ev.status === "needs_reschedule" ? "Reschedule & Resubmit" : "Revise & Resubmit"}</span>
                 </button>
               )}
 
-              {/* Edit Proposal for Pending Events */}
-              {(ev.status === "pending_stage2" ||
-                ev.status === "pending_executive" ||
-                ev.status === "draft") && (
+              {/* Edit Proposal for Draft / Pending Stage 2 */}
+              {(ev.status === "pending_stage2" || ev.status === "draft") && (
                 <button
                   type="button"
                   onClick={() => onEdit(ev)}
@@ -269,8 +356,11 @@ export function LeadEventsList({
                 </button>
               )}
 
-              {/* Withdraw / Delete Button for Pending or Rejected Events */}
-              {ev.status !== "published" && (
+              {/* Withdraw / Delete Button */}
+              {(ev.status === "draft" ||
+                ev.status === "rejected" ||
+                ev.status === "needs_reschedule" ||
+                ev.status === "pending_stage2") && (
                 <button
                   type="button"
                   onClick={() => onWithdraw(ev)}

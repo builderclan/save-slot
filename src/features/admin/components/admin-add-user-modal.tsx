@@ -13,7 +13,7 @@ export interface NewUserData {
   designation: string;
   departmentId: string;
   communityId: string;
-  communityMemberRole: "lead" | "tic" | "member";
+  communityMemberRole: "lead" | "fic" | "member";
 }
 
 interface AdminAddUserModalProps {
@@ -27,7 +27,7 @@ interface AdminAddUserModalProps {
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "staff", label: "Faculty / Staff (Organizer / Mentor)" },
-  { value: "tic", label: "Teacher-in-Charge (TIC)" },
+  { value: "fic", label: "Faculty-in-Charge (FIC)" },
   { value: "hod", label: "Head of Department (HOD)" },
   { value: "lead", label: "Student Community Lead" },
   { value: "vice_principal", label: "Vice Principal (Executive)" },
@@ -50,7 +50,7 @@ export function AdminAddUserModal({
   const [designation, setDesignation] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [communityId, setCommunityId] = useState("");
-  const [communityMemberRole, setCommunityMemberRole] = useState<"lead" | "tic" | "member">("member");
+  const [communityMemberRole, setCommunityMemberRole] = useState<"lead" | "fic" | "member">("member");
 
   useEffect(() => {
     if (isOpen) {
@@ -68,8 +68,8 @@ export function AdminAddUserModal({
   useEffect(() => {
     if (role === "lead") {
       setCommunityMemberRole("lead");
-    } else if (role === "tic") {
-      setCommunityMemberRole("tic");
+    } else if (role === "fic") {
+      setCommunityMemberRole("fic");
     } else {
       setCommunityMemberRole("member");
     }
@@ -105,14 +105,14 @@ export function AdminAddUserModal({
     });
   };
 
-  const showCommunityLink = role === "lead" || role === "tic" || role === "staff" || role === "hod";
+  const showCommunityLink = role === "lead" || role === "fic" || role === "staff" || role === "hod";
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       title="Provision User Account"
-      description="Create a college faculty, executive, TIC, student lead, or IT admin account."
+      description="Create a college faculty, executive, FIC, student lead, or IT admin account."
       maxWidth="md"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -207,11 +207,11 @@ export function AdminAddUserModal({
               <Select
                 label="Community Role"
                 value={communityMemberRole}
-                onChange={(val) => setCommunityMemberRole(val as "lead" | "tic" | "member")}
+                onChange={(val) => setCommunityMemberRole(val as "lead" | "fic" | "member")}
                 disabled={!communityId}
                 options={[
                   { value: "lead", label: "Student Lead" },
-                  { value: "tic", label: "Faculty TIC" },
+                  { value: "fic", label: "Faculty-in-Charge (FIC)" },
                   { value: "member", label: "Member" },
                 ]}
               />

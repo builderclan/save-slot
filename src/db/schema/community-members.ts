@@ -12,13 +12,16 @@ export const communityMembers = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    role: varchar("role", { length: 50 }).notNull().default("lead"), // 'lead' | 'tic' | 'member'
+    role: varchar("role", { length: 50 }).notNull().default("lead"), // 'lead' | 'fic' | 'member'
     status: varchar("status", { length: 50 }).notNull().default("active"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
-    unique("community_members_community_id_user_id_key").on(table.communityId, table.userId),
-  ]
+    unique("community_members_community_id_user_id_key").on(
+      table.communityId,
+      table.userId,
+    ),
+  ],
 );
 
 export type CommunityMemberRecord = typeof communityMembers.$inferSelect;

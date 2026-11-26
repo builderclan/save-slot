@@ -10,7 +10,7 @@ export default async function LeadLayout({
   if (
     !session ||
     (!session.isLead &&
-      !session.isTic &&
+      !session.isFic &&
       !session.isHod &&
       !session.isActingHod &&
       !session.isStaff)

@@ -99,8 +99,8 @@ describe("Admin Modular Components & Modals (v1.0.0)", () => {
     lead_id: "u-1",
     lead_name: "Alice Lead",
     lead_email: "alice@aisat.ac.in",
-    tic_ids: ["u-2"],
-    tic_names: ["Prof. Arun Kumar"],
+    fic_ids: ["u-2"],
+    fic_names: ["Prof. Arun Kumar"],
     status: "approved",
     event_count: 3,
     member_count: 50,
@@ -204,7 +204,7 @@ describe("Admin Modular Components & Modals (v1.0.0)", () => {
   });
 
   describe("AdminAddCommunityModal", () => {
-    it("renders community registration fields including scope and multi-TIC", () => {
+    it("renders community registration fields including scope and multi-FIC", () => {
       const html = renderToString(
         <AdminAddCommunityModal
           isOpen={true}
@@ -215,7 +215,7 @@ describe("Admin Modular Components & Modals (v1.0.0)", () => {
       );
       expect(html).toContain("Register Community or Chapter");
       expect(html).toContain("Governance Scope");
-      expect(html).toContain("Multi-TIC");
+      expect(html).toContain("Multi-FIC");
       expect(html).toContain("Prof. Arun Kumar");
     });
   });

@@ -25,11 +25,11 @@ export async function GET() {
       isVicePrincipal: session.isVicePrincipal,
       isHod: session.isHod,
       isActingHod: session.isActingHod,
-      isTic: session.isTic,
+      isFic: session.isFic,
       isStaff: session.isStaff,
       isLead: session.isLead,
       leadCommunities: session.leadCommunities,
-      ticCommunities: session.ticCommunities,
+      ficCommunities: session.ficCommunities,
       hodDepartments: session.hodDepartments,
     },
   });

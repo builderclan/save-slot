@@ -90,14 +90,14 @@ describe("Auth & Effective-Role Session Utilities (v1.0.0)", () => {
         role: "staff",
       },
       leadCommunities: [],
-      ticCommunities: [],
+      ficCommunities: [],
       hodDepartments: [],
       isAdmin: false,
       isPrincipal: false,
       isVicePrincipal: false,
       isHod: false,
       isActingHod: false,
-      isTic: false,
+      isFic: false,
       isStaff: false,
       isLead: false,
     };
@@ -111,7 +111,7 @@ describe("Auth & Effective-Role Session Utilities (v1.0.0)", () => {
       expect(getDefaultRedirectPath({ ...baseSession, isAdmin: true })).toBe("/admin");
     });
 
-    it("routes HOD, Acting HOD, TIC, Staff, and Leads to /lead", () => {
+    it("routes HOD, Acting HOD, FIC, Staff, and Leads to /lead", () => {
       expect(
         getDefaultRedirectPath({
           ...baseSession,
@@ -129,8 +129,8 @@ describe("Auth & Effective-Role Session Utilities (v1.0.0)", () => {
       expect(
         getDefaultRedirectPath({
           ...baseSession,
-          profile: { ...baseSession.profile, role: "tic" },
-          isTic: true,
+          profile: { ...baseSession.profile, role: "fic" },
+          isFic: true,
         })
       ).toBe("/lead");
       expect(
@@ -170,7 +170,7 @@ describe("Auth & Effective-Role Session Utilities (v1.0.0)", () => {
       expect(session).toBeNull();
     });
 
-    it("grants effective TIC & Acting HOD authority to a single faculty (staff) account", async () => {
+    it("grants effective FIC & Acting HOD authority to a single faculty (staff) account", async () => {
       setupSelectMocks({
         profileRow: {
           id: "u-fac-1",
@@ -183,7 +183,7 @@ describe("Auth & Effective-Role Session Utilities (v1.0.0)", () => {
         },
         memberRows: [
           {
-            memberRole: "tic",
+            memberRole: "fic",
             id: "comm-ieee",
             name: "IEEE Student Branch",
             slug: "ieee",
@@ -207,12 +207,12 @@ describe("Auth & Effective-Role Session Utilities (v1.0.0)", () => {
       const session = await resolveAuthSessionForUser("u-fac-1", "arun.cse@aisat.ac.in");
       expect(session).not.toBeNull();
       expect(session?.isStaff).toBe(true);
-      expect(session?.isTic).toBe(true);
+      expect(session?.isFic).toBe(true);
       expect(session?.isActingHod).toBe(true);
       expect(session?.isHod).toBe(true);
       expect(session?.isAdmin).toBe(false);
       expect(session?.isPrincipal).toBe(false);
-      expect(session?.ticCommunities).toHaveLength(1);
+      expect(session?.ficCommunities).toHaveLength(1);
       expect(session?.hodDepartments[0]).toEqual({
         id: "dept-cse",
         name: "Computer Science",

@@ -276,11 +276,11 @@ async function seedDatabase() {
       password: "hod123",
     },
     {
-      email: "tic.ieee@aisat.ac.in",
+      email: "fic.ieee@aisat.ac.in",
       fullName: "Prof. Deepa George",
-      role: "tic",
+      role: "fic",
       designation: "Assistant Professor, ECE",
-      password: "tic123",
+      password: "fic123",
     },
     {
       email: "staff.cse@aisat.ac.in",
@@ -393,9 +393,9 @@ async function seedDatabase() {
       name: "Electronics & Communication Engineering",
       code: "ECE",
       hodEmail: "hod.ece@aisat.ac.in",
-      actingHodEmail: "tic.ieee@aisat.ac.in",
+      actingHodEmail: "fic.ieee@aisat.ac.in",
       isActingHodActive: false,
-      memberEmails: ["hod.ece@aisat.ac.in", "tic.ieee@aisat.ac.in"],
+      memberEmails: ["hod.ece@aisat.ac.in", "fic.ieee@aisat.ac.in"],
     },
     {
       name: "Electrical & Electronics Engineering",
@@ -471,7 +471,7 @@ async function seedDatabase() {
     }
   }
 
-  // 5. Communities & Chapters (Internal vs External + TIC & Lead assignments)
+  // 5. Communities & Chapters (Internal vs External + FIC & Lead assignments)
   const commsData = [
     {
       name: "Coding Club",
@@ -482,7 +482,7 @@ async function seedDatabase() {
       description: "Competitive programming, open source projects, and tech hackathons.",
       logo_url: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=200&auto=format&fit=crop&q=80",
       leadEmail: "lead.coding@aisat.ac.in",
-      ticEmails: ["staff.cse@aisat.ac.in"],
+      ficEmails: ["staff.cse@aisat.ac.in"],
     },
     {
       name: "IEEE Student Branch",
@@ -493,7 +493,7 @@ async function seedDatabase() {
       description: "IEEE Student Branch AISAT — robotics, signal processing, and flagship symposiums.",
       logo_url: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&auto=format&fit=crop&q=80",
       leadEmail: "lead.ieee@aisat.ac.in",
-      ticEmails: ["tic.ieee@aisat.ac.in"],
+      ficEmails: ["fic.ieee@aisat.ac.in"],
     },
     {
       name: "IEDC AISAT",
@@ -504,7 +504,7 @@ async function seedDatabase() {
       description: "Startup incubation, founder fireside chats, pitch competitions, and venture mentoring.",
       logo_url: "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=200&auto=format&fit=crop&q=80",
       leadEmail: "lead.iedc@aisat.ac.in",
-      ticEmails: ["staff.me@aisat.ac.in"],
+      ficEmails: ["staff.me@aisat.ac.in"],
     },
     {
       name: "National Service Scheme (NSS)",
@@ -515,7 +515,7 @@ async function seedDatabase() {
       description: "AISAT NSS Unit — community outreach, blood donation camps, and civic engineering.",
       logo_url: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=200&auto=format&fit=crop&q=80",
       leadEmail: null,
-      ticEmails: ["hod.ece@aisat.ac.in"],
+      ficEmails: ["hod.ece@aisat.ac.in"],
     },
   ];
 
@@ -550,13 +550,13 @@ async function seedDatabase() {
         [commId, userMap[c.leadEmail]]
       );
     }
-    for (const ticEmail of c.ticEmails) {
-      if (userMap[ticEmail]) {
+    for (const ficEmail of c.ficEmails) {
+      if (userMap[ficEmail]) {
         await client.query(
           `INSERT INTO public.community_members (id, community_id, user_id, role, status)
-           VALUES (gen_random_uuid(), $1, $2, 'tic', 'active')
-           ON CONFLICT (community_id, user_id) DO UPDATE SET role = 'tic', status = 'active';`,
-          [commId, userMap[ticEmail]]
+           VALUES (gen_random_uuid(), $1, $2, 'fic', 'active')
+           ON CONFLICT (community_id, user_id) DO UPDATE SET role = 'fic', status = 'active';`,
+          [commId, userMap[ficEmail]]
         );
       }
     }
@@ -608,7 +608,7 @@ async function seedDatabase() {
       status: "published",
       referenceNumber: "AISAT/IEEE/2026-27/001",
       creatorEmail: "lead.ieee@aisat.ac.in",
-      coordinatorEmail: "tic.ieee@aisat.ac.in",
+      coordinatorEmail: "fic.ieee@aisat.ac.in",
       coverImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80",
       registrationUrl: "https://forms.gle/ieee-colloquium-2026",
     },
@@ -682,7 +682,7 @@ async function seedDatabase() {
       status: "pending_stage2",
       referenceNumber: null,
       creatorEmail: "lead.ieee@aisat.ac.in",
-      coordinatorEmail: "tic.ieee@aisat.ac.in",
+      coordinatorEmail: "fic.ieee@aisat.ac.in",
       coverImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&auto=format&fit=crop&q=80",
     },
     {
@@ -776,8 +776,8 @@ async function seedDatabase() {
       await client.query(
         `UPDATE events SET
           start_time = $1, end_time = $2, status = $3, academic_year = $4,
-          rejection_reason = $5, reference_number = $6, updated_at = NOW()
-        WHERE id = $7;`,
+          rejection_reason = $5, reference_number = $6, coordinator_id = $7, updated_at = NOW()
+        WHERE id = $8;`,
         [
           ev.startTime,
           ev.endTime,
@@ -785,6 +785,7 @@ async function seedDatabase() {
           eventAcademicYear,
           ev.rejectionReason || null,
           refNumber,
+          coordinatorId,
           existingEv.rows[0].id,
         ]
       );

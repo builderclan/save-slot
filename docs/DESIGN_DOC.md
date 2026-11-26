@@ -11,10 +11,10 @@
 
 This document captures the technical design behind SaveSlot `v1.0.0`. Our goal is to replace paper approval slips and ad-hoc event tracking across AISAT while keeping the fast, quiet user experience of the `v0.3.0` POC:
 
-1. **Clean Separation Between IT Setup and Approvals:** Admins configure departments, communities, venues, and user accounts, but cannot approve or reject events. Governance sits strictly with TICs, HODs, and the Principal/VP.
+1. **Clean Separation Between IT Setup and Approvals:** Admins configure departments, communities, venues, and user accounts, but cannot approve or reject events. Governance sits strictly with FICs, HODs, and the Principal/VP.
 2. **Deterministic Scheduling Without Leaks:** Pending proposals soft-lock venues inside the conflict checker so two teams don't fight over the same hall, while staying invisible on the public notice board until P/VP signs off.
 3. **Co-Hosted Events Without Special-Case Spaghetti:** Both single-host and joint/co-hosted events run on the exact same `event_stage2_approvals` table—each participating Department or Community gets one required sign-off row.
-4. **Real-World Faculty Role Flexibility:** In a real college, a CSE faculty member (`staff`) is often also the Teacher-in-Charge of a club or the Acting HOD when the regular HOD is away. Permission checks look at both `users.role` and assignment tables (`departments`, `community_members`), so faculty never need duplicate accounts.
+4. **Real-World Faculty Role Flexibility:** In a real college, a CSE faculty member (`staff`) is often also the Faculty-in-Charge of a club or the Acting HOD when the regular HOD is away. Permission checks look at both `users.role` and assignment tables (`departments`, `community_members`), so faculty never need duplicate accounts.
 5. **Trustworthy Physical Filing:** Reference numbers are generated inside the final approval transaction (zero gaps), approval trails snapshot the signer's name and role at the moment of action, and `/verify/[code]` exposes authenticity without leaking budget or rejection notes.
 
 ---
@@ -29,7 +29,7 @@ graph TD
         NextApp --> PB["Public Notice Board /"]
         NextApp --> QR["Public QR Verify /verify/[code]"]
         NextApp --> PW["Proposer Workspace /lead & /staff"]
-        NextApp --> S2["Stage 2 Desks /tic & /hod"]
+        NextApp --> S2["Stage 2 Desks /fic & /hod"]
         NextApp --> ED["Executive Desk /principal"]
         NextApp --> AC["IT & Ops Console /admin"]
         NextApp --> RPT["A4 Print Dossiers & Register /reports"]
@@ -91,8 +91,8 @@ erDiagram
 - **`college_settings` *(replaces `campuses`)***: Because each college runs on its own independent host and dedicated database, `v1.0.0` drops `campuses` and all `campus_id` foreign keys in favor of a 1-row `college_settings` config table (`college_name`, `short_code` e.g. `AISAT`, `letterhead_subtitle`, `logo_url`, `academic_year_start_month = 7`, `timezone = 'Asia/Kolkata'`).
 - **`departments` *(new)***: Holds department `code` (`CSE`, `ECE`, `EEE`, `AI`, `ME`, `CE`), `hod_user_id`, `acting_hod_user_id`, `is_acting_hod_active`, and audit fields for who toggled Acting HOD mode.
 - **`communities` *(updated)***: Adds `scope` (`'internal' | 'external'`) and short `code` (e.g., `GDG`, `IEEE`) for reference numbering.
-- **`community_members` *(updated)***: Supports `'lead' | 'tic' | 'member'`, allowing multiple TICs per community and multiple communities per TIC.
-- **`users` *(updated)***: Roles expanded to `'admin' | 'principal' | 'vice_principal' | 'hod' | 'tic' | 'staff' | 'lead'`, plus `department_id` and `designation`.
+- **`community_members` *(updated)***: Supports `'lead' | 'fic' | 'member'`, allowing multiple FICs per community and multiple communities per FIC.
+- **`users` *(updated)***: Roles expanded to `'admin' | 'principal' | 'vice_principal' | 'hod' | 'fic' | 'staff' | 'lead'`, plus `department_id` and `designation`.
 - **`events` *(updated)***: Adds `origin_type` (`'community' | 'department' | 'college'`), `department_id`, `coordinator_id` (optional College closure owner), `reference_number`, `academic_year`, `estimated_budget`, `funding_source`, `is_lead_time_overridden`, `override_reason`, and expanded `status` states.
 - **`event_stage2_approvals` *(new)***: Tracks Stage 2 approval **and** post-event report verification for every participating host (primary + co-hosts).
 - **`event_approvals` *(new)***: Append-only audit log recording every submission, approval, rejection, override, bump, and report verification with actor name/role snapshots and timestamps.
@@ -124,12 +124,12 @@ $$\text{Overlap} \iff (T_s < E_e) \land (T_e > E_s) \land \text{status} \in \{\t
 
 ## 6. Access Matrix & Privacy Boundaries
 
-| Persona | Role / Assignment | Public (`/` & `/verify`) | Propose (`/lead`, `/staff`) | Stage 2 (`/tic`, `/hod`) | Executive (`/principal`) | Reports (`/reports/*`) | Admin (`/admin`) |
+| Persona | Role / Assignment | Public (`/` & `/verify`) | Propose (`/lead`, `/staff`) | Stage 2 (`/fic`, `/hod`) | Executive (`/principal`) | Reports (`/reports/*`) | Admin (`/admin`) |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | **Student / Visitor** | *(unauth)* | View & Export | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Lead / Student Coord** | `lead` | View & Export | Assigned Scope | ❌ | ❌ | Own Events | ❌ |
-| **Faculty Staff** | `staff` | View & Export | Assigned Dept | *(if TIC / Acting HOD)* | ❌ | Own Events | ❌ |
-| **Teacher-in-Charge** | `tic` (or `community_members`) | View & Export | ❌ | Assigned Communities | ❌ | Assigned Communities | ❌ |
+| **Faculty Staff** | `staff` | View & Export | Assigned Dept | *(if FIC / Acting HOD)* | ❌ | Own Events | ❌ |
+| **Faculty-in-Charge** | `fic` (or `community_members`) | View & Export | ❌ | Assigned Communities | ❌ | Assigned Communities | ❌ |
 | **HOD / Acting HOD** | `hod` (or active `acting_hod`) | View & Export | ❌ | Assigned Dept | ❌ | Assigned Dept | ❌ |
 | **Principal / VP** | `principal` / `vice_principal` | View & Export | College Events | ❌ | Final Approve & Override | All Campus | Emergency Acting HOD / Communities |
 | **Campus Admin** | `admin` | View & Export | ❌ | ❌ | ❌ | ❌ | IT / Ops Setup Only |

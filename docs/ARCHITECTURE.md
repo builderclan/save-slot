@@ -118,7 +118,7 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     role VARCHAR(50) NOT NULL CHECK (
-        role IN ('admin', 'principal', 'vice_principal', 'hod', 'tic', 'staff', 'lead')
+        role IN ('admin', 'principal', 'vice_principal', 'hod', 'fic', 'staff', 'lead')
     ),
     designation VARCHAR(150),
     department_id UUID REFERENCES departments(id) ON DELETE SET NULL,
@@ -131,7 +131,7 @@ CREATE TABLE community_members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     community_id UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role VARCHAR(50) NOT NULL DEFAULT 'lead' CHECK (role IN ('lead', 'tic', 'member')),
+    role VARCHAR(50) NOT NULL DEFAULT 'lead' CHECK (role IN ('lead', 'fic', 'member')),
     status VARCHAR(50) NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ DEFAULT now(),
     CONSTRAINT community_members_community_user_unique UNIQUE (community_id, user_id)
@@ -239,7 +239,7 @@ CREATE UNIQUE INDEX idx_stage2_unique_comm ON event_stage2_approvals (event_id, 
 CREATE TABLE event_approvals (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
-    stage VARCHAR(50) NOT NULL,               -- submission | stage2_hod | stage2_tic | executive | override | report_submit | report_verify
+    stage VARCHAR(50) NOT NULL,               -- submission | stage2_hod | stage2_fic | executive | override | report_submit | report_verify
     action VARCHAR(50) NOT NULL,              -- submitted | approved | rejected | bumped | overridden | verified | revision_requested
     actor_id UUID REFERENCES users(id) ON DELETE SET NULL,
     actor_name_snapshot VARCHAR(255) NOT NULL,
@@ -310,7 +310,7 @@ src/
 ├── features/              # Client UI vertical slices (Component -> Hook -> api-client.ts)
 │   ├── events/            # Public Notice Board, origin/dept filters, Internal/External badges
 │   ├── workspace/         # Unified proposer workspace (/lead & /staff), co-host picker, closure form
-│   ├── stage2/            # /tic & /hod approval queues, Acting HOD toggle, report verification
+│   ├── stage2/            # /fic & /hod approval queues, Acting HOD toggle, report verification
 │   ├── principal/         # /principal executive triage, College events, overrides, Acting HOD fallback
 │   ├── admin/             # /admin IT & Ops: Settings, Depts, Communities, Venues, Users
 │   ├── reports/           # Printable A4 Event Dossier & Consolidated Register UI
@@ -336,7 +336,7 @@ src/
 ## 4. Concurrency, Governance & Security Rules
 
 1. **Zero Admin Approval Authority:** API handlers under `/api/admin/*` never mutate event approval state; Admin manages settings, org units, venues, and accounts only.
-2. **Effective Role Resolution (Multi-Duty Faculty):** Authorization resolves permissions from both `users.role` and assignment tables (`departments`, `community_members`), so faculty assigned as `tic` or active `acting_hod` need only one account.
+2. **Effective Role Resolution (Multi-Duty Faculty):** Authorization resolves permissions from both `users.role` and assignment tables (`departments`, `community_members`), so faculty assigned as `fic` or active `acting_hod` need only one account.
 3. **Atomic Reference Numbering:** Inside the P/VP final approval transaction, the counter increments via `INSERT INTO event_reference_counters ... ON CONFLICT DO UPDATE SET last_seq = event_reference_counters.last_seq + 1 RETURNING last_seq`, guaranteeing unique, gap-free `AISAT/2026-27/CSE/014` codes.
 4. **Immediate Overdue Submission Gate:** `POST /api/workspace/events` (and `submit`) checks whether the user (`lead` or `staff`) created or coordinates any `published` event whose `end_time < now()` without an `event_reports` row. If found, returns `403 Forbidden`.
 5. **Distributed Auth Rate Limiting:** Keeps `auth_rate_limits` (5 failed logins in 15 min $\rightarrow$ 5-minute lockout).

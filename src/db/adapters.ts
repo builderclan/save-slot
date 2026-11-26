@@ -9,6 +9,11 @@ import {
   EventCategory,
   EventOriginType,
   EventStatus,
+  EventStage2Approval,
+  EventApprovalEntry,
+  EventMentor,
+  EventReport,
+  NotificationItem,
   UserRole,
   UserProfile,
   AdminUserRow,
@@ -19,7 +24,7 @@ const VALID_ROLES: UserRole[] = [
   "principal",
   "vice_principal",
   "hod",
-  "tic",
+  "fic",
   "staff",
   "lead",
 ];
@@ -152,6 +157,161 @@ export interface DrizzleEventRow {
     email?: string | null;
     role?: string | null;
   } | null;
+  stage2Approvals?: DrizzleStage2ApprovalRow[] | null;
+  approvals?: DrizzleApprovalEntryRow[] | null;
+  mentors?: DrizzleMentorRow[] | null;
+  report?: DrizzleEventReportRow | null;
+}
+
+export interface DrizzleStage2ApprovalRow {
+  id: string;
+  eventId: string;
+  entityType: string;
+  departmentId?: string | null;
+  communityId?: string | null;
+  isPrimary: boolean;
+  approvalStatus: string;
+  approvedBy?: string | null;
+  approvedAt?: Date | string | null;
+  approvalRemarks?: string | null;
+  reportVerifyStatus: string;
+  reportVerifiedBy?: string | null;
+  reportVerifiedAt?: Date | string | null;
+  reportRemarks?: string | null;
+  department?: { id: string; name: string; code: string } | null;
+  community?: { id: string; name: string; code?: string | null } | null;
+}
+
+export interface DrizzleApprovalEntryRow {
+  id: string;
+  eventId: string;
+  stage: string;
+  action: string;
+  actorId?: string | null;
+  actorNameSnapshot: string;
+  actorRoleSnapshot: string;
+  remarks?: string | null;
+  createdAt: Date | string;
+}
+
+export interface DrizzleMentorRow {
+  id: string;
+  eventId: string;
+  name: string;
+  roleTitle: string;
+  organization: string;
+  mentorType: string;
+  phase: string;
+}
+
+export interface DrizzleEventReportRow {
+  id: string;
+  eventId: string;
+  actualFundUsed: string | number;
+  fundingSource: string;
+  fundNotes?: string | null;
+  studentCount: number;
+  facultyCount: number;
+  externalCount: number;
+  summary: string;
+  outcomes: string;
+  evidenceUrl?: string | null;
+  submittedBy?: string | null;
+  submittedAt: Date | string;
+  updatedAt?: Date | string | null;
+}
+
+export interface DrizzleNotificationRow {
+  id: string;
+  userId: string;
+  eventId?: string | null;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: Date | string;
+}
+
+export function formatStage2Approval(row: DrizzleStage2ApprovalRow): EventStage2Approval {
+  const entityName = row.department?.name || row.community?.name || undefined;
+  const entityCode = row.department?.code || row.community?.code || undefined;
+  return {
+    id: row.id,
+    event_id: row.eventId,
+    entity_type: row.entityType === "community" ? "community" : "department",
+    department_id: row.departmentId ?? null,
+    community_id: row.communityId ?? null,
+    is_primary: Boolean(row.isPrimary),
+    approval_status: (row.approvalStatus as EventStage2Approval["approval_status"]) || "pending",
+    approved_by: row.approvedBy ?? null,
+    approved_at: toIsoString(row.approvedAt) ?? null,
+    approval_remarks: row.approvalRemarks ?? null,
+    report_verify_status:
+      (row.reportVerifyStatus as EventStage2Approval["report_verify_status"]) || "pending",
+    report_verified_by: row.reportVerifiedBy ?? null,
+    report_verified_at: toIsoString(row.reportVerifiedAt) ?? null,
+    report_remarks: row.reportRemarks ?? null,
+    entity_name: entityName,
+    entity_code: entityCode ?? undefined,
+  };
+}
+
+export function formatApprovalEntry(row: DrizzleApprovalEntryRow): EventApprovalEntry {
+  return {
+    id: row.id,
+    event_id: row.eventId,
+    stage: row.stage,
+    action: row.action,
+    actor_id: row.actorId ?? null,
+    actor_name_snapshot: row.actorNameSnapshot,
+    actor_role_snapshot: row.actorRoleSnapshot,
+    remarks: row.remarks ?? null,
+    created_at: toIsoString(row.createdAt) ?? "",
+  };
+}
+
+export function formatEventMentor(row: DrizzleMentorRow): EventMentor {
+  return {
+    id: row.id,
+    event_id: row.eventId,
+    name: row.name,
+    role_title: row.roleTitle,
+    organization: row.organization,
+    mentor_type: row.mentorType === "internal" ? "internal" : "external",
+    phase: row.phase === "confirmed" ? "confirmed" : "planned",
+  };
+}
+
+export function formatEventReport(row: DrizzleEventReportRow): EventReport {
+  return {
+    id: row.id,
+    event_id: row.eventId,
+    actual_fund_used: Number(row.actualFundUsed || 0),
+    funding_source: row.fundingSource,
+    fund_notes: row.fundNotes ?? null,
+    student_count: Number(row.studentCount || 0),
+    faculty_count: Number(row.facultyCount || 0),
+    external_count: Number(row.externalCount || 0),
+    summary: row.summary,
+    outcomes: row.outcomes,
+    evidence_url: row.evidenceUrl ?? null,
+    submitted_by: row.submittedBy ?? null,
+    submitted_at: toIsoString(row.submittedAt) ?? "",
+    updated_at: toIsoString(row.updatedAt),
+  };
+}
+
+export function formatNotification(row: DrizzleNotificationRow): NotificationItem {
+  return {
+    id: row.id,
+    user_id: row.userId,
+    event_id: row.eventId ?? null,
+    type: row.type,
+    title: row.title,
+    message: row.message,
+    is_read: Boolean(row.isRead),
+    created_at: toIsoString(row.createdAt) ?? "",
+  };
 }
 
 export interface DrizzleVenueRow {
@@ -209,8 +369,8 @@ export interface DrizzleAdminCommunityRow extends DrizzleCommunityRow {
   leadId?: string | null;
   leadName?: string | null;
   leadEmail?: string | null;
-  ticIds?: string[];
-  ticNames?: string[];
+  ficIds?: string[];
+  ficNames?: string[];
   memberCount: number | string;
   eventCount: number | string;
 }
@@ -269,8 +429,8 @@ export function formatAdminCommunity(row: DrizzleAdminCommunityRow): AdminCommun
     lead_id: row.leadId ?? null,
     lead_name: row.leadName ?? formatted.lead_name ?? null,
     lead_email: row.leadEmail ?? formatted.lead_email ?? null,
-    tic_ids: row.ticIds ?? [],
-    tic_names: row.ticNames ?? [],
+    fic_ids: row.ficIds ?? [],
+    fic_names: row.ficNames ?? [],
     member_count: Number(row.memberCount || 0),
     event_count: Number(row.eventCount || 0),
   };
@@ -360,6 +520,16 @@ export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
     venue,
     creator,
     reviewer,
+    stage2_approvals: Array.isArray(row.stage2Approvals)
+      ? row.stage2Approvals.map(formatStage2Approval)
+      : undefined,
+    approvals: Array.isArray(row.approvals)
+      ? row.approvals.map(formatApprovalEntry)
+      : undefined,
+    mentors: Array.isArray(row.mentors)
+      ? row.mentors.map(formatEventMentor)
+      : undefined,
+    report: row.report ? formatEventReport(row.report) : row.report === null ? null : undefined,
   };
 }
 
@@ -405,6 +575,6 @@ export function formatAdminUser(row: DrizzleAdminUserRow): AdminUserRow {
     community_id: row.communityId ?? null,
     community_name: row.communityName ?? null,
     community_member_role:
-      (row.communityMemberRole as "lead" | "tic" | "member" | null) ?? null,
+      (row.communityMemberRole as "lead" | "fic" | "member" | null) ?? null,
   };
 }

@@ -16,7 +16,7 @@ export interface EditCommunityData {
   website: string;
   instagram: string;
   leadUserId: string | null;
-  ticUserIds: string[];
+  ficUserIds: string[];
 }
 
 interface AdminEditCommunityModalProps {
@@ -56,7 +56,7 @@ export function AdminEditCommunityModal({
   const [website, setWebsite] = useState(community?.website || "");
   const [instagram, setInstagram] = useState(community?.instagram || "");
   const [leadUserId, setLeadUserId] = useState(community?.lead_id || "");
-  const [ticUserIds, setTicUserIds] = useState<string[]>(community?.tic_ids || []);
+  const [ficUserIds, setFicUserIds] = useState<string[]>(community?.fic_ids || []);
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -72,7 +72,7 @@ export function AdminEditCommunityModal({
       setWebsite(community.website || "");
       setInstagram(community.instagram || "");
       setLeadUserId(community.lead_id || "");
-      setTicUserIds(community.tic_ids || []);
+      setFicUserIds(community.fic_ids || []);
     }
   }, [isOpen, community]);
 
@@ -86,27 +86,27 @@ export function AdminEditCommunityModal({
     [eligibleUsers]
   );
 
-  const facultyTicPool = useMemo(
-    () => eligibleUsers.filter((u) => ["tic", "staff", "hod"].includes(u.role)),
+  const facultyFicPool = useMemo(
+    () => eligibleUsers.filter((u) => ["fic", "staff", "hod"].includes(u.role)),
     [eligibleUsers]
   );
 
-  const unavailableAssignedTics = useMemo(() => {
-    const poolIds = new Set(facultyTicPool.map((u) => u.id));
-    return ticUserIds
+  const unavailableAssignedFics = useMemo(() => {
+    const poolIds = new Set(facultyFicPool.map((u) => u.id));
+    return ficUserIds
       .filter((id) => !poolIds.has(id))
       .map((id) => {
-        const origIdx = community?.tic_ids?.indexOf(id) ?? -1;
+        const origIdx = community?.fic_ids?.indexOf(id) ?? -1;
         const origName =
-          origIdx >= 0 && community?.tic_names?.[origIdx]
-            ? community.tic_names[origIdx]
+          origIdx >= 0 && community?.fic_names?.[origIdx]
+            ? community.fic_names[origIdx]
             : "Inactive / Unlisted Faculty";
         return { id, label: origName };
       });
-  }, [facultyTicPool, ticUserIds, community]);
+  }, [facultyFicPool, ficUserIds, community]);
 
-  const toggleTic = (userId: string) => {
-    setTicUserIds((prev) =>
+  const toggleFic = (userId: string) => {
+    setFicUserIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   };
@@ -131,7 +131,7 @@ export function AdminEditCommunityModal({
       website,
       instagram,
       leadUserId: leadUserId || null,
-      ticUserIds,
+      ficUserIds,
     });
   };
 
@@ -142,7 +142,7 @@ export function AdminEditCommunityModal({
       isOpen={isOpen}
       onClose={onClose}
       title={`Edit Community (${community.code})`}
-      description="Update chapter scope, reference code, student lead, and Faculty TICs."
+      description="Update chapter scope, reference code, student lead, and Faculty-in-Charge assignments."
       maxWidth="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -239,19 +239,19 @@ export function AdminEditCommunityModal({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-semibold text-zinc-900">
-              Faculty Teachers-in-Charge (Multi-TIC)
+              Faculty-in-Charge (Multi-FIC)
             </label>
             <span className="text-[11px] text-zinc-500">
-              {ticUserIds.length} selected
+              {ficUserIds.length} selected
             </span>
           </div>
-          {facultyTicPool.length === 0 && unavailableAssignedTics.length === 0 ? (
+          {facultyFicPool.length === 0 && unavailableAssignedFics.length === 0 ? (
             <p className="text-xs text-zinc-500 px-3 py-2 rounded-xl border border-dashed border-zinc-200 bg-zinc-50">
               No eligible faculty accounts found.
             </p>
           ) : (
             <div className="max-h-32 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-2 rounded-xl border border-zinc-200/80 bg-zinc-50/70">
-              {unavailableAssignedTics.map((t) => (
+              {unavailableAssignedFics.map((t) => (
                 <label
                   key={t.id}
                   className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors border bg-amber-50 border-amber-200 text-amber-900 font-semibold"
@@ -259,7 +259,7 @@ export function AdminEditCommunityModal({
                   <input
                     type="checkbox"
                     checked
-                    onChange={() => toggleTic(t.id)}
+                    onChange={() => toggleFic(t.id)}
                     className="h-3.5 w-3.5 accent-amber-600"
                   />
                   <span className="truncate">{t.label}</span>
@@ -268,8 +268,8 @@ export function AdminEditCommunityModal({
                   </span>
                 </label>
               ))}
-              {facultyTicPool.map((u) => {
-                const selected = ticUserIds.includes(u.id);
+              {facultyFicPool.map((u) => {
+                const selected = ficUserIds.includes(u.id);
                 return (
                   <label
                     key={u.id}
@@ -282,7 +282,7 @@ export function AdminEditCommunityModal({
                     <input
                       type="checkbox"
                       checked={selected}
-                      onChange={() => toggleTic(u.id)}
+                      onChange={() => toggleFic(u.id)}
                       className="h-3.5 w-3.5 accent-indigo-600"
                     />
                     <span className="truncate">{u.full_name}</span>

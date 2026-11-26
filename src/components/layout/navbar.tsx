@@ -15,6 +15,8 @@ import {
   GraduationCap,
   PanelLeftClose,
   PanelLeftOpen,
+  Building2,
+  UserCheck,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useCalendar } from "@/context/calendar-context";
@@ -24,6 +26,7 @@ import {
   CalendarViewSwitcher,
 } from "./calendar-nav-controls";
 import { UserAvatar } from "@/components/ui";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { campusConfig } from "@/lib/config/campus";
 
 function getRoleDisplayLabel(user: NonNullable<ReturnType<typeof useAuth>["user"]>): string {
@@ -32,7 +35,7 @@ function getRoleDisplayLabel(user: NonNullable<ReturnType<typeof useAuth>["user"
   if (user.role === "admin") return "Campus Admin";
   if (user.isActingHod) return "Acting HOD";
   if (user.role === "hod" || user.isHod) return "Head of Department";
-  if (user.role === "tic" || user.isTic) return "Teacher-in-Charge";
+  if (user.role === "fic" || user.isFic) return "Faculty-in-Charge";
   if (user.role === "staff") return "Department Staff";
   return "Community Lead";
 }
@@ -134,7 +137,7 @@ export function Navbar() {
                 <span>Calendar</span>
               </Link>
 
-              {user?.isPrincipal && (
+              {(user?.isPrincipal || user?.isVicePrincipal) && (
                 <Link
                   href="/principal"
                   className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 active:scale-[0.98] ${
@@ -148,7 +151,35 @@ export function Navbar() {
                 </Link>
               )}
 
-              {user?.isLead && (
+              {(user?.isHod || user?.isActingHod) && (
+                <Link
+                  href="/hod"
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 active:scale-[0.98] ${
+                    pathname.startsWith("/hod")
+                      ? "bg-white text-teal-950 font-semibold shadow-xs"
+                      : "text-zinc-600 hover:text-teal-950 hover:bg-white/60"
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5 text-teal-600" />
+                  <span>HOD Desk</span>
+                </Link>
+              )}
+
+              {user?.isFic && (
+                <Link
+                  href="/fic"
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 active:scale-[0.98] ${
+                    pathname.startsWith("/fic")
+                      ? "bg-white text-cyan-950 font-semibold shadow-xs"
+                      : "text-zinc-600 hover:text-cyan-950 hover:bg-white/60"
+                  }`}
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-cyan-600" />
+                  <span>FIC Desk</span>
+                </Link>
+              )}
+
+              {(user?.isLead || user?.isStaff) && (
                 <Link
                   href="/lead"
                   className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 active:scale-[0.98] ${
@@ -158,7 +189,7 @@ export function Navbar() {
                   }`}
                 >
                   <LayoutGrid className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Lead Workspace</span>
+                  <span>{user?.isLead ? "Lead Workspace" : "Workspace"}</span>
                 </Link>
               )}
 
@@ -179,8 +210,10 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Right side: Desktop Auth */}
+        {/* Right side: Notification Bell + Desktop Auth */}
         <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {user && <NotificationBell />}
+
           {/* Auth session / logout / login (Desktop) */}
           {loading ? (
             <div className="w-16 sm:w-24 h-8 rounded-xl bg-zinc-100 animate-pulse" />
@@ -303,7 +336,7 @@ export function Navbar() {
               <span>Public Notice Board Calendar</span>
             </Link>
 
-            {user?.isLead && (
+            {(user?.isLead || user?.isStaff) && (
               <Link
                 href="/lead"
                 onClick={() => setMobileMenuOpen(false)}
@@ -314,7 +347,7 @@ export function Navbar() {
                 }`}
               >
                 <LayoutGrid className="w-4 h-4 text-indigo-500" />
-                <span>Lead Workspace</span>
+                <span>{user?.isLead ? "Lead Workspace" : "Proposer Workspace"}</span>
                 {user.leadCommunities?.[0] && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-100/70 text-indigo-700 font-normal ml-auto">
                     {user.leadCommunities[0].name}
@@ -323,7 +356,37 @@ export function Navbar() {
               </Link>
             )}
 
-            {user?.isPrincipal && (
+            {(user?.isHod || user?.isActingHod) && (
+              <Link
+                href="/hod"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname.startsWith("/hod")
+                    ? "bg-teal-50 text-teal-800"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+                }`}
+              >
+                <Building2 className="w-4 h-4 text-teal-600" />
+                <span>HOD Approval Desk</span>
+              </Link>
+            )}
+
+            {user?.isFic && (
+              <Link
+                href="/fic"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname.startsWith("/fic")
+                    ? "bg-cyan-50 text-cyan-800"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+                }`}
+              >
+                <UserCheck className="w-4 h-4 text-cyan-600" />
+                <span>FIC Approval Desk</span>
+              </Link>
+            )}
+
+            {(user?.isPrincipal || user?.isVicePrincipal) && (
               <Link
                 href="/principal"
                 onClick={() => setMobileMenuOpen(false)}
