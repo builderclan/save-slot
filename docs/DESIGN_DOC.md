@@ -35,16 +35,16 @@ graph TD
         NextApp --> RPT["A4 Print Dossiers & Register /reports"]
     end
 
-    subgraph Application_Layer ["Application Layer"]
-        NextApp --> Auth["Session & Effective-Role Resolver (lib/auth.ts)"]
-        NextApp --> Engine["Safe-Slot & Conflict Engine (lib/conflicts/engine.ts)"]
-        NextApp --> Workflow["Approval Router & Ref Counter (lib/workflows/)"]
-        NextApp --> Notify["In-App Notification Service (WhatsApp TODO)"]
+    subgraph Application_Layer ["Server Business Layer (src/server/)"]
+        NextApp --> Auth["Session & Effective-Role Resolver (server/auth/)"]
+        NextApp --> Engine["Safe-Slot & Conflict Engine (server/conflicts/)"]
+        NextApp --> Workflow["Approval Router & Ref Counter (server/workflows/)"]
+        NextApp --> Notify["In-App Notification Service (server/notifications/)"]
         NextApp --> CalExport["iCal .ics & Google Cal Generator"]
     end
 
-    subgraph Data_Access_Layer ["Data Access & Concurrency Layer"]
-        Auth --> DBPool["Drizzle ORM + pg.Pool (lib/db.ts)"]
+    subgraph Data_Access_Layer ["Data Access & Concurrency Layer (src/db/)"]
+        Auth --> DBPool["Drizzle Queries & pg.Pool (db/queries/, lib/db.ts)"]
         Engine --> DBPool
         Workflow --> DBPool
         Notify --> DBPool
