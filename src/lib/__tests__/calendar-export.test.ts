@@ -5,7 +5,7 @@ import { CampusEvent } from "@/types/database";
 describe("Calendar Export Utility (src/lib/calendar-export.ts)", () => {
   const sampleEvent: CampusEvent = {
     id: "event-uuid-1234",
-    campus_id: "campus-uuid-1",
+    origin_type: "community",
     community_id: "comm-uuid-1",
     venue_id: "venue-uuid-1",
     title: "AI & Robotics Summit",
@@ -19,14 +19,14 @@ describe("Calendar Export Utility (src/lib/calendar-export.ts)", () => {
     external_registration_url: "https://campus.edu/register/summit",
     community: {
       id: "comm-uuid-1",
-      campus_id: "campus-uuid-1",
       name: "Robotics Club",
       slug: "robotics-club",
+      code: "RC",
+      scope: "internal",
       category: "Tech",
     },
     venue: {
       id: "venue-uuid-1",
-      campus_id: "campus-uuid-1",
       name: "Turing Auditorium",
       building: "CS Block",
       capacity: 250,

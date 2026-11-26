@@ -1,9 +1,22 @@
 import { z } from "zod";
 
 export const LoginSchema = z.object({
-  email: z.string().trim().email("Please enter a valid campus email address"),
+  email: z.string().trim().email("Please enter a valid college email address"),
   password: z.string().min(1, "Password is required"),
 });
+
+export const UserRoleEnum = z.enum([
+  "admin",
+  "principal",
+  "vice_principal",
+  "hod",
+  "tic",
+  "staff",
+  "lead",
+]);
+
+export const EventOriginEnum = z.enum(["community", "department", "college"]);
+export const CommunityScopeEnum = z.enum(["internal", "external"]);
 
 export const EventCategoryEnum = z.enum([
   "Tech",
@@ -35,42 +48,105 @@ export const SafeUrlSchema = z
     message: "URL must start with http:// or https://",
   });
 
-export const ProposeEventSchema = z.object({
-  title: z
+export const UpdateCollegeSettingsSchema = z.object({
+  collegeName: z
     .string()
     .trim()
-    .min(3, "Title must be at least 3 characters")
-    .max(150, "Title cannot exceed 150 characters"),
-  category: EventCategoryEnum,
-  targetAudience: z
-    .array(TargetAudienceEnum)
-    .min(1, "Select at least one target audience")
-    .default(["All Students"]),
-  venueId: z.string().uuid("Invalid venue selection"),
-  startTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
-    message: "Invalid start time timestamp",
-  }),
-  endTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
-    message: "Invalid end time timestamp",
-  }),
-  description: z
+    .min(2, "College name must be at least 2 characters")
+    .max(255)
+    .optional(),
+  shortCode: z
     .string()
     .trim()
-    .min(10, "Description must be at least 10 characters"),
-  communityId: z.string().uuid().optional(),
-  coverImageUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
-  externalRegistrationUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
-}).refine(
-  (data) => new Date(data.endTime).getTime() > new Date(data.startTime).getTime(),
-  {
-    message: "End time must be after start time",
-    path: ["endTime"],
-  }
-);
+    .toUpperCase()
+    .regex(/^[A-Z0-9-]{2,20}$/, "Short code must be 2–20 uppercase letters/numbers")
+    .optional(),
+  letterheadSubtitle: z.string().trim().max(255).optional().nullable(),
+  logoUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  academicYearStartMonth: z.coerce.number().int().min(1).max(12).optional(),
+  timezone: z.string().trim().min(2).max(50).optional(),
+});
+
+export const CreateDepartmentSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, "Department name must be at least 2 characters")
+    .max(255),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{2,20}$/, "Code must be 2–20 uppercase letters/numbers (e.g. CSE, ECE)"),
+  hodUserId: z.string().uuid("Invalid HOD user ID").optional().nullable().or(z.literal("")),
+  actingHodUserId: z
+    .string()
+    .uuid("Invalid Acting HOD user ID")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  isActive: z.boolean().optional().default(true),
+});
+
+export const UpdateDepartmentSchema = z.object({
+  name: z.string().trim().min(2).max(255).optional(),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{2,20}$/, "Code must be 2–20 uppercase letters/numbers")
+    .optional(),
+  hodUserId: z.string().uuid("Invalid HOD user ID").optional().nullable().or(z.literal("")),
+  actingHodUserId: z
+    .string()
+    .uuid("Invalid Acting HOD user ID")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  isActingHodActive: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const ToggleActingHodSchema = z.object({
+  isActingHodActive: z.boolean(),
+});
+
+export const ProposeEventSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(3, "Title must be at least 3 characters")
+      .max(150, "Title cannot exceed 150 characters"),
+    category: EventCategoryEnum,
+    targetAudience: z
+      .array(TargetAudienceEnum)
+      .min(1, "Select at least one target audience")
+      .default(["All Students"]),
+    venueId: z.string().uuid("Invalid venue selection"),
+    startTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: "Invalid start time timestamp",
+    }),
+    endTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
+      message: "Invalid end time timestamp",
+    }),
+    description: z.string().trim().min(10, "Description must be at least 10 characters"),
+    communityId: z.string().uuid().optional(),
+    departmentId: z.string().uuid().optional(),
+    coverImageUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
+    externalRegistrationUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  })
+  .refine(
+    (data) => new Date(data.endTime).getTime() > new Date(data.startTime).getTime(),
+    {
+      message: "End time must be after start time",
+      path: ["endTime"],
+    }
+  );
 
 export const UpdateEventStatusSchema = z.object({
-  status: z.enum(["published", "rejected", "pending"], {
-    message: "Status must be 'published', 'rejected', or 'pending'",
+  status: z.enum(["published", "rejected", "pending", "pending_executive"], {
+    message: "Status must be 'published', 'rejected', or 'pending_executive'",
   }),
   rejectionReason: z.string().trim().optional().nullable(),
 });
@@ -88,7 +164,6 @@ export const UpdateVenueSchema = z.object({
   is_active: z.boolean({ message: "is_active must be a boolean" }),
 });
 
-
 export const ConflictCheckSchema = z.object({
   venueId: z.string().uuid("Invalid venue ID"),
   startTime: z.string().refine((val) => !isNaN(Date.parse(val)), {
@@ -104,18 +179,43 @@ export const ConflictCheckSchema = z.object({
 
 export const CreateUserSchema = z.object({
   fullName: z.string().trim().min(2, "Full name must be at least 2 characters"),
-  email: z.string().trim().email("Please enter a valid campus email address"),
+  email: z.string().trim().email("Please enter a valid college email address"),
   password: z.string().min(6, "Password must be at least 6 characters long"),
-  role: z.enum(["admin", "principal", "vice_principal", "organizer"], {
-    message: "Role must be 'admin', 'principal', 'vice_principal', or 'organizer'",
-  }),
-  communityId: z.string().uuid("Invalid community ID").optional().nullable().or(z.literal("")),
+  role: UserRoleEnum,
+  designation: z.string().trim().max(150).optional().nullable().or(z.literal("")),
+  departmentId: z
+    .string()
+    .uuid("Invalid department ID")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  communityId: z
+    .string()
+    .uuid("Invalid community ID")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  communityMemberRole: z.enum(["lead", "tic", "member"]).optional(),
 });
 
 export const UpdateUserSchema = z.object({
   fullName: z.string().trim().min(2, "Full name must be at least 2 characters").optional(),
-  role: z.enum(["admin", "principal", "vice_principal", "organizer"]).optional(),
-  communityId: z.string().uuid("Invalid community ID").optional().nullable().or(z.literal("")),
+  role: UserRoleEnum.optional(),
+  designation: z.string().trim().max(150).optional().nullable().or(z.literal("")),
+  departmentId: z
+    .string()
+    .uuid("Invalid department ID")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  communityId: z
+    .string()
+    .uuid("Invalid community ID")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  communityMemberRole: z.enum(["lead", "tic", "member"]).optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const UpdateVenueFullSchema = z.object({
@@ -128,7 +228,7 @@ export const UpdateVenueFullSchema = z.object({
 });
 
 export const ForgotPasswordSchema = z.object({
-  email: z.string().trim().email("Please enter a valid campus email address"),
+  email: z.string().trim().email("Please enter a valid college email address"),
 });
 
 export const ResetPasswordSchema = z
@@ -154,12 +254,21 @@ export const CreateCommunitySchema = z.object({
     .regex(/^[a-z0-9-]+$/, "Slug must only contain lowercase letters, numbers, and hyphens")
     .optional()
     .or(z.literal("")),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{2,20}$/, "Code must be 2–20 uppercase letters/numbers")
+    .optional()
+    .or(z.literal("")),
+  scope: CommunityScopeEnum.default("internal"),
   category: EventCategoryEnum,
   description: z.string().trim().optional().nullable().or(z.literal("")),
   logoUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
   website: SafeUrlSchema.optional().nullable().or(z.literal("")),
   instagram: z.string().trim().optional().nullable().or(z.literal("")),
   leadUserId: z.string().uuid("Invalid community lead ID").optional().nullable().or(z.literal("")),
+  ticUserIds: z.array(z.string().uuid("Invalid TIC user ID")).optional(),
 });
 
 export const UpdateCommunityFullSchema = z.object({
@@ -175,22 +284,39 @@ export const UpdateCommunityFullSchema = z.object({
     .toLowerCase()
     .regex(/^[a-z0-9-]+$/, "Slug must only contain lowercase letters, numbers, and hyphens")
     .optional(),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9]{2,20}$/, "Code must be 2–20 uppercase letters/numbers")
+    .optional(),
+  scope: CommunityScopeEnum.optional(),
   category: EventCategoryEnum.optional(),
   description: z.string().trim().optional().nullable(),
   logoUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
   website: SafeUrlSchema.optional().nullable().or(z.literal("")),
   instagram: z.string().trim().optional().nullable(),
   leadUserId: z.string().uuid("Invalid community lead ID").optional().nullable().or(z.literal("")),
+  ticUserIds: z.array(z.string().uuid("Invalid TIC user ID")).optional(),
   status: z.enum(["approved", "pending", "rejected"]).optional(),
 });
 
+export const AssignCommunityMemberSchema = z.object({
+  userId: z.string().uuid("Invalid user ID"),
+  role: z.enum(["lead", "tic", "member"]),
+});
+
 // ==========================================================================
-// Centralized Inferred TypeScript Input Types (Single Source of Truth)
+// Centralized Inferred TypeScript Input Types
 // ==========================================================================
 
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+
+export type UpdateCollegeSettingsInput = z.infer<typeof UpdateCollegeSettingsSchema>;
+export type CreateDepartmentInput = z.infer<typeof CreateDepartmentSchema>;
+export type UpdateDepartmentInput = z.infer<typeof UpdateDepartmentSchema>;
 
 export type ProposeEventInput = z.infer<typeof ProposeEventSchema>;
 export type UpdateEventStatusInput = z.infer<typeof UpdateEventStatusSchema>;
@@ -205,6 +331,4 @@ export type UpdateVenueFullInput = z.infer<typeof UpdateVenueFullSchema>;
 
 export type CreateCommunityInput = z.infer<typeof CreateCommunitySchema>;
 export type UpdateCommunityFullInput = z.infer<typeof UpdateCommunityFullSchema>;
-
-
-
+export type AssignCommunityMemberInput = z.infer<typeof AssignCommunityMemberSchema>;
