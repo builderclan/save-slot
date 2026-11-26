@@ -6,7 +6,7 @@
 | :--- | :--- | :--- | :--- |
 | **`v0.3.0` POC** | Public Notice Board, Safe-Slot Engine, Lead / Principal / Admin POC | Done | Baseline release |
 | **Phase 1: Schema, Roles & Admin Setup** | Single-college DB (`013`), Drizzle schema, effective RBAC auth, IT & Ops `/admin` console, AISAT seed | Done | `#80`, `#81` |
-| **Phase 2: Multi-Stage Approvals & Overrides** | Unified Proposer (`/lead`, `/staff`), Stage 2 desks (`/hod`, `/tic`), P/VP overrides, soft locks, inbox | Next | — |
+| **Phase 2: Multi-Stage Approvals & Overrides** | Unified Proposer (`/lead`, `/staff`), Stage 2 desks (`/hod`, `/fic`), P/VP overrides, soft locks, inbox | Next | — |
 | **Phase 3: Closure Reports & Printable Dossiers** | Atomic ref numbers, NAAC/NBA closure reports, A4 print dossiers, consolidated register, QR `/verify/[code]` | Planned | — |
 | **Phase 4: Public Notice Board & Full QA** | Origin & Department filters on `/`, Internal/External badges, 360px/desktop QA, `pnpm validate` | Planned | — |
 
@@ -32,8 +32,8 @@ The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical st
 
 - **Deliverables:**
   - [x] Fresh `v1.0.0` SQL migrations and Drizzle schema (`src/db/schema/*`): `college_settings` (replaces `campuses`), `departments`, updated `communities` (`scope`, `code`), expanded `users`, updated `events`, `event_stage2_approvals`, `event_approvals`, `event_mentors`, `event_reports`, `event_reference_counters`, and `notifications` (removing `campus_id` across tables, queries, and RLS).
-  - [x] Server-only auth & effective-role helpers (`src/server/auth/`, retaining Supabase Auth for `v1.0.0`) so faculty (`staff`) assigned as `tic` or active `acting_hod` automatically unlock those desks without needing duplicate logins.
-  - [x] Admin Console (`/admin`) updates: College Settings (name, prefix, letterhead, logo), Departments CRUD (`ECE`, `EEE`, `CSE`, `AI`, `ME`, `CE`), Internal/External Communities CRUD (also accessible to P/VP), multi-TIC & Dept Staff/Student Coordinator assignments, emergency Acting HOD toggle, and **removal of all event approval actions from Admin**.
+  - [x] Server-only auth & effective-role helpers (`src/server/auth/`, retaining Supabase Auth for `v1.0.0`) so faculty (`staff`) assigned as `fic` or active `acting_hod` automatically unlock those desks without needing duplicate logins.
+  - [x] Admin Console (`/admin`) updates: College Settings (name, prefix, letterhead, logo), Departments CRUD (`ECE`, `EEE`, `CSE`, `AI`, `ME`, `CE`), Internal/External Communities CRUD (also accessible to P/VP), multi-FIC & Dept Staff/Student Coordinator assignments, emergency Acting HOD toggle, and **removal of all event approval actions from Admin**.
   - [x] Clean `v1.0.0` seed script (`scripts/seed.js`) covering all 7 roles plus an Acting HOD test scenario.
 
 ### Phase 2: Multi-Stage Approvals, Overrides & Notifications
@@ -42,7 +42,7 @@ The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical st
 
 - **Deliverables:**
   - [ ] Unified Proposer Workspace (`/lead` & `/staff`): Origin selector (`Community` / `Department`), Joint Co-Host picker, Planned Mentors + Estimated Budget fields, immediate post-`end_time` overdue report block, and edit/resubmit flow for rejected proposals.
-  - [ ] Stage 2 Desks (`/hod` & `/tic`): Parallel Stage 2 approval/rejection queues, HOD self-toggle for Acting HOD mode, and mandatory rejection feedback.
+  - [ ] Stage 2 Desks (`/hod` & `/fic`): Parallel Stage 2 approval/rejection queues, HOD self-toggle for Acting HOD mode, and mandatory rejection feedback.
   - [ ] Updated Safe-Slot Engine (`src/server/conflicts/`): Treat `pending_stage2` and `pending_executive` as soft reservations (blocked in conflict checks, hidden from `/`).
   - [ ] Executive Desk (`/principal`): Stage 3 approval/rejection, direct College Event creation (auto-published, optional Staff coordinator assignment), explicit 7-day lead-time override with warning confirmation, College-event collision override (`needs_reschedule` bump), and emergency Acting HOD toggle.
   - [ ] In-App Notification Inbox (`notifications` table + header bell; WhatsApp left behind an interface on the roadmap).
@@ -53,7 +53,7 @@ The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical st
 
 - **Deliverables:**
   - [ ] Atomic Reference Number generator (`AISAT/<YYYY-YY>/<HOST_CODE>/<NNN>`) running inside final P/VP approval with July 1 – June 30 academic year rollover.
-  - [ ] Post-Event Closure Form (`event_reports` + confirmed `event_mentors`: Internal/External, Role, Company; Total Fund Used; Student/Faculty/External counts; NAAC/NBA summary & outcomes) + HOD/TIC/P-VP quick-verification queue (`pending_report_verification` $\rightarrow$ `completed`).
+  - [ ] Post-Event Closure Form (`event_reports` + confirmed `event_mentors`: Internal/External, Role, Company; Total Fund Used; Student/Faculty/External counts; NAAC/NBA summary & outcomes) + HOD/FIC/P-VP quick-verification queue (`pending_report_verification` $\rightarrow$ `completed`).
   - [ ] A4 Print-CSS Individual Event Dossier (`/reports/events/[id]`): AISAT letterhead, full timestamped `event_approvals` log, mentor & fund tables, *"Electronically Approved via SaveSlot — No Physical Signature Required"* stamp, and vector QR code.
   - [ ] Consolidated Register (`/reports/summary`): Filterable by Academic Year, Date Range, Origin, Community Scope, Department, and Status, with A4 print view and CSV export.
   - [ ] Public QR Verification (`/verify/[code]`): Read-only authenticity page displaying Ref No, Title, Date, Venue, Origin, Approval Chain Names + Timestamps, and Status—while hiding funds, rejection notes, and personal contacts.
@@ -77,6 +77,6 @@ The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical st
 | **`principal`** & **`vice_principal`** | AISAT Executive | Final Stage 3 approval, College events, overrides, full printable reports |
 | **`hod`** | CSE, AI, ECE, EEE, ME, CE | Stage 2 Dept approval, Acting HOD self-toggle, closure verification |
 | **`staff`** *(+ Acting HOD)* | CSE Faculty | Proposes Dept events; steps in as Acting HOD when toggled active |
-| **`tic`** | Internal & External Communities | Stage 2 Community approval (multi-community & multi-TIC) + closure verification |
+| **`fic`** | Internal & External Communities | Stage 2 Community approval (multi-community & multi-FIC) + closure verification |
 | **`lead`** | Community Leads & Dept Student Coordinators | Proposes Community, Dept, or Joint events; files post-event closure reports |
 | **Public** | Unauthenticated | Zero-login Notice Board (`/`) & QR Verification (`/verify/[code]`) |

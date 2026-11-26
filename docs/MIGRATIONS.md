@@ -138,7 +138,7 @@ For the `v1.0.0` full-system rebuild (dedicated 1-host, 1-DB per college, starti
 
 - Drops the POC `campuses` table and all `campus_id` foreign keys in favor of a single-row `college_settings` table
 - Adds `departments` (with HOD, Acting HOD self/Admin/P-VP toggles)
-- Updates `communities` (`scope: internal | external`, `code`), `community_members` (`tic` role), and `users` (expanded roles & `department_id`)
+- Updates `communities` (`scope: internal | external`, `code`), `community_members` (`fic` role), and `users` (expanded roles & `department_id`)
 - Updates `events` (`origin_type`, `department_id`, `coordinator_id`, `reference_number`, `academic_year`, expanded status)
 - Adds `event_stage2_approvals`, `event_approvals`, `event_mentors`, `event_reports`, `event_reference_counters`, and `notifications`
 

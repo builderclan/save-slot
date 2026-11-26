@@ -61,7 +61,7 @@ SaveSlot employs a restrained monochrome base with purposeful semantic accents:
 
 - **Executive Principal / VP**: Subtle executive violet/purple (`text-purple-700 bg-purple-50 border-purple-200/80`)
 - **HOD / Acting HOD**: Deep slate-teal (`text-teal-700 bg-teal-50 border-teal-200/80`)
-- **Teacher-in-Charge (`tic`)**: Warm sky-blue (`text-sky-700 bg-sky-50 border-sky-200/80`)
+- **Faculty-in-Charge (`fic`)**: Warm sky-blue (`text-sky-700 bg-sky-50 border-sky-200/80`)
 - **Community Leads & Dept Coordinators / Staff**: Refined indigo (`text-indigo-700 bg-indigo-50 border-indigo-200/80`)
 - **Campus Admin (IT / Ops)**: Warm institutional amber (`text-amber-700 bg-amber-50 border-amber-200/80`)
 
@@ -204,13 +204,13 @@ The top application header (`src/components/layout/navbar.tsx`) provides context
    - **Inactive Tab**: `text-zinc-600 hover:text-zinc-900 rounded-lg px-2.5 lg:px-3 py-1.5 transition-all`.
 3. **Hairline Divider**:
    - `w-px h-4 bg-zinc-300/80 mx-1 shrink-0` (Rendered only when user has privileged workspace access).
-4. **Role Workspace Shortcut (`VP Desk` / `HOD Desk` / `TIC Desk` / `Workspace` / `Admin Console`)**:
+4. **Role Workspace Shortcut (`VP Desk` / `HOD Desk` / `FIC Desk` / `Workspace` / `Admin Console`)**:
    - Embedded directly on the right side of the divider, alongside an in-app **Notification Bell** with unread count.
-   - Text & icon inherit semantic role colorway (`text-purple-700` for VP/Principal, `text-teal-700` for HOD, `text-sky-700` for TIC, `text-indigo-700` for Staff/Leads, `text-amber-700` for Admin).
+   - Text & icon inherit semantic role colorway (`text-purple-700` for VP/Principal, `text-teal-700` for HOD, `text-sky-700` for FIC, `text-indigo-700` for Staff/Leads, `text-amber-700` for Admin).
    - Hover state: `hover:bg-white/80 active:scale-[0.98]`.
 5. **Contextual Route Transition**:
    - On `/`: Displays view modes + divider + role workspace link.
-   - On `/principal`, `/hod`, `/tic`, `/lead`, `/staff`: Replaces calendar view modes with `[📅 Calendar]` + active workspace tabs (including `Reports` where permitted).
+   - On `/principal`, `/hod`, `/fic`, `/lead`, `/staff`: Replaces calendar view modes with `[📅 Calendar]` + active workspace tabs (including `Reports` where permitted).
 
 ---
 
@@ -282,14 +282,14 @@ Centrally focused dialog (`max-w-xl`, backdrop blur):
 
 ---
 
-### 4.7 Approval Desks (`/hod`, `/tic`, `/principal`)
+### 4.7 Approval Desks (`/hod`, `/fic`, `/principal`)
 
 Role-scoped approval queues sharing a consistent split-pane layout:
 
 1. **Header**: Summary count of proposals awaiting sign-off, post-event reports awaiting verification, and (on `/hod`) the **Acting HOD** leave toggle.
 2. **Segmented Tab Control**: `Pending Approvals (N)` • `Report Verification (N)` • `Decision History (N)` (plus `College Events` & `Reports` on `/principal`).
 3. **Pending Event Triage Card**:
-   - Origin & Internal/External badge, Primary Host + Co-host sign-off checklist (showing which HODs/TICs have already approved).
+   - Origin & Internal/External badge, Primary Host + Co-host sign-off checklist (showing which HODs/FICs have already approved).
    - Event title, description, planned Mentors (`Internal`/`External`), Estimated Budget, and intended audience.
    - Proposed venue with live capacity utilization meter:
      $$\text{Utilization} = \frac{\text{Expected Attendance}}{\text{Venue Capacity}} \times 100\%$$

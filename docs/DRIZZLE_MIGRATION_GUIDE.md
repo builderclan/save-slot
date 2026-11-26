@@ -172,7 +172,7 @@ vi.mock("@/lib/db", () => ({
 
 ## 5. Planned `v1.0.0` Drizzle Schema & Layer Convention
 
-All `v1.0.0` tables (`college_settings` replacing `campuses`, `departments`, `event_stage2_approvals`, `event_approvals`, `event_mentors`, `event_reports`, `event_reference_counters`, `notifications`) and endpoints (`/api/workspace/*`, `/api/hod/*`, `/api/tic/*`, `/api/principal/*`, `/api/reports/*`, `/api/verify/[code]`, `/api/notifications/*`) follow a clean 3-layer convention:
+All `v1.0.0` tables (`college_settings` replacing `campuses`, `departments`, `event_stage2_approvals`, `event_approvals`, `event_mentors`, `event_reports`, `event_reference_counters`, `notifications`) and endpoints (`/api/workspace/*`, `/api/hod/*`, `/api/fic/*`, `/api/principal/*`, `/api/reports/*`, `/api/verify/[code]`, `/api/notifications/*`) follow a clean 3-layer convention:
 
 - `src/app/api/**/route.ts`: Thin HTTP handlers (Zod validation + auth check $\rightarrow$ `src/server/`).
 - `src/server/`: Server-only business logic, workflow transitions, and `db.transaction(...)` with `SELECT ... FOR UPDATE`.

@@ -57,7 +57,7 @@ Checks soft (`pending_stage2`, `pending_executive`) and hard (`published`) venue
 
 - `POST /api/auth/login`: Email + password sign-in protected by `auth_rate_limits`.
 - `POST /api/auth/logout`: Clears `saveslot_session`.
-- `GET /api/auth/me`: Returns current user profile, `departmentId`, assigned `communities`, and effective permissions (`isActingHod`, `isTic`, etc.).
+- `GET /api/auth/me`: Returns current user profile, `departmentId`, assigned `communities`, and effective permissions (`isActingHod`, `isFic`, etc.).
 - `POST /api/auth/reset-password/request` & `POST /api/auth/reset-password/confirm`: Self-service password reset for Admin-provisioned accounts.
 
 ---
@@ -95,7 +95,7 @@ Submits the post-event NAAC/NBA closure report (`event_reports` + confirmed `eve
 
 ---
 
-## 5. Stage 2 Desks (`/api/hod/*` & `/api/tic/*`)
+## 5. Stage 2 Desks (`/api/hod/*` & `/api/fic/*`)
 
 ### 5.1 Department HOD (`/api/hod/*`)
 
@@ -106,12 +106,12 @@ Submits the post-event NAAC/NBA closure report (`event_reports` + confirmed `eve
 - `POST /api/hod/events/[id]/verify-report`: Quick-verifies closure report (locks `completed` once all participating hosts verify) or returns it to `published` with revision remarks.
 - `PATCH /api/hod/acting-hod`: Lets the primary HOD toggle `is_acting_hod_active` on/off when going on leave.
 
-### 5.2 Community Teacher-in-Charge (`/api/tic/*`)
+### 5.2 Community Faculty-in-Charge (`/api/fic/*`)
 
-*Accessible to users assigned as `tic` on the community in `community_members`.*
+*Accessible to users assigned as `fic` on the community in `community_members`.*
 
-- `GET /api/tic/queue`: Assigned Community & Joint events awaiting Stage 2 approval or closure report verification.
-- `POST /api/tic/events/[id]/approve`, `POST /api/tic/events/[id]/reject`, `POST /api/tic/events/[id]/verify-report`.
+- `GET /api/fic/queue`: Assigned Community & Joint events awaiting Stage 2 approval or closure report verification.
+- `POST /api/fic/events/[id]/approve`, `POST /api/fic/events/[id]/reject`, `POST /api/fic/events/[id]/verify-report`.
 
 ---
 
@@ -138,7 +138,7 @@ Submits the post-event NAAC/NBA closure report (`event_reports` + confirmed `eve
 
 - `GET / PATCH /api/admin/settings`: Update `college_settings` (college name, `short_code` prefix, letterhead subtitle, logo URL, academic year start month).
 - `GET / POST / PATCH / DELETE /api/admin/departments`: Manage departments (`CSE`, `ECE`, `EEE`, `AI`, `ME`, `CE`), assign `hod_user_id` & `acting_hod_user_id`, and emergency `is_acting_hod_active` toggle.
-- `GET / POST / PATCH /api/admin/communities` & `POST / DELETE /api/admin/communities/[id]/members`: Manage Internal/External communities (`scope`, `code`) and link `lead` / `tic` users.
+- `GET / POST / PATCH /api/admin/communities` & `POST / DELETE /api/admin/communities/[id]/members`: Manage Internal/External communities (`scope`, `code`) and link `lead` / `fic` users.
 - `GET / POST / PATCH /api/admin/venues`: Campus venue CRUD.
 - `GET / POST / PATCH / DELETE /api/admin/users`: Create and manage staff/lead/approver accounts (`role`, `department_id`, `designation`).
 
@@ -148,7 +148,7 @@ Submits the post-event NAAC/NBA closure report (`event_reports` + confirmed `eve
 
 ### 8.1 Reports (`/api/reports/*`)
 
-*Scoped by role: P/VP (all campus), HOD (department events), TIC (assigned communities), Lead/Staff (own events).*
+*Scoped by role: P/VP (all campus), HOD (department events), FIC (assigned communities), Lead/Staff (own events).*
 
 - `GET /api/reports/events/[id]`: Full dossier payload (metadata, mentors, estimated vs. actual funds, NAAC/NBA summary, chronological `event_approvals`, QR verify URL).
 - `GET /api/reports/summary`: Consolidated register filtered by `academicYear`, `start`, `end`, `originType`, `communityScope`, `departmentId`, `status`; supports `?format=csv`.
