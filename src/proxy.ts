@@ -10,7 +10,11 @@ export async function proxy(request: NextRequest) {
   const isProtectedPath =
     pathname.startsWith("/admin") ||
     pathname.startsWith("/principal") ||
-    pathname.startsWith("/lead");
+    pathname.startsWith("/hod") ||
+    pathname.startsWith("/tic") ||
+    pathname.startsWith("/staff") ||
+    pathname.startsWith("/lead") ||
+    pathname.startsWith("/reports");
 
   const hasAuthCookie = request.cookies
     .getAll()

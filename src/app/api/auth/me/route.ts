@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/server/auth";
 
 export async function GET() {
   const session = await getCurrentUser();
   if (!session) {
-    return NextResponse.json({ authenticated: false, user: null }, { status: 200 });
+    return NextResponse.json(
+      { authenticated: false, user: null },
+      { status: 200 },
+    );
   }
 
   return NextResponse.json({
@@ -14,12 +17,20 @@ export async function GET() {
       email: session.email,
       fullName: session.profile.full_name,
       role: session.profile.role,
+      designation: session.profile.designation ?? null,
+      departmentId: session.profile.department_id ?? null,
       avatarUrl: session.profile.avatar_url ?? null,
       isAdmin: session.isAdmin,
       isPrincipal: session.isPrincipal,
       isVicePrincipal: session.isVicePrincipal,
+      isHod: session.isHod,
+      isActingHod: session.isActingHod,
+      isTic: session.isTic,
+      isStaff: session.isStaff,
       isLead: session.isLead,
       leadCommunities: session.leadCommunities,
+      ticCommunities: session.ticCommunities,
+      hodDepartments: session.hodDepartments,
     },
   });
 }

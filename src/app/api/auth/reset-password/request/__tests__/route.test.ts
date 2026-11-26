@@ -26,7 +26,7 @@ describe("POST /api/auth/reset-password/request", () => {
     const res = await POST(request);
     expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.error).toBe("Please enter a valid campus email address");
+    expect(data.error).toBe("Please enter a valid college email address");
   });
 
   it("returns 200 generic success when valid email is submitted", async () => {

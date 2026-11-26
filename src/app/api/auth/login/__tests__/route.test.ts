@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST, clearLoginAttemptsForTesting } from "../route";
+import type { AuthSession } from "@/server/auth";
 
 const mockSignInWithPassword = vi.fn();
+const mockResolveAuthSessionForUser = vi.fn();
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(() => ({
@@ -11,9 +13,13 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 
-vi.mock("@/lib/campus", () => ({
-  getPrimaryCampusId: vi.fn(),
-}));
+vi.mock("@/server/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/server/auth")>();
+  return {
+    ...actual,
+    resolveAuthSessionForUser: (...args: unknown[]) => mockResolveAuthSessionForUser(...args),
+  };
+});
 
 let failedAttemptsCount = 0;
 vi.mock("@/lib/rate-limit", () => ({
@@ -35,53 +41,33 @@ vi.mock("@/lib/rate-limit", () => ({
   }),
 }));
 
-const {
-  mockSelect,
-  mockSelectLimit,
-  mockUpdate,
-} = vi.hoisted(() => {
-  const mockSelectLimit = vi.fn();
-  const mockSelectWhere = vi.fn();
-  const mockSelectFrom = vi.fn();
-  const mockSelect = vi.fn();
-
-  const mockUpdateWhere = vi.fn();
-  const mockUpdateSet = vi.fn();
-  const mockUpdate = vi.fn();
-
-  mockSelectWhere.mockReturnValue({ limit: mockSelectLimit });
-  mockSelectFrom.mockReturnValue({ where: mockSelectWhere });
-  mockSelect.mockReturnValue({ from: mockSelectFrom });
-
-  mockUpdateSet.mockReturnValue({ where: mockUpdateWhere });
-  mockUpdate.mockReturnValue({ set: mockUpdateSet });
-
+function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
   return {
-    mockSelect,
-    mockSelectLimit,
-    mockUpdate,
+    userId: `${role}-1`,
+    email: `${role}@aisat.ac.in`,
+    profile: {
+      id: `${role}-1`,
+      email: `${role}@aisat.ac.in`,
+      full_name: `${role} user`,
+      role,
+    },
+    leadCommunities: [],
+    ticCommunities: [],
+    hodDepartments: [],
+    isAdmin: role === "admin",
+    isPrincipal: role === "principal" || role === "vice_principal",
+    isVicePrincipal: role === "vice_principal",
+    isHod: role === "hod",
+    isActingHod: false,
+    isTic: role === "tic",
+    isStaff: role === "staff",
+    isLead: role === "lead",
   };
-});
+}
 
-vi.mock("@/lib/db", () => {
-  const mockDbClient = {
-    select: mockSelect,
-    update: mockUpdate,
-  };
-
-  return {
-    db: mockDbClient,
-    withDbRetry: (op: (client: typeof mockDbClient) => Promise<unknown>) => op(mockDbClient),
-  };
-});
-
-import { getPrimaryCampusId } from "@/lib/campus";
-
-const mockGetPrimaryCampusId = vi.mocked(getPrimaryCampusId);
-
-describe("POST /api/auth/login", () => {
+describe("POST /api/auth/login (v1.0.0)", () => {
   const validBody = {
-    email: "student@campus.edu",
+    email: "staff@aisat.ac.in",
     password: "Password123!",
   };
 
@@ -119,133 +105,55 @@ describe("POST /api/auth/login", () => {
     expect(data.error).toBe("Invalid email or password");
   });
 
-  it("returns 200 with student redirect on successful login", async () => {
+  it("returns 403 when user profile is inactive or not provisioned", async () => {
     mockSignInWithPassword.mockResolvedValueOnce({
-      data: {
-        user: { id: "user-1", email: "student@campus.edu" },
-      },
+      data: { user: { id: "u-inactive", email: "old@aisat.ac.in" } },
       error: null,
     });
-
-    // Profile lookup
-    mockSelectLimit.mockResolvedValueOnce([
-      {
-        id: "user-1",
-        email: "student@campus.edu",
-        fullName: "Test Student",
-        role: "student",
-        campusId: "campus-1",
-      },
-    ]);
-    // Community members check (not lead)
-    mockSelectLimit.mockResolvedValueOnce([]);
+    mockResolveAuthSessionForUser.mockResolvedValueOnce(null);
 
     const req = new Request("http://localhost/api/auth/login", {
       method: "POST",
-      body: JSON.stringify(validBody),
+      body: JSON.stringify({ email: "old@aisat.ac.in", password: "Password123!" }),
     });
 
     const res = await POST(req);
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(403);
     const data = await res.json();
-    expect(data.success).toBe(true);
-    expect(data.user.role).toBe("student");
-    expect(data.redirectUrl).toBe("/");
+    expect(data.error).toContain("Account is inactive or not provisioned");
   });
 
-  it("self-heals campusId if profile has empty campus_id", async () => {
-    mockSignInWithPassword.mockResolvedValueOnce({
-      data: {
-        user: { id: "user-1", email: "student@campus.edu" },
-      },
-      error: null,
-    });
+  it("redirects faculty/TIC/HOD/lead accounts to /lead", async () => {
+    for (const role of ["staff", "tic", "hod", "lead"] as const) {
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: { user: { id: `${role}-1`, email: `${role}@aisat.ac.in` } },
+        error: null,
+      });
+      mockResolveAuthSessionForUser.mockResolvedValueOnce(makeSession(role));
 
-    // Profile lookup without campusId
-    mockSelectLimit.mockResolvedValueOnce([
-      {
-        id: "user-1",
-        email: "student@campus.edu",
-        fullName: "Test Student",
-        role: "student",
-        campusId: null,
-      },
-    ]);
-    mockGetPrimaryCampusId.mockResolvedValueOnce("campus-aisat-uuid");
-    // Community members check
-    mockSelectLimit.mockResolvedValueOnce([]);
+      const req = new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: `${role}@aisat.ac.in`, password: "Password123!" }),
+      });
 
-    const req = new Request("http://localhost/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify(validBody),
-    });
-
-    const res = await POST(req);
-    expect(res.status).toBe(200);
-    expect(mockGetPrimaryCampusId).toHaveBeenCalledTimes(1);
-    expect(mockUpdate).toHaveBeenCalledTimes(1);
-  });
-
-  it("promotes active community lead to organizer role", async () => {
-    mockSignInWithPassword.mockResolvedValueOnce({
-      data: {
-        user: { id: "user-lead-1", email: "lead@campus.edu" },
-      },
-      error: null,
-    });
-
-    // Profile has student role in users table
-    mockSelectLimit.mockResolvedValueOnce([
-      {
-        id: "user-lead-1",
-        email: "lead@campus.edu",
-        fullName: "Club Lead",
-        role: "student",
-        campusId: "campus-1",
-      },
-    ]);
-    // Active community lead membership found
-    mockSelectLimit.mockResolvedValueOnce([{ one: 1 }]);
-
-    const req = new Request("http://localhost/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({
-        email: "lead@campus.edu",
-        password: "Password123!",
-      }),
-    });
-
-    const res = await POST(req);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.user.role).toBe("organizer");
-    expect(data.redirectUrl).toBe("/lead");
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.user.role).toBe(role);
+      expect(data.redirectUrl).toBe("/lead");
+    }
   });
 
   it("redirects to /admin for admin role", async () => {
     mockSignInWithPassword.mockResolvedValueOnce({
-      data: {
-        user: { id: "admin-1", email: "admin@campus.edu" },
-      },
+      data: { user: { id: "admin-1", email: "admin@aisat.ac.in" } },
       error: null,
     });
-
-    mockSelectLimit.mockResolvedValueOnce([
-      {
-        id: "admin-1",
-        email: "admin@campus.edu",
-        fullName: "Admin",
-        role: "admin",
-        campusId: "campus-1",
-      },
-    ]);
+    mockResolveAuthSessionForUser.mockResolvedValueOnce(makeSession("admin"));
 
     const req = new Request("http://localhost/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({
-        email: "admin@campus.edu",
-        password: "Password123!",
-      }),
+      body: JSON.stringify({ email: "admin@aisat.ac.in", password: "Password123!" }),
     });
 
     const res = await POST(req);
@@ -255,40 +163,28 @@ describe("POST /api/auth/login", () => {
     expect(data.redirectUrl).toBe("/admin");
   });
 
-  it("redirects to /principal for principal role", async () => {
-    mockSignInWithPassword.mockResolvedValueOnce({
-      data: {
-        user: { id: "principal-1", email: "principal@campus.edu" },
-      },
-      error: null,
-    });
+  it("redirects to /principal for principal and vice_principal roles", async () => {
+    for (const role of ["principal", "vice_principal"] as const) {
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: { user: { id: `${role}-1`, email: `${role}@aisat.ac.in` } },
+        error: null,
+      });
+      mockResolveAuthSessionForUser.mockResolvedValueOnce(makeSession(role));
 
-    mockSelectLimit.mockResolvedValueOnce([
-      {
-        id: "principal-1",
-        email: "principal@campus.edu",
-        fullName: "Principal",
-        role: "principal",
-        campusId: "campus-1",
-      },
-    ]);
+      const req = new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: `${role}@aisat.ac.in`, password: "Password123!" }),
+      });
 
-    const req = new Request("http://localhost/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({
-        email: "principal@campus.edu",
-        password: "Password123!",
-      }),
-    });
-
-    const res = await POST(req);
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.user.role).toBe("principal");
-    expect(data.redirectUrl).toBe("/principal");
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.user.role).toBe(role);
+      expect(data.redirectUrl).toBe("/principal");
+    }
   });
 
-  it("enforces cooldown (429) after 3 consecutive failed login attempts (SEC-11 Brute-Force defense)", async () => {
+  it("enforces cooldown (429) after 3 consecutive failed login attempts", async () => {
     mockSignInWithPassword.mockResolvedValue({
       data: { user: null },
       error: { message: "Invalid credentials" },
@@ -298,22 +194,13 @@ describe("POST /api/auth/login", () => {
       new Request("http://localhost/api/auth/login", {
         method: "POST",
         headers: { "x-forwarded-for": "192.168.1.100" },
-        body: JSON.stringify({ email: "victim@campus.edu", password: "badpassword" }),
+        body: JSON.stringify({ email: "victim@aisat.ac.in", password: "badpassword" }),
       });
 
-    // Attempt 1: 401
-    const res1 = await POST(createReq());
-    expect(res1.status).toBe(401);
+    expect((await POST(createReq())).status).toBe(401);
+    expect((await POST(createReq())).status).toBe(401);
+    expect((await POST(createReq())).status).toBe(401);
 
-    // Attempt 2: 401
-    const res2 = await POST(createReq());
-    expect(res2.status).toBe(401);
-
-    // Attempt 3: 401
-    const res3 = await POST(createReq());
-    expect(res3.status).toBe(401);
-
-    // Attempt 4: Should be rate limited (429)
     const res4 = await POST(createReq());
     expect(res4.status).toBe(429);
     const data4 = await res4.json();
@@ -322,51 +209,39 @@ describe("POST /api/auth/login", () => {
   });
 
   it("clears failed attempt counter on successful login", async () => {
-    // 2 failed attempts
-    mockSignInWithPassword.mockResolvedValueOnce({
-      data: { user: null },
-      error: { message: "Invalid credentials" },
-    });
-    mockSignInWithPassword.mockResolvedValueOnce({
-      data: { user: null },
-      error: { message: "Invalid credentials" },
-    });
+    mockSignInWithPassword
+      .mockResolvedValueOnce({ data: { user: null }, error: { message: "Invalid credentials" } })
+      .mockResolvedValueOnce({ data: { user: null }, error: { message: "Invalid credentials" } });
 
     const reqFail = () =>
       new Request("http://localhost/api/auth/login", {
         method: "POST",
         headers: { "x-forwarded-for": "192.168.1.100" },
-        body: JSON.stringify({ email: "victim@campus.edu", password: "badpassword" }),
+        body: JSON.stringify({ email: "victim@aisat.ac.in", password: "badpassword" }),
       });
 
     await POST(reqFail());
     await POST(reqFail());
 
-    // 3rd attempt succeeds
     mockSignInWithPassword.mockResolvedValueOnce({
-      data: { user: { id: "user-1", email: "victim@campus.edu" } },
+      data: { user: { id: "staff-1", email: "victim@aisat.ac.in" } },
       error: null,
     });
-    mockSelectLimit.mockResolvedValueOnce([
-      { id: "user-1", email: "victim@campus.edu", fullName: "User", role: "student", campusId: "campus-1" },
-    ]);
-    mockSelectLimit.mockResolvedValueOnce([]);
+    mockResolveAuthSessionForUser.mockResolvedValueOnce(makeSession("staff"));
 
-    const reqSuccess = new Request("http://localhost/api/auth/login", {
-      method: "POST",
-      headers: { "x-forwarded-for": "192.168.1.100" },
-      body: JSON.stringify({ email: "victim@campus.edu", password: "correctpassword" }),
-    });
-
-    const resSuccess = await POST(reqSuccess);
+    const resSuccess = await POST(
+      new Request("http://localhost/api/auth/login", {
+        method: "POST",
+        headers: { "x-forwarded-for": "192.168.1.100" },
+        body: JSON.stringify({ email: "victim@aisat.ac.in", password: "correctpassword" }),
+      })
+    );
     expect(resSuccess.status).toBe(200);
 
-    // Next failed attempt should be attempt 1 again (not blocked)
-    mockSignInWithPassword.mockResolvedValueOnce({
-      data: { user: null },
-      error: { message: "Invalid credentials" },
-    });
-    const resAfterReset = await POST(reqFail());
-    expect(resAfterReset.status).toBe(401);
+    mockSignInWithPassword
+      .mockResolvedValueOnce({ data: { user: null }, error: { message: "Invalid credentials" } })
+      .mockResolvedValueOnce({ data: { user: null }, error: { message: "Invalid credentials" } });
+    expect((await POST(reqFail())).status).toBe(401);
+    expect((await POST(reqFail())).status).toBe(401);
   });
 });
