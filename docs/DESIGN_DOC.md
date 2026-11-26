@@ -1,343 +1,139 @@
-# SaveSlot System Design Document
+# SaveSlot v1.0.0 — System Design Document
 
-**Product**: SaveSlot — Campus Events & Scheduling Platform  
-**Target Institution**: Configurable Single-Instance Deployment (via `NEXT_PUBLIC_CAMPUS_NAME`, e.g. AISAT)  
-**Version**: 0.3.0 (Target Release / In Development)  
-**Status**: Implemented & Verified  
+**Product:** SaveSlot — College Event Scheduling, Approval & NAAC/NBA Reporting  
+**Institution:** Albertian Institute of Science & Technology (AISAT) *(via `NEXT_PUBLIC_CAMPUS_NAME`)*  
+**Version:** `1.0.0` *(Target Design — Planned Rebuild from `v0.3.0` POC)*  
+**Status:** Finalized for Implementation  
 
 ---
 
-## 1. Executive Summary & Vision
+## 1. Design Goals
 
-**SaveSlot** is a high-craft campus event scheduling, conflict-prevention, and public notice board platform. It resolves institutional scheduling friction across college communities, students, and executive administration by replacing scattered chat announcements and paper approval forms with:
+This document captures the technical design behind SaveSlot `v1.0.0`. Our goal is to replace paper approval slips and ad-hoc event tracking across AISAT while keeping the fast, quiet user experience of the `v0.3.0` POC:
 
-1. **A Unified Public Notice Board**: Interactive monthly, weekly, and kanban-style board views with real-time filtering by category, search queries, and time horizons.
-2. **Automated Conflict Prevention & Safe-Slot Engine**: Algorithmic detection of venue double-bookings and lead-time violations, coupled with deterministic 3-way alternative slot suggestions.
-3. **Multi-Tier Institutional Governance (RBAC)**: Role-tailored workspaces for Community Leads, Campus Administrators, College Principals, and Vice Principals with concurrency-safe event triage.
-4. **Unified Divided Navigation Architecture**: An intentional, distraction-free Linear/Apple-inspired UI that consolidates calendar view modes and executive desk shortcuts into a single segmented pill container.
+1. **Clean Separation Between IT Setup and Approvals:** Admins configure departments, communities, venues, and user accounts, but cannot approve or reject events. Governance sits strictly with TICs, HODs, and the Principal/VP.
+2. **Deterministic Scheduling Without Leaks:** Pending proposals soft-lock venues inside the conflict checker so two teams don't fight over the same hall, while staying invisible on the public notice board until P/VP signs off.
+3. **Co-Hosted Events Without Special-Case Spaghetti:** Both single-host and joint/co-hosted events run on the exact same `event_stage2_approvals` table—each participating Department or Community gets one required sign-off row.
+4. **Real-World Faculty Role Flexibility:** In a real college, a CSE faculty member (`staff`) is often also the Teacher-in-Charge of a club or the Acting HOD when the regular HOD is away. Permission checks look at both `users.role` and assignment tables (`departments`, `community_members`), so faculty never need duplicate accounts.
+5. **Trustworthy Physical Filing:** Reference numbers are generated inside the final approval transaction (zero gaps), approval trails snapshot the signer's name and role at the moment of action, and `/verify/[code]` exposes authenticity without leaking budget or rejection notes.
 
 ---
 
 ## 2. High-Level System Architecture
 
-The platform is built on Next.js 16 (App Router with Turbopack), React 19, and Tailwind CSS v4, connecting to a PostgreSQL database hosted on Supabase via connection pooling.
-
 ```mermaid
 graph TD
-    Client[Browser / Mobile Viewport] -->|HTTP / SSR| NextApp[Next.js 16 App Router]
-    
-    subgraph Presentation_Layer [Presentation Layer]
-        NextApp --> PB[Public Notice Board /]
-        NextApp --> LW[Lead Workspace /lead]
-        NextApp --> ED[Executive Approval Desk /principal]
-        NextApp --> AC[Admin Console /admin]
-        NextApp --> Nav[Unified Divided Navigation Bar]
+    Client["Browser / Mobile (360px - 1920px)"] -->|"HTTP / SSR"| NextApp["Next.js 16 App Router"]
+
+    subgraph Presentation_Layer ["Presentation Layer"]
+        NextApp --> PB["Public Notice Board /"]
+        NextApp --> QR["Public QR Verify /verify/[code]"]
+        NextApp --> PW["Proposer Workspace /lead & /staff"]
+        NextApp --> S2["Stage 2 Desks /tic & /hod"]
+        NextApp --> ED["Executive Desk /principal"]
+        NextApp --> AC["IT & Ops Console /admin"]
+        NextApp --> RPT["A4 Print Dossiers & Register /reports"]
     end
-    
-    subgraph Application_Layer [Application Layer]
-        NextApp --> Auth[RBAC & Session Service lib/auth.ts]
-        NextApp --> Engine[Safe-Slot & Conflict Engine lib/conflicts/engine.ts]
-        NextApp --> CalExport[iCal .ics & Google Cal Generator]
+
+    subgraph Application_Layer ["Application Layer"]
+        NextApp --> Auth["Session & Effective-Role Resolver (lib/auth.ts)"]
+        NextApp --> Engine["Safe-Slot & Conflict Engine (lib/conflicts/engine.ts)"]
+        NextApp --> Workflow["Approval Router & Ref Counter (lib/workflows/)"]
+        NextApp --> Notify["In-App Notification Service (WhatsApp TODO)"]
+        NextApp --> CalExport["iCal .ics & Google Cal Generator"]
     end
-    
-    subgraph Data_Access_Layer [Data Access & Concurrency Layer]
-        Auth --> DBPool[Resilient pg.Pool with KeepAlive lib/db.ts]
+
+    subgraph Data_Access_Layer ["Data Access & Concurrency Layer"]
+        Auth --> DBPool["Drizzle ORM + pg.Pool (lib/db.ts)"]
         Engine --> DBPool
-        NextApp --> DBPool
-        DBPool --> Tx[withTransaction / SELECT FOR UPDATE Concurrency Guard]
+        Workflow --> DBPool
+        Notify --> DBPool
+        DBPool --> Tx["db.transaction + SELECT FOR UPDATE"]
     end
-    
-    subgraph Persistence [Persistence Layer]
-        Tx --> Postgres[(Supabase PostgreSQL Database)]
+
+    subgraph Persistence ["Persistence Layer"]
+        Tx --> Postgres[("Supabase PostgreSQL")]
     end
 ```
 
 ---
 
-## 3. Technology Stack & Key Dependencies
+## 3. Tech Stack
 
-| Layer | Technology | Version | Purpose / Rationale |
-| :--- | :--- | :--- | :--- |
-| **Framework** | Next.js | `16.4.3` | App Router, Server Components (SSR), Turbopack bundler, API routes |
-| **UI Runtime** | React | `19.2.8` | Server & Client Components (`"use client"`), hooks, concurrent rendering |
-| **Styling** | Tailwind CSS | `v4` | Modern `@tailwindcss/postcss`, zero-runtime CSS variables, utility tokens |
-| **Database** | PostgreSQL / Supabase | `15+` | Relational integrity, foreign keys, JSON aggregation, transactional locks |
-| **ORM & DB Client** | Drizzle ORM & `pg` | `0.45.4` / `^8.23.0` | Type-safe data access with schema relations and low-level connection pool |
-| **Date & Time** | `date-fns` | `^4.4.0` | Immutable, localized date manipulation and interval intersection |
-| **Icons** | `lucide-react` | `^1.45.0` | Minimalist line icons |
-| **Validation** | `zod` | `^4.6.4` | Runtime schema validation for API request bodies and route parameters |
+| Layer | Choice | Why |
+| :--- | :--- | :--- |
+| **Framework** | Next.js `16.4.x` (App Router, Turbopack) | SSR public calendar, fast route handlers, clean layout auth guards |
+| **UI & Styling** | React `19.3.x`, Tailwind CSS `v4` | Responsive mobile/desktop UI + `@media print` A4 stylesheets |
+| **Database & ORM** | PostgreSQL (Supabase), Drizzle ORM `0.45.x`, `pg` | Type-safe queries + explicit row-level locking (`SELECT FOR UPDATE`) |
+| **Dates & Validation** | `date-fns` `v4`, `zod` `v4` | Interval conflict checks, academic year math, strict payload schemas |
+| **Icons & QR** | `lucide-react`, lightweight SVG QR generator | Crisp UI icons and print-sharp vector QR codes without heavy PDF libs |
 
 ---
 
-## 4. Database Schema & Data Models
-
-The relational database enforces data integrity through foreign keys, check constraints, and performance indexes.
+## 4. Data Model Overview (`v1.0.0`)
 
 ```mermaid
 erDiagram
-    CAMPUSES ||--o{ VENUES : owns
-    CAMPUSES ||--o{ COMMUNITIES : hosts
-    CAMPUSES ||--o{ USERS : enrolls
+    DEPARTMENTS ||--o{ USERS : assigns
+    DEPARTMENTS ||--o{ EVENTS : owns
     COMMUNITIES ||--o{ COMMUNITY_MEMBERS : includes
     USERS ||--o{ COMMUNITY_MEMBERS : joins
-    COMMUNITIES ||--o{ EVENTS : organizes
     VENUES ||--o{ EVENTS : hosts
-    USERS ||--o{ EVENTS : creates
-    USERS ||--o{ EVENTS : reviews
-
-    CAMPUSES {
-        uuid id PK
-        varchar name
-        varchar slug UK
-        varchar domain
-        varchar timezone
-        boolean is_active
-        timestamptz created_at
-    }
-
-    VENUES {
-        uuid id PK
-        uuid campus_id FK
-        varchar name
-        varchar building
-        int capacity
-        varchar address
-        text notes
-        boolean is_active
-        timestamptz created_at
-    }
-
-    COMMUNITIES {
-        uuid id PK
-        uuid campus_id FK
-        varchar name
-        varchar slug
-        varchar category
-        text description
-        text logo_url
-        varchar status
-        timestamptz created_at
-    }
-
-    COMMUNITY_MEMBERS {
-        uuid id PK
-        uuid community_id FK
-        uuid user_id FK
-        varchar role "lead | co-lead | member"
-        timestamptz created_at
-    }
-
-    USERS {
-        uuid id PK "auth.users FK"
-        varchar email UK
-        varchar full_name
-        varchar role "student | organizer | admin | principal | vice_principal"
-        varchar avatar_url
-        uuid campus_id FK
-        timestamptz created_at
-    }
-
-    EVENTS {
-        uuid id PK
-        uuid campus_id FK
-        uuid community_id FK
-        uuid venue_id FK
-        uuid created_by FK
-        uuid reviewed_by FK
-        varchar title
-        varchar slug UK
-        text description
-        varchar category
-        text_array target_audience
-        text_array tags
-        timestamptz start_time
-        timestamptz end_time
-        varchar location_name
-        boolean is_virtual
-        text virtual_link
-        text external_registration_url
-        text cover_image_url
-        varchar status "draft | pending | published | cancelled | rejected"
-        text rejection_reason
-        text cancellation_reason
-        timestamptz created_at
-        timestamptz updated_at
-    }
+    EVENTS ||--o{ EVENT_STAGE2_APPROVALS : requires
+    EVENTS ||--o{ EVENT_APPROVALS : logs
+    EVENTS ||--o{ EVENT_MENTORS : features
+    EVENTS ||--o| EVENT_REPORTS : closes_with
+    USERS ||--o{ NOTIFICATIONS : receives
 ```
 
-### 4.1 Schema Enforcements & Indexes
+### Key Table Changes from POC (`v0.3.0` $\rightarrow$ `v1.0.0`)
 
-1. **User Role Constraint**:
-
-   ```sql
-   ALTER TABLE public.users 
-   ADD CONSTRAINT users_role_check 
-   CHECK (role IN ('student', 'organizer', 'admin', 'principal', 'vice_principal'));
-   ```
-
-2. **Reviewer Attribution (`reviewed_by`)**:
-   Tracks the exact user UUID of the principal, vice principal, or administrator who approved or rejected the event.
-3. **Critical Performance Indexes**:
-
-   ```sql
-   CREATE INDEX idx_events_campus_status ON public.events (campus_id, status);
-   CREATE INDEX idx_events_start_time ON public.events (start_time);
-   CREATE INDEX idx_events_status_start_time ON public.events (status, start_time);
-   CREATE INDEX idx_events_venue_time ON public.events (venue_id, start_time, end_time);
-   CREATE INDEX idx_events_target_audience ON public.events USING gin (target_audience);
-   ```
+- **`college_settings` *(replaces `campuses`)***: Because each college runs on its own independent host and dedicated database, `v1.0.0` drops `campuses` and all `campus_id` foreign keys in favor of a 1-row `college_settings` config table (`college_name`, `short_code` e.g. `AISAT`, `letterhead_subtitle`, `logo_url`, `academic_year_start_month = 7`, `timezone = 'Asia/Kolkata'`).
+- **`departments` *(new)***: Holds department `code` (`CSE`, `ECE`, `EEE`, `AI`, `ME`, `CE`), `hod_user_id`, `acting_hod_user_id`, `is_acting_hod_active`, and audit fields for who toggled Acting HOD mode.
+- **`communities` *(updated)***: Adds `scope` (`'internal' | 'external'`) and short `code` (e.g., `GDG`, `IEEE`) for reference numbering.
+- **`community_members` *(updated)***: Supports `'lead' | 'tic' | 'member'`, allowing multiple TICs per community and multiple communities per TIC.
+- **`users` *(updated)***: Roles expanded to `'admin' | 'principal' | 'vice_principal' | 'hod' | 'tic' | 'staff' | 'lead'`, plus `department_id` and `designation`.
+- **`events` *(updated)***: Adds `origin_type` (`'community' | 'department' | 'college'`), `department_id`, `coordinator_id` (optional College closure owner), `reference_number`, `academic_year`, `estimated_budget`, `funding_source`, `is_lead_time_overridden`, `override_reason`, and expanded `status` states.
+- **`event_stage2_approvals` *(new)***: Tracks Stage 2 approval **and** post-event report verification for every participating host (primary + co-hosts).
+- **`event_approvals` *(new)***: Append-only audit log recording every submission, approval, rejection, override, bump, and report verification with actor name/role snapshots and timestamps.
+- **`event_mentors` *(new)***: Stores planned and confirmed mentors/resource persons (`name`, `role_title`, `organization`, `mentor_type: 'internal' | 'external'`).
+- **`event_reports` *(new)***: Stores post-event attendance counts, `actual_fund_used`, `funding_source`, NAAC/NBA `summary`, `outcomes`, and `evidence_url`.
+- **`event_reference_counters` *(new)***: Atomic sequence table `(academic_year, host_code, last_seq)` so concurrent approvals never collide or skip numbers.
+- **`notifications` *(new)***: In-app notifications for approvals, rejections, bumps, Acting HOD changes, and overdue closure reports.
 
 ---
 
-## 5. Safe-Slot Conflict Detection & Recommendation Engine
+## 5. Scheduling, Overrides & Gatekeeping Logic
 
-The conflict engine (`src/lib/conflicts/engine.ts`) prevents venue double-booking and enforces institutional policy before event proposal submission.
+### 5.1 Venue Overlap Check
 
-### 5.1 Temporal Clash Formula
+A candidate window $[T_s, T_e]$ conflicts with any existing event $[E_s, E_e]$ in the same venue when:
 
-An overlap between a candidate event `[Ts, Te]` and an existing event `[Es, Ee]` in the same venue `V` is defined as:
+$$\text{Overlap} \iff (T_s < E_e) \land (T_e > E_s) \land \text{status} \in \{\text{'pending\_stage2'}, \text{'pending\_executive'}, \text{'published'}\}$$
 
-$$\text{Overlap} \iff (T_s < E_e) \land (T_e > E_s) \land (\text{status} \neq \text{'rejected'}) \land (\text{status} \neq \text{'cancelled'})$$
+- `pending_stage2` and `pending_executive` are **soft reservations** (shown in proposer/approver tools, hidden on `/`).
+- `published` is a **hard reservation** (shown everywhere).
 
-### 5.2 Policy Violations
+### 5.2 Policy Enforcement & Overrides
 
-- **Lead Time Rule**: Submissions must occur at least 7 days ahead of `start_time` (`start_time < now() + 7 days`). The UI warns leads if lead time is violated while permitting submission with caution.
-- **Venue Inactivity**: Events cannot be proposed in deactivated venues (`is_active = false`).
-
-### 5.3 Deterministic Safe-Slot Discovery Algorithm
-
-When a clash is detected, the engine executes three heuristic search strategies to suggest alternative safe slots:
-
-```
-[Target Venue Clash Detected]
-         │
-         ├─► Option A: Same Venue, Later Today
-         │   (Earliest 30-minute buffer after conflicting event: Ee + 30m)
-         │
-         ├─► Option B: Alternative Active Venue at Same Time
-         │   (Queries all active venues with matching capacity free during [Ts, Te])
-         │
-         └─► Option C: Next Available Day, Same Time Window
-             (Advances candidate window by +24 hours until target venue is clear)
-```
-
-Each suggestion is serialized as a `SafeSlotSuggestion` with a 1-click **"Apply Slot"** action in the proposal modal.
+1. **7-Day Notice Rule:** Enforced for `community` and `department` proposals. Principal/VP can override it after confirming a clear warning modal; the override flag and reason appear on the audit trail and printed dossier.
+2. **College Priority Override:** When P/VP schedules a `college` event over existing bookings, the UI shows the colliding events and lets P/VP bump them to `needs_reschedule` in the same transaction, sending in-app notifications to the affected teams.
+3. **Immediate Overdue Report Block:** When a `lead` or `staff` user attempts to submit a proposal, the server checks whether they own/coordinate any `published` event whose `end_time < now()` without an `event_reports` record. If any exist, submission is blocked (`403`) with direct links to close those events first. (`principal` and `vice_principal` are exempt.)
 
 ---
 
-## 6. UI/UX Design System & Navigation Architecture
+## 6. Access Matrix & Privacy Boundaries
 
-SaveSlot adheres to a quiet, high-craft Linear / Apple design aesthetic. It eliminates SaaS clichés (rainbow gradients, neon badges, fake metric tickers) in favor of typography, subtle hairline borders, and tactile touch states.
+| Persona | Role / Assignment | Public (`/` & `/verify`) | Propose (`/lead`, `/staff`) | Stage 2 (`/tic`, `/hod`) | Executive (`/principal`) | Reports (`/reports/*`) | Admin (`/admin`) |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Student / Visitor** | *(unauth)* | View & Export | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Lead / Student Coord** | `lead` | View & Export | Assigned Scope | ❌ | ❌ | Own Events | ❌ |
+| **Faculty Staff** | `staff` | View & Export | Assigned Dept | *(if TIC / Acting HOD)* | ❌ | Own Events | ❌ |
+| **Teacher-in-Charge** | `tic` (or `community_members`) | View & Export | ❌ | Assigned Communities | ❌ | Assigned Communities | ❌ |
+| **HOD / Acting HOD** | `hod` (or active `acting_hod`) | View & Export | ❌ | Assigned Dept | ❌ | Assigned Dept | ❌ |
+| **Principal / VP** | `principal` / `vice_principal` | View & Export | College Events | ❌ | Final Approve & Override | All Campus | Emergency Acting HOD / Communities |
+| **Campus Admin** | `admin` | View & Export | ❌ | ❌ | ❌ | ❌ | IT / Ops Setup Only |
 
-### 6.1 Unified Divided Navigation Bar
+### Privacy on `/verify/[code]`
 
-On the public calendar home (`/`), the navbar centers a unified segmented pill container:
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│  SaveSlot AISAT   October 2026 < > Today                                │
-│                                                                        │
-│          ┌──────────────────────────────────────────────────┐          │
-│          │ [📅 Month]  [📅 Week]  [⊞ Board]  │  [🎓 VP Desk] │          │
-│          └──────────────────────────────────────────────────┘          │
-│                                                                        │
-│                                    Mr Paul Ansel V / VP  [M]  [Logout] │
-└────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Single Container Architecture**: Both the calendar view switcher (`Month`, `Week`, `Board`) and the role workspace shortcut (`Vice Principal Desk`, `Lead Workspace`, or `Admin Console`) live inside one container (`bg-slate-100/90 border-slate-200/80 rounded-xl`).
-- **Hairline Divider**: A `w-px h-4 bg-slate-300/80` element cleanly separates the calendar view modes from the executive workspace shortcut.
-- **No Redundant Tabs**: Eliminates duplicate "Calendar" buttons while on `/`. When navigating to `/principal`, the navbar seamlessly switches to a clean two-tab segmented nav (`[📅 Calendar] [🎓 Vice Principal Desk]`).
-
-### 6.2 View Modes on Notice Board (`/`)
-
-1. **Month View**: Traditional 7-column calendar grid with date badges, event pills colored by category, and overflow counters.
-2. **Week View**: Time-blocked weekly layout emphasizing start times and daily venue distribution.
-3. **Board View**: Category-grouped kanban swimlanes ideal for scanning campus activities by discipline (Tech, Cultural, Sports, Career, Academic, Workshop).
-
-### 6.3 Executive Approval Desk (`/principal`)
-
-- **Dual Tab Interface**:
-  - **Pending Triage Queue**: Cards displaying proposed events, organizer details, proposed venue, capacity utilization, lead time badge, and conflict status.
-  - **Review History**: Filterable chronological audit log displaying past approvals, rejections with written rationales, and the reviewer's identity.
-- **Action Modal**: Explicit approval or rejection with mandatory written feedback returned to the Community Lead.
-
----
-
-## 7. Security, Concurrency & RBAC
-
-### 7.1 Role-Based Access Control (RBAC) Matrix
-
-| Persona | Role Key | Notice Board (`/`) | Lead Workspace (`/lead`) | Principal Desk (`/principal`) | Admin Console (`/admin`) |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| **Student / Public** | `student` / guest | View & Export | ❌ | ❌ | ❌ |
-| **Community Lead** | `organizer` | View & Export | Propose & Manage | ❌ | ❌ |
-| **Vice Principal** | `vice_principal` | View & Export | ❌ | Review & Approve | ❌ |
-| **College Principal** | `principal` | View & Export | ❌ | Review & Approve | ❌ |
-| **Campus Admin** | `admin` | View & Export | Superuser | View / Override | Full CRUD (Venues/Users) |
-
-### 7.2 Session Authentication
-
-- **HTTP-Only Cookie**: Sessions are serialized into secure, HTTP-only JWT cookies (`saveslot_session`).
-- **Server Guard**: Layouts at `src/app/lead/layout.tsx`, `src/app/principal/layout.tsx`, and `src/app/admin/layout.tsx` enforce server-side authentication and role verification before rendering downstream components.
-
-### 7.3 Concurrency Control & Double-Booking Guard
-
-To prevent Time-of-Check to Time-of-Use (TOCTOU) race conditions during concurrent triage:
-
-```typescript
-await withTransaction(async (client) => {
-  // 1. Lock the candidate event row
-  const event = await client.query(
-    "SELECT * FROM public.events WHERE id = $1 FOR UPDATE;",
-    [eventId]
-  );
-  
-  // 2. Lock and check for colliding published events
-  const clash = await client.query(
-    `SELECT id FROM public.events 
-     WHERE venue_id = $1 
-       AND status = 'published'
-       AND (start_time < $3 AND end_time > $2)
-     FOR UPDATE;`,
-    [event.venue_id, event.start_time, event.end_time]
-  );
-
-  if (clash.rows.length > 0) {
-    throw new Error("Conflict detected: Venue was booked concurrently.");
-  }
-
-  // 3. Commit publication
-  await client.query(
-    "UPDATE public.events SET status = 'published', reviewed_by = $2 WHERE id = $1;",
-    [eventId, reviewerId]
-  );
-});
-```
-
----
-
-## 8. Database Reliability & Connection Management
-
-Connecting to Supabase's transaction pooler (PgBouncer on port `6543`) over remote cloud networks requires resilient connection pool configuration (`src/lib/db.ts`):
-
-1. **Extended Connection Timeout**: Configured `connectionTimeoutMillis: 15000` (15s) with environment override (`DB_CONNECTION_TIMEOUT_MS`) to prevent connection drop during cold-start TLS handshakes.
-2. **TCP Keep-Alive**: Configured `keepAlive: true` and `keepAliveInitialDelayMillis: 10000` to prevent intermediate NAT firewalls from silently terminating idle sockets.
-3. **Idle Client Listener**: Registered `pool.on("error", ...)` to catch and discard stale sockets dropped by remote PgBouncer without crashing the Node.js process.
-4. **Transient Query Retry**: Implemented automatic single-retry in `query(...)` for dropped socket errors (`Connection terminated`, `ECONNRESET`, or `57P01`).
-5. **Allowed Dev Origins**: Whitelisted LAN IPs in `next.config.ts` (`allowedDevOrigins`) for smooth hot-module reloading during local and mobile testing.
-
----
-
-## 9. Calendar Export Integrations
-
-1. **Google Calendar URL Generator**: Direct deep links encoding event title, start/end timestamps in UTC format (`YYYYMMDDTHHmmssZ`), venue name, and description.
-2. **RFC 5545 `.ics` File Builder**: Generates standardized iCalendar files with `UID`, `SUMMARY`, `DESCRIPTION`, `LOCATION`, and `DTSTART`/`DTEND` properties compatible with Apple Calendar, Microsoft Outlook, and mobile calendar clients.
-
----
-
-## 10. Verification & Build Standards
-
-- **Build Verification**: Verified production builds with `pnpm build` via Next.js 16 Turbopack compiler.
-- **Responsive Testing**: Form-factored for viewports from 360px mobile screens (Galaxy A55 / iPhone SE) to 1920px desktop displays.
-- **Git Protocol**: Atomic commits separating backend configuration from frontend UI changes, submitted via pull requests per GitHub branch protection rules.
+Scanning the QR code on a printed A4 sheet opens `/verify/[code]`, which intentionally displays only **Reference Number, Title, Dates, Venue, Origin/Hosts, Approval Chain (Names, Roles, Timestamps), and Status**—while hiding funds used, rejection history/reasons, and personal contact details.

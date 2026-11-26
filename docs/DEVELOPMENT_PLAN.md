@@ -1,115 +1,70 @@
-# Phased Development & Implementation Plan
+# SaveSlot — Development & Rebuild Plan (`v1.0.0`)
 
-## 1. Roadmap Overview
+## 1. Where We Are Coming From: `v0.3.0` POC (Completed)
 
-```
-Phase 1: Database & Seed Layer
-   └── PostgreSQL Schema, Supabase Client & Pre-seeded Demo Data
-Phase 2: Authentication & RBAC Layer
-   └── Secure Cookie Sessions, Login Page & Role Guard Middleware
-Phase 3: Public Student Notice Board
-   └── Visual Card Feed, Month Grid, Week View, Search, Filters & ICS Export
-Phase 4: Deterministic Safe-Slot & Conflict Engine
-   └── Overlap Detection, 7-Day Rule Validator & 3-Way Alternative Slot Generator
-Phase 5: Community Lead Portal
-   └── Dashboard, Event Submission Form with Live Clash Previews & Status Tracking
-Phase 6: Admin Management Console
-   └── Review & Triage Queue, User CRUD, Venue CRUD & Emergency Override
-Phase 7: End-to-End Testing & Polish
-   └── Production Build Validation, Cross-role User Journeys & Responsive Polish
-```
+The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical stack (Next.js 16, React 19, Tailwind v4, Drizzle ORM, Supabase PostgreSQL, Vitest):
+
+- [x] **POC Phases 1–2:** Initial database schema (`campuses`, `venues`, `communities`, `users`, `events`), cookie auth, and persistent login rate-limiting.
+- [x] **POC Phases 3–4:** Public Student Notice Board (Month, Week, Board, `.ics` / Google Cal export) and the Safe-Slot Conflict Engine (`src/lib/conflicts/engine.ts`).
+- [x] **POC Phases 5–7:** Community Lead proposal wizard, Principal/VP single-step desk (`/principal`), Admin CRUD console, and automated Vitest + build checks.
 
 ---
 
-## 2. Phase Breakdown
+## 2. Rebuild Plan (`v1.0.0` Full College System)
 
-### Phase 1: Database Schema & Demo Seed (Completed)
+> **Deployment & Database Model:** Each college runs its own independent app host and dedicated PostgreSQL database (not a shared multi-tenant SaaS DB). Dev and production launches for `v1.0.0` start from a clean schema reset using `scripts/migrate.js`, **dropping `campuses` and all `campus_id` foreign keys** in favor of a single-row `college_settings` table.
 
-* **Objective**: Create clean PostgreSQL tables and seed realistic campus data for instant testability.
-* **Deliverables**:
-  * [x] 1. SQL migration creating `campuses`, `venues`, `communities`, `users`, `events`, and `community_members`.
-  * [x] 2. Indexing for fast range lookups (`start_time`, `end_time`, `venue_id`, `target_audience`).
-  * [x] 3. Seed script provisioning:
-    * 1 Campus: *"Albertian Institute of Science & Technology (AISAT)"*.
-    * 4 Venues: *Turing Auditorium*, *Seminar Hall A*, *Innovation Lab 201*, *Central Quad Pavilion*.
-    * 3 Communities: *Coding Club*, *Design Society*, *E-Cell*.
-    * 6 Users (1 Principal, 1 Vice Principal, 1 Admin, 3 Community Leads).
-    * 10+ Pre-populated Events (Mix of Approved, Pending, and scheduled conflicts to test the engine).
+### Phase 1: Schema, Roles & Admin Setup
 
-### Phase 2: Authentication & Role Middleware (Completed)
+- **Goal:** Put the new data model in place and separate IT setup from event approvals.
 
-* **Objective**: Provide reliable sign-in for Executives, Admins, and Leads without open public registration.
-* **Deliverables**:
-  * [x] 1. Lightweight, secure password verification and session cookie management (`lib/auth`).
-  * [x] 2. Unified login route `/login` with role-aware redirection:
-    * College Principal & Vice Principal $\rightarrow$ `/principal`
-    * Admins $\rightarrow$ `/admin`
-    * Community Leads $\rightarrow$ `/lead`
-  * [x] 3. Next.js middleware / layout guards preventing unauthorized route access.
-  * [x] 4. User navigation header showing current user info and one-click logout.
+- **Deliverables:**
+  - [ ] Fresh `v1.0.0` SQL migrations and Drizzle schema (`src/db/schema/*`): `college_settings` (replaces `campuses`), `departments`, updated `communities` (`scope`, `code`), expanded `users`, updated `events`, `event_stage2_approvals`, `event_approvals`, `event_mentors`, `event_reports`, `event_reference_counters`, and `notifications` (removing `campus_id` across tables, queries, and RLS).
+  - [ ] Effective-role auth helpers (`src/lib/auth.ts`) so faculty (`staff`) assigned as `tic` or active `acting_hod` automatically unlock those desks without needing duplicate logins.
+  - [ ] Admin Console (`/admin`) updates: College Settings (name, prefix, letterhead, logo), Departments CRUD (`ECE`, `EEE`, `CSE`, `AI`, `ME`, `CE`), Internal/External Communities CRUD (also accessible to P/VP), multi-TIC & Dept Staff/Student Coordinator assignments, emergency Acting HOD toggle, and **removal of all event approval actions from Admin**.
+  - [ ] Clean `v1.0.0` seed script (`scripts/seed.js`) covering all 7 roles plus an Acting HOD test scenario.
 
-### Phase 3: Public Student Notice Board (Completed)
+### Phase 2: Multi-Stage Approvals, Overrides & Notifications
 
-* **Objective**: Build a visually stunning, responsive notice board and calendar for students.
-* **Deliverables**:
-  * [x] 1. **Visual Card Feed**: Vibrant event posters with badges, dates, venues, and descriptions.
-  * [x] 2. **Month Calendar Grid**: Interactive days with event dots, popover previews, and day selection.
-  * [x] 3. **Week Timeline View**: Hour-by-hour view showcasing daily schedules.
-  * [x] 4. **Board View**: Category swimlanes for high-level campus scanning.
-  * [x] 5. **Filter & Search Bar**: Instant filtering by search query, category, community, and time horizon ("Today", "This Week").
-  * [x] 6. **Event Detail Modal**: Complete details, organizer links, and calendar export:
-    * Direct Google Calendar deep link.
-    * `.ics` iCalendar file download.
+- **Goal:** Build the three event origins, parallel co-host sign-offs, soft/hard venue holds, and the overdue closure block.
 
-### Phase 4: Deterministic Conflict & Safe-Slot Engine (Completed)
+- **Deliverables:**
+  - [ ] Unified Proposer Workspace (`/lead` & `/staff`): Origin selector (`Community` / `Department`), Joint Co-Host picker, Planned Mentors + Estimated Budget fields, immediate post-`end_time` overdue report block, and edit/resubmit flow for rejected proposals.
+  - [ ] Stage 2 Desks (`/hod` & `/tic`): Parallel Stage 2 approval/rejection queues, HOD self-toggle for Acting HOD mode, and mandatory rejection feedback.
+  - [ ] Updated Safe-Slot Engine (`src/lib/conflicts/engine.ts`): Treat `pending_stage2` and `pending_executive` as soft reservations (blocked in conflict checks, hidden from `/`).
+  - [ ] Executive Desk (`/principal`): Stage 3 approval/rejection, direct College Event creation (auto-published, optional Staff coordinator assignment), explicit 7-day lead-time override with warning confirmation, College-event collision override (`needs_reschedule` bump), and emergency Acting HOD toggle.
+  - [ ] In-App Notification Inbox (`notifications` table + header bell; WhatsApp left behind an interface on the roadmap).
 
-* **Objective**: Provide real-time clash calculation and intelligent alternate slot recommendations.
-* **Deliverables**:
-  * [x] 1. Pure TypeScript conflict engine (`lib/conflicts/engine.ts`):
-    * `detectVenueClash(venueId, startTime, endTime, excludeEventId)`
-    * `validateLeadTime(startTime, minDays = 7)`
-    * `findSafeSlots(targetVenue, desiredStart, desiredDuration, targetCategory)`
-  * [x] 2. Structured conflict response schema returning clash severity, colliding event details, and 3 safe slot options.
+### Phase 3: Closure Reports, Reference Numbers & Printable Dossiers
 
-### Phase 5: Community Lead Portal (Completed)
+- **Goal:** Replace physical paper slips and manual Excel registers with verified closure reports, AISAT reference codes, A4 printouts, and QR verification.
 
-* **Objective**: Enable community leads to propose events seamlessly under campus policies.
-* **Deliverables**:
-  * [x] 1. Lead dashboard displaying statistics and event list with status chips (`Pending`, `Approved`, `Rejected`).
-  * [x] 2. Event submission modal/form with real-time feedback:
-    * Enforces the 7-day prior notice rule.
-    * Detects conflicts live as venue and timing are adjusted.
-    * One-click application of recommended "Safe Slots".
-  * [x] 3. Rejection feedback viewer showing administrative notes.
+- **Deliverables:**
+  - [ ] Atomic Reference Number generator (`AISAT/<YYYY-YY>/<HOST_CODE>/<NNN>`) running inside final P/VP approval with July 1 – June 30 academic year rollover.
+  - [ ] Post-Event Closure Form (`event_reports` + confirmed `event_mentors`: Internal/External, Role, Company; Total Fund Used; Student/Faculty/External counts; NAAC/NBA summary & outcomes) + HOD/TIC/P-VP quick-verification queue (`pending_report_verification` $\rightarrow$ `completed`).
+  - [ ] A4 Print-CSS Individual Event Dossier (`/reports/events/[id]`): AISAT letterhead, full timestamped `event_approvals` log, mentor & fund tables, *"Electronically Approved via SaveSlot — No Physical Signature Required"* stamp, and vector QR code.
+  - [ ] Consolidated Register (`/reports/summary`): Filterable by Academic Year, Date Range, Origin, Community Scope, Department, and Status, with A4 print view and CSV export.
+  - [ ] Public QR Verification (`/verify/[code]`): Read-only authenticity page displaying Ref No, Title, Date, Venue, Origin, Approval Chain Names + Timestamps, and Status—while hiding funds, rejection notes, and personal contacts.
 
-### Phase 6: Admin Management Console (Completed)
+### Phase 4: Public Notice Board Refresh & Full QA
 
-* **Objective**: Provide administrators full control over events, users, and campus venues.
-* **Deliverables**:
-  * [x] 1. **Triage Console**: Review pending events with one-click Approve or Reject (with feedback note).
-  * [x] 2. **User Management (CRUD)**: Table of Leads and Admins with "Add User" modal and role assignment.
-  * [x] 3. **Venue Management (CRUD)**: Table of campus venues with capacity and active status toggling.
-  * [x] 4. **Manual Override**: Ability for admins to force-schedule or adjust event slots if an exception is warranted.
+- **Goal:** Bring the new origins and filters to `/` and verify everything end-to-end.
 
-### Phase 7: Verification & Final Polish (Completed)
-
-* **Objective**: Ensure complete system stability, test coverage, and aesthetic excellence.
-* **Deliverables**:
-  * [x] 1. Verification of all user journeys: Student browsing, Lead submitting, Admin approving, Principal triaging.
-  * [x] 2. Production build validation (`pnpm build`) and lint checks (`pnpm lint`).
-  * [x] 3. Vitest test coverage: 42 suites, 354 unit & integration tests passing.
-  * [x] 4. Responsive UI audit across mobile, tablet, and desktop viewports.
+- **Deliverables:**
+  - [ ] Public Notice Board (`/`) filters for Origin (`College`, `Department`, `Community - Internal`, `Community - External`), Department (`CSE`, `ECE`, `EEE`, `AI`, `ME`, `CE`), Category, and Search, plus Internal/External badges.
+  - [ ] Responsive UI check across 360px mobile & 1280px desktop, plus browser Print-to-PDF check on A4 dossiers.
+  - [ ] Full unit, workflow, and integration tests + `pnpm validate` (`db:migrate:check`, `typecheck`, `lint`, `test`, `build`).
 
 ---
 
-## 3. Seed Credentials & Test Accounts
+## 3. Target Seed Accounts (`v1.0.0`)
 
-| Role | Name | Email | Password | Assigned Community |
-| :--- | :--- | :--- | :--- | :--- |
-| **Principal** | Dr. K. S. Mathew (Principal) | `principal@campus.edu` | `principal123` | Institutional Authority |
-| **Vice Principal** | Dr. Sarah Varghese | `viceprincipal@campus.edu` | `viceprincipal123` | Institutional Authority |
-| **Admin** | Campus Dean of Affairs | `admin@campus.edu` | `admin123` | *All (Campus-wide)* |
-| **Lead** | Alex Chen (Coding Club) | `lead.coding@campus.edu` | `lead123` | *Coding Club* |
-| **Lead** | Sarah Lin (Design Society) | `lead.design@campus.edu` | `lead123` | *Design Society* |
-| **Lead** | Marcus Vance (E-Cell) | `lead.ecell@campus.edu` | `lead123` | *E-Cell* |
-| **Student** | Public Visitor | *No login needed* | *N/A* | *Public access* |
+| Role | Assignment | Purpose in Dev Seed |
+| :--- | :--- | :--- |
+| **`admin`** | Campus IT / Ops | Sets up Departments, Communities, Venues, Users; emergency Acting HOD toggle |
+| **`principal`** & **`vice_principal`** | AISAT Executive | Final Stage 3 approval, College events, overrides, full printable reports |
+| **`hod`** | CSE, AI, ECE, EEE, ME, CE | Stage 2 Dept approval, Acting HOD self-toggle, closure verification |
+| **`staff`** *(+ Acting HOD)* | CSE Faculty | Proposes Dept events; steps in as Acting HOD when toggled active |
+| **`tic`** | Internal & External Communities | Stage 2 Community approval (multi-community & multi-TIC) + closure verification |
+| **`lead`** | Community Leads & Dept Student Coordinators | Proposes Community, Dept, or Joint events; files post-event closure reports |
+| **Public** | Unauthenticated | Zero-login Notice Board (`/`) & QR Verification (`/verify/[code]`) |

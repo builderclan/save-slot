@@ -167,3 +167,9 @@ vi.mock("@/lib/db", () => ({
 - [x] Verify 100% of application routes and domain engines have moved off legacy `query()` helper.
 - [x] Deprecate legacy raw SQL helpers (`query` and `withTransaction`) with backward-compatibility markers in `src/lib/db.ts`.
 - [x] Run full test suite and production build verification.
+
+---
+
+## 5. Planned `v1.0.0` Drizzle Schema & Route Expansion
+
+All new `v1.0.0` tables (`departments`, `event_stage2_approvals`, `event_approvals`, `event_mentors`, `event_reports`, `event_reference_counters`, `notifications`) and new endpoints (`/api/workspace/*`, `/api/hod/*`, `/api/tic/*`, `/api/principal/*`, `/api/reports/*`, `/api/verify/[code]`, `/api/notifications/*`) will be authored directly in Drizzle ORM under `src/db/schema/` using explicit transactions (`db.transaction(...)` with `SELECT ... FOR UPDATE`) and matching SQL migrations in `migrations/`.
