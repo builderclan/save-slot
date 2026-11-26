@@ -5,7 +5,7 @@ import { Trash2 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 
 export interface AdminDeleteTarget {
-  type: "event" | "user" | "venue" | "community";
+  type: "event" | "user" | "venue" | "community" | "department";
   id: string;
   title: string;
   subtitle?: string;
@@ -69,7 +69,12 @@ export function AdminConfirmDeleteModal({
     community: {
       label: "Club",
       confirmLabel: "Delete Club",
-      prompt: "This student club and its historical records will be permanently removed from the directory. This action cannot be undone.",
+      prompt: "This community and its historical records will be permanently removed from the directory. This action cannot be undone.",
+    },
+    department: {
+      label: "Department",
+      confirmLabel: "Delete Dept",
+      prompt: "This academic department will be permanently removed from the directory. This action cannot be undone.",
     },
   };
 
