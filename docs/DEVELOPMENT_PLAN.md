@@ -20,7 +20,7 @@ The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical st
 
 - **Deliverables:**
   - [ ] Fresh `v1.0.0` SQL migrations and Drizzle schema (`src/db/schema/*`): `college_settings` (replaces `campuses`), `departments`, updated `communities` (`scope`, `code`), expanded `users`, updated `events`, `event_stage2_approvals`, `event_approvals`, `event_mentors`, `event_reports`, `event_reference_counters`, and `notifications` (removing `campus_id` across tables, queries, and RLS).
-  - [ ] Effective-role auth helpers (`src/lib/auth.ts`) so faculty (`staff`) assigned as `tic` or active `acting_hod` automatically unlock those desks without needing duplicate logins.
+  - [ ] Server-only auth & effective-role helpers (`src/server/auth/`, retaining Supabase Auth for `v1.0.0`) so faculty (`staff`) assigned as `tic` or active `acting_hod` automatically unlock those desks without needing duplicate logins.
   - [ ] Admin Console (`/admin`) updates: College Settings (name, prefix, letterhead, logo), Departments CRUD (`ECE`, `EEE`, `CSE`, `AI`, `ME`, `CE`), Internal/External Communities CRUD (also accessible to P/VP), multi-TIC & Dept Staff/Student Coordinator assignments, emergency Acting HOD toggle, and **removal of all event approval actions from Admin**.
   - [ ] Clean `v1.0.0` seed script (`scripts/seed.js`) covering all 7 roles plus an Acting HOD test scenario.
 
@@ -31,7 +31,7 @@ The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical st
 - **Deliverables:**
   - [ ] Unified Proposer Workspace (`/lead` & `/staff`): Origin selector (`Community` / `Department`), Joint Co-Host picker, Planned Mentors + Estimated Budget fields, immediate post-`end_time` overdue report block, and edit/resubmit flow for rejected proposals.
   - [ ] Stage 2 Desks (`/hod` & `/tic`): Parallel Stage 2 approval/rejection queues, HOD self-toggle for Acting HOD mode, and mandatory rejection feedback.
-  - [ ] Updated Safe-Slot Engine (`src/lib/conflicts/engine.ts`): Treat `pending_stage2` and `pending_executive` as soft reservations (blocked in conflict checks, hidden from `/`).
+  - [ ] Updated Safe-Slot Engine (`src/server/conflicts/`): Treat `pending_stage2` and `pending_executive` as soft reservations (blocked in conflict checks, hidden from `/`).
   - [ ] Executive Desk (`/principal`): Stage 3 approval/rejection, direct College Event creation (auto-published, optional Staff coordinator assignment), explicit 7-day lead-time override with warning confirmation, College-event collision override (`needs_reschedule` bump), and emergency Acting HOD toggle.
   - [ ] In-App Notification Inbox (`notifications` table + header bell; WhatsApp left behind an interface on the roadmap).
 

@@ -11,27 +11,24 @@ Each college runs its own **independent application host and dedicated PostgreSQ
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                             PRESENTATION LAYER                               │
-│  - Public Notice Board (/) & Public QR Verification (/verify/[code])         │
-│  - Role Workspaces: /lead, /staff, /tic, /hod, /principal, /admin            │
-│  - Printable A4 Reporting Views (/reports/events/[id], /reports/summary)     │
+│                             PRESENTATION & HTTP                              │
+│  - Pages & UI Slices: src/app/ + src/features/ + src/components/             │
+│  - Thin API Handlers: src/app/api/**/route.ts (Zod -> Auth -> server/)       │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │
 ┌──────────────────────────────────────▼───────────────────────────────────────┐
-│                             APPLICATION LAYER                                │
-│  - Safe-Slot & Conflict Engine (src/lib/conflicts/engine.ts)                 │
-│  - Multi-Stage Workflow & Reference Sequence Service (src/lib/workflows/)    │
-│  - Overdue Post-Event Gate & Policy Validators (src/lib/validations/)        │
-│  - Session & Effective-Role Resolver (src/lib/auth.ts)                       │
-│  - Notification Dispatcher (In-App v1.0.0; WhatsApp Adapter TODO)            │
+│                         SERVER BUSINESS LAYER (src/server/)                  │
+│  - Auth & Effective-Role Resolver (src/server/auth/, backed by Supabase Auth)│
+│  - Safe-Slot & Conflict Engine (src/server/conflicts/)                       │
+│  - Workflow State Machine & Ref Sequence (src/server/workflows/)             │
+│  - Overdue Gate, Dossiers & QR DTOs (src/server/reports/)                    │
+│  - Notification Dispatcher (src/server/notifications/; WhatsApp TODO)        │
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │
 ┌──────────────────────────────────────▼───────────────────────────────────────┐
-│                              DATA ACCESS LAYER                               │
-│  - REST API Handlers (/api/events, /api/workspace/*, /api/hod/*, /api/tic/*, │
-│    /api/principal/*, /api/admin/*, /api/reports/*, /api/verify/*)            │
-│  - Drizzle ORM + Resilient pg.Pool (src/lib/db.ts) with Retry & KeepAlive    │
-│  - PostgreSQL Row-Level Locking (SELECT ... FOR UPDATE) & RLS                │
+│                          DATA ACCESS LAYER (src/db/)                         │
+│  - Drizzle Schema & Relations (src/db/schema/) + Shared Queries (db/queries/)│
+│  - Resilient pg.Pool + db.transaction / SELECT ... FOR UPDATE (src/lib/db.ts)│
 └──────────────────────────────────────┬───────────────────────────────────────┘
                                        │
 ┌──────────────────────────────────────▼───────────────────────────────────────┐
@@ -299,31 +296,39 @@ CREATE TABLE notifications (
 
 ---
 
-## 3. Domain-Colocated Feature Slices (`v1.0.0`)
+## 3. Production Modular Folder Layout (`v1.0.0`)
 
 ```
 src/
-├── features/
-│   ├── events/        # Public Notice Board, origin/dept filters, Internal/External badges
-│   ├── workspace/     # Unified proposer workspace (/lead & /staff), joint co-host picker, overdue gate, post-event report form
-│   ├── stage2/        # /tic & /hod approval queues, Acting HOD toggle, report verification
-│   ├── principal/     # /principal executive triage, College event creation, 7-day & bump overrides, emergency Acting HOD toggle
-│   ├── admin/         # /admin IT & Ops: College settings, Departments, Communities, Venues, Users, Acting HOD fallback
-│   ├── reports/       # A4 printable Event Dossier, Consolidated Register, CSV export, QR generator
-│   ├── verify/        # Public /verify/[code] read-only authenticity verification
-│   ├── notifications/ # In-app inbox & future WhatsApp provider interface
-│   ├── conflicts/     # Conflict & Safe-Slot client
-│   ├── venues/        # Venue client
-│   └── auth/          # Email/password session & recovery
+├── app/                   # Thin HTTP & routing boundary (pages, layouts, thin route.ts handlers)
+├── server/                # Server-only business rules & transactions ("import 'server-only'")
+│   ├── auth/              # Session resolution & effective roles (backed by Supabase Auth)
+│   ├── workflows/         # State machine, Stage 2 parallel sign-offs, atomic ref generator
+│   ├── conflicts/         # Safe-Slot engine, soft/hard venue locks, College bump overrides
+│   ├── reports/           # Overdue report gate, A4 dossier payload, CSV & QR DTO projections
+│   └── notifications/     # NotificationDispatcher (In-App v1.0.0; WhatsApp adapter TODO)
+├── features/              # Client UI vertical slices (Component -> Hook -> api-client.ts)
+│   ├── events/            # Public Notice Board, origin/dept filters, Internal/External badges
+│   ├── workspace/         # Unified proposer workspace (/lead & /staff), co-host picker, closure form
+│   ├── stage2/            # /tic & /hod approval queues, Acting HOD toggle, report verification
+│   ├── principal/         # /principal executive triage, College events, overrides, Acting HOD fallback
+│   ├── admin/             # /admin IT & Ops: Settings, Depts, Communities, Venues, Users
+│   ├── reports/           # Printable A4 Event Dossier & Consolidated Register UI
+│   ├── verify/            # Public /verify/[code] read-only authenticity verification
+│   ├── notifications/     # In-app notification inbox UI
+│   └── auth/              # Login & password recovery UI clients
 ├── components/
-│   ├── ui/            # Design primitives (Button, Modal, StatusBadge, PrintLayout)
-│   └── layout/        # Unified Navbar + Notification Bell
-└── lib/
-    ├── auth.ts
-    ├── db.ts
-    ├── conflicts/engine.ts
-    ├── workflows/     # Academic year helper, atomic ref-number generator, Stage 2 router
-    └── validations/   # Zod v4 schemas
+│   ├── ui/                # Pure shared primitives (Button, Modal, StatusBadge, PrintLayout)
+│   └── layout/            # Shared Navbar + Notification Bell
+├── db/
+│   ├── schema/            # Normalized Drizzle table definitions & relations
+│   ├── queries/           # Reused/complex Drizzle queries accepting db or tx
+│   └── adapters.ts        # DB row -> API response formatters
+└── lib/                   # Isomorphic helpers safe on client + server
+    ├── db.ts              # Pooled Drizzle client & transaction helpers
+    ├── validations/       # Shared Zod v4 schemas (forms + API routes)
+    ├── academic-year.ts   # July 1 - June 30 date helpers
+    └── api-client.ts      # Typed frontend HTTP client
 ```
 
 ---
