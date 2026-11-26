@@ -32,7 +32,11 @@ vi.mock("@/lib/db", () => ({
   db: {
     select: (...args: unknown[]) => mockSelect(...args),
   },
-  withDbRetry: (op: (client: { select: (...args: unknown[]) => unknown }) => Promise<unknown>) =>
+  withDbRetry: (
+    op: (client: {
+      select: (...args: unknown[]) => unknown;
+    }) => Promise<unknown>,
+  ) =>
     op({
       select: (...args: unknown[]) => mockSelect(...args),
     }),
@@ -102,7 +106,9 @@ describe("Events Public & Authenticated API (GET /api/events v1.0.0)", () => {
     mockGetCurrentUser.mockResolvedValue(null);
     mockOffset.mockResolvedValueOnce([]);
 
-    const req = new Request("http://localhost/api/events?status=pending_executive");
+    const req = new Request(
+      "http://localhost/api/events?status=pending_executive",
+    );
     const res = await GET(req);
 
     expect(res.status).toBe(200);
@@ -129,11 +135,11 @@ describe("Events Public & Authenticated API (GET /api/events v1.0.0)", () => {
       isVicePrincipal: false,
       isHod: false,
       isActingHod: false,
-      isTic: false,
+      isFic: false,
       isStaff: false,
       isLead: false,
       leadCommunities: [],
-      ticCommunities: [],
+      ficCommunities: [],
       hodDepartments: [],
     };
 
@@ -153,7 +159,9 @@ describe("Events Public & Authenticated API (GET /api/events v1.0.0)", () => {
     };
     mockOffset.mockResolvedValueOnce([mockRow]);
 
-    const req = new Request("http://localhost/api/events?status=pending_executive");
+    const req = new Request(
+      "http://localhost/api/events?status=pending_executive",
+    );
     const res = await GET(req);
 
     expect(res.status).toBe(200);
@@ -179,11 +187,11 @@ describe("Events Public & Authenticated API (GET /api/events v1.0.0)", () => {
       isVicePrincipal: false,
       isHod: false,
       isActingHod: false,
-      isTic: false,
+      isFic: false,
       isStaff: false,
       isLead: false,
       leadCommunities: [],
-      ticCommunities: [],
+      ficCommunities: [],
       hodDepartments: [],
     };
 
@@ -218,7 +226,7 @@ describe("Events Public & Authenticated API (GET /api/events v1.0.0)", () => {
     mockOffset.mockResolvedValueOnce([]);
 
     const req = new Request(
-      "http://localhost/api/events?category=Tech&community=coding-club&search=hack"
+      "http://localhost/api/events?category=Tech&community=coding-club&search=hack",
     );
     const res = await GET(req);
 

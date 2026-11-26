@@ -153,7 +153,7 @@ export function AdminSidebar({
             <span>IT & Operations Only</span>
           </div>
           <p className="text-[10px] text-zinc-500 leading-relaxed">
-            Manages departments, communities, venues, and accounts. Event approvals belong strictly to HODs, TICs, and Principal / VP.
+            Manages departments, communities, venues, and accounts. Event approvals belong strictly to HODs, FICs, and Principal / VP.
           </p>
         </div>
       </div>

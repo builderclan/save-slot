@@ -48,11 +48,11 @@ function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
     isVicePrincipal: role === "vice_principal",
     isHod: role === "hod",
     isActingHod: false,
-    isTic: role === "tic",
+    isFic: role === "fic",
     isStaff: role === "staff",
     isLead: role === "lead",
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
   };
 }
@@ -101,7 +101,7 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
     expect(res.status).toBe(404);
   });
 
-  it("returns community details including TICs on GET", async () => {
+  it("returns community details including FICs on GET", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
     let call = 0;
     mockSelect.mockImplementation(() => {
@@ -136,7 +136,7 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
         from: () => ({
           innerJoin: () => ({
             where: vi.fn().mockResolvedValue([
-              { userId: "u-tic-1", fullName: "Prof. Arun Kumar" },
+              { userId: "u-fic-1", fullName: "Prof. Arun Kumar" },
             ]),
           }),
         }),
@@ -147,10 +147,10 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.community.code).toBe("CC");
-    expect(data.community.tic_names).toEqual(["Prof. Arun Kumar"]);
+    expect(data.community.fic_names).toEqual(["Prof. Arun Kumar"]);
   });
 
-  it("updates community scope, code, and TIC assignments on PATCH", async () => {
+  it("updates community scope, code, and FIC assignments on PATCH", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
     mockSelect.mockReturnValue({
       from: () => ({
@@ -203,7 +203,7 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
         body: JSON.stringify({
           code: "CC2",
           scope: "external",
-          ticUserIds: ["11111111-1111-4111-a111-111111111111"],
+          ficUserIds: ["11111111-1111-4111-a111-111111111111"],
         }),
       }),
       { params: mockParams }
@@ -214,10 +214,10 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
     expect(data.community.scope).toBe("external");
   });
 
-  it("preserves current community lead when ticUserIds is updated without leadUserId", async () => {
+  it("preserves current community lead when ficUserIds is updated without leadUserId", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
     const leadId = "11111111-1111-4111-a111-111111111111";
-    const ticId = "22222222-2222-4222-a222-222222222222";
+    const ficId = "22222222-2222-4222-a222-222222222222";
 
     mockSelect.mockReturnValue({
       from: () => ({
@@ -266,7 +266,7 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
       new Request("http://localhost/api/admin/communities/comm-uuid-1", {
         method: "PATCH",
         body: JSON.stringify({
-          ticUserIds: [leadId, ticId],
+          ficUserIds: [leadId, ficId],
         }),
       }),
       { params: mockParams }
@@ -274,7 +274,7 @@ describe("Admin Community [id] API (/api/admin/communities/[id])", () => {
     expect(res.status).toBe(200);
     expect(insertedValues).toHaveLength(1);
     expect(insertedValues[0]).toEqual(
-      expect.objectContaining({ userId: ticId, role: "tic" })
+      expect.objectContaining({ userId: ficId, role: "fic" })
     );
   });
 

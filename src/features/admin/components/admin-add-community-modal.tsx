@@ -16,7 +16,7 @@ export interface NewCommunityData {
   website: string;
   instagram: string;
   leadUserId: string;
-  ticUserIds: string[];
+  ficUserIds: string[];
 }
 
 interface AdminAddCommunityModalProps {
@@ -67,7 +67,7 @@ export function AdminAddCommunityModal({
   const [website, setWebsite] = useState("");
   const [instagram, setInstagram] = useState("");
   const [leadUserId, setLeadUserId] = useState("");
-  const [ticUserIds, setTicUserIds] = useState<string[]>([]);
+  const [ficUserIds, setFicUserIds] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export function AdminAddCommunityModal({
       setWebsite("");
       setInstagram("");
       setLeadUserId("");
-      setTicUserIds([]);
+      setFicUserIds([]);
     }
   }, [isOpen]);
 
@@ -105,13 +105,13 @@ export function AdminAddCommunityModal({
     [eligibleUsers]
   );
 
-  const facultyTicPool = useMemo(
-    () => eligibleUsers.filter((u) => ["tic", "staff", "hod"].includes(u.role)),
+  const facultyFicPool = useMemo(
+    () => eligibleUsers.filter((u) => ["fic", "staff", "hod"].includes(u.role)),
     [eligibleUsers]
   );
 
-  const toggleTic = (userId: string) => {
-    setTicUserIds((prev) =>
+  const toggleFic = (userId: string) => {
+    setFicUserIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   };
@@ -135,7 +135,7 @@ export function AdminAddCommunityModal({
       website,
       instagram,
       leadUserId,
-      ticUserIds,
+      ficUserIds,
     });
   };
 
@@ -144,7 +144,7 @@ export function AdminAddCommunityModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Register Community or Chapter"
-      description="Create an internal college club or external chapter (IEEE, CSI, NSS, IEDC) and assign TICs."
+      description="Create an internal college club or external chapter (IEEE, CSI, NSS, IEDC) and assign FICs."
       maxWidth="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -255,20 +255,20 @@ export function AdminAddCommunityModal({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-semibold text-zinc-900">
-              Faculty Teachers-in-Charge (Multi-TIC)
+              Faculty-in-Charge (Multi-FIC)
             </label>
             <span className="text-[11px] text-zinc-500">
-              {ticUserIds.length} selected
+              {ficUserIds.length} selected
             </span>
           </div>
-          {facultyTicPool.length === 0 ? (
+          {facultyFicPool.length === 0 ? (
             <p className="text-xs text-zinc-500 px-3 py-2 rounded-xl border border-dashed border-zinc-200 bg-zinc-50">
-              No faculty accounts available yet. Provision Staff or TIC users first.
+              No faculty accounts available yet. Provision Staff or FIC users first.
             </p>
           ) : (
             <div className="max-h-32 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1.5 p-2 rounded-xl border border-zinc-200/80 bg-zinc-50/70">
-              {facultyTicPool.map((u) => {
-                const selected = ticUserIds.includes(u.id);
+              {facultyFicPool.map((u) => {
+                const selected = ficUserIds.includes(u.id);
                 return (
                   <label
                     key={u.id}
@@ -281,7 +281,7 @@ export function AdminAddCommunityModal({
                     <input
                       type="checkbox"
                       checked={selected}
-                      onChange={() => toggleTic(u.id)}
+                      onChange={() => toggleFic(u.id)}
                       className="h-3.5 w-3.5 accent-indigo-600"
                     />
                     <span className="truncate">{u.full_name}</span>

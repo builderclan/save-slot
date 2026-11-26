@@ -18,7 +18,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const [[community], ticRows] = await withDbRetry(async (client) => {
+    const [[community], ficRows] = await withDbRetry(async (client) => {
       const leadSubquery = client
         .selectDistinctOn([communityMembers.communityId], {
           communityId: communityMembers.communityId,
@@ -63,7 +63,7 @@ export async function GET(
           })
           .from(communityMembers)
           .innerJoin(users, eq(users.id, communityMembers.userId))
-          .where(and(eq(communityMembers.communityId, id), eq(communityMembers.role, "tic"))),
+          .where(and(eq(communityMembers.communityId, id), eq(communityMembers.role, "fic"))),
       ]);
     });
 
@@ -75,8 +75,8 @@ export async function GET(
       success: true,
       community: formatAdminCommunity({
         ...community,
-        ticIds: ticRows.map((t) => t.userId),
-        ticNames: ticRows.map((t) => t.fullName),
+        ficIds: ficRows.map((t) => t.userId),
+        ficNames: ficRows.map((t) => t.fullName),
       }),
     });
   } catch (err: unknown) {
@@ -125,7 +125,7 @@ export async function PATCH(
       website,
       instagram,
       leadUserId,
-      ticUserIds,
+      ficUserIds,
       status,
     } = parsed.data;
     const normalizedSlug = slug ? slug.trim().toLowerCase() : undefined;
@@ -225,7 +225,7 @@ export async function PATCH(
           }
         }
 
-        if (ticUserIds !== undefined) {
+        if (ficUserIds !== undefined) {
           let effectiveLeadId: string | null =
             leadUserId !== undefined ? leadUserId?.trim() || null : null;
 
@@ -242,23 +242,23 @@ export async function PATCH(
 
           await tx
             .delete(communityMembers)
-            .where(and(eq(communityMembers.communityId, id), eq(communityMembers.role, "tic")));
+            .where(and(eq(communityMembers.communityId, id), eq(communityMembers.role, "fic")));
 
-          const uniqueTics = [
-            ...new Set(ticUserIds.filter((uid) => uid && uid !== effectiveLeadId)),
+          const uniqueFics = [
+            ...new Set(ficUserIds.filter((uid) => uid && uid !== effectiveLeadId)),
           ];
-          for (const ticId of uniqueTics) {
+          for (const ficId of uniqueFics) {
             await tx
               .insert(communityMembers)
               .values({
                 communityId: id,
-                userId: ticId,
-                role: "tic",
+                userId: ficId,
+                role: "fic",
                 status: "active",
               })
               .onConflictDoUpdate({
                 target: [communityMembers.communityId, communityMembers.userId],
-                set: { role: "tic", status: "active" },
+                set: { role: "fic", status: "active" },
               });
           }
         }

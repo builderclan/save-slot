@@ -39,11 +39,11 @@ function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
     isVicePrincipal: role === "vice_principal",
     isHod: role === "hod",
     isActingHod: false,
-    isTic: role === "tic",
+    isFic: role === "fic",
     isStaff: role === "staff",
     isLead: role === "lead",
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
   };
 }
@@ -119,7 +119,7 @@ describe("Admin Users API (/api/admin/users)", () => {
     expect(res.status).toBe(403);
   });
 
-  it("provisions faculty user with department and TIC membership on POST", async () => {
+  it("provisions faculty user with department and FIC membership on POST", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
     mockSelect.mockReturnValue({
       from: () => ({
@@ -163,7 +163,7 @@ describe("Admin Users API (/api/admin/users)", () => {
           designation: "Assistant Professor, CSE",
           departmentId: "11111111-1111-4111-a111-111111111111",
           communityId: "22222222-2222-4222-a222-222222222222",
-          communityMemberRole: "tic",
+          communityMemberRole: "fic",
         }),
       })
     );

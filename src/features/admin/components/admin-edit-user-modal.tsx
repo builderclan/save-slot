@@ -11,7 +11,7 @@ export interface EditUserData {
   designation: string;
   departmentId: string;
   communityId: string;
-  communityMemberRole: "lead" | "tic" | "member";
+  communityMemberRole: "lead" | "fic" | "member";
   isActive: boolean;
 }
 
@@ -27,7 +27,7 @@ interface AdminEditUserModalProps {
 
 const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
   { value: "staff", label: "Faculty / Staff (Organizer / Mentor)" },
-  { value: "tic", label: "Teacher-in-Charge (TIC)" },
+  { value: "fic", label: "Faculty-in-Charge (FIC)" },
   { value: "hod", label: "Head of Department (HOD)" },
   { value: "lead", label: "Student Community Lead" },
   { value: "vice_principal", label: "Vice Principal (Executive)" },
@@ -49,7 +49,7 @@ export function AdminEditUserModal({
   const [designation, setDesignation] = useState(user?.designation || "");
   const [departmentId, setDepartmentId] = useState(user?.department_id || "");
   const [communityId, setCommunityId] = useState(user?.community_id || "");
-  const [communityMemberRole, setCommunityMemberRole] = useState<"lead" | "tic" | "member">(
+  const [communityMemberRole, setCommunityMemberRole] = useState<"lead" | "fic" | "member">(
     user?.community_member_role || "member"
   );
   const [isActive, setIsActive] = useState(user?.is_active ?? true);
@@ -63,7 +63,7 @@ export function AdminEditUserModal({
       setCommunityId(user.community_id || "");
       setCommunityMemberRole(
         user.community_member_role ||
-          (user.role === "lead" ? "lead" : user.role === "tic" ? "tic" : "member")
+          (user.role === "lead" ? "lead" : user.role === "fic" ? "fic" : "member")
       );
       setIsActive(user.is_active ?? true);
     }
@@ -101,7 +101,7 @@ export function AdminEditUserModal({
 
   if (!user) return null;
 
-  const showCommunityLink = role === "lead" || role === "tic" || role === "staff" || role === "hod";
+  const showCommunityLink = role === "lead" || role === "fic" || role === "staff" || role === "hod";
 
   return (
     <Modal
@@ -171,11 +171,11 @@ export function AdminEditUserModal({
               <Select
                 label="Community Role"
                 value={communityMemberRole}
-                onChange={(val) => setCommunityMemberRole(val as "lead" | "tic" | "member")}
+                onChange={(val) => setCommunityMemberRole(val as "lead" | "fic" | "member")}
                 disabled={!communityId}
                 options={[
                   { value: "lead", label: "Student Lead" },
-                  { value: "tic", label: "Faculty TIC" },
+                  { value: "fic", label: "Faculty-in-Charge (FIC)" },
                   { value: "member", label: "Member" },
                 ]}
               />

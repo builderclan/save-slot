@@ -62,10 +62,10 @@ DB_PORT=5432
     it("returns sorted SQL files from migrations directory", () => {
       const files = getMigrationFiles();
       expect(Array.isArray(files)).toBe(true);
-      expect(files.length).toBeGreaterThanOrEqual(13);
+      expect(files.length).toBeGreaterThanOrEqual(14);
       expect(files[0]).toBe("001_initial_schema.sql");
       expect(files[1]).toBe("002_optional_registration_url.sql");
-      expect(files[files.length - 1]).toBe("013_v1_college_system.sql");
+      expect(files[files.length - 1]).toBe("014_rename_tic_to_fic.sql");
 
       // Verify all items are .sql
       for (const file of files) {
@@ -95,14 +95,20 @@ DB_PORT=5432
     });
 
     it("detects sequence gaps in migration filenames", () => {
-      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "migration-gap-test-"));
+      const tempDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "migration-gap-test-"),
+      );
       try {
         fs.writeFileSync(path.join(tempDir, "001_first.sql"), "SELECT 1;");
         fs.writeFileSync(path.join(tempDir, "003_third.sql"), "SELECT 3;"); // Gap: missing 002
 
         const result = validateMigrationFiles(tempDir);
         expect(result.valid).toBe(false);
-        expect(result.errors.some((e: string) => e.includes("Gap in migration sequence"))).toBe(true);
+        expect(
+          result.errors.some((e: string) =>
+            e.includes("Gap in migration sequence"),
+          ),
+        ).toBe(true);
       } finally {
         fs.rmSync(tempDir, { recursive: true, force: true });
       }
@@ -118,8 +124,14 @@ DB_PORT=5432
         if (queryText.includes("SELECT name, applied_at")) {
           return Promise.resolve({
             rows: [
-              { name: "001_initial_schema.sql", applied_at: "2026-09-14T05:24:10.362Z" },
-              { name: "002_optional_registration_url.sql", applied_at: "2026-09-14T05:24:10.362Z" },
+              {
+                name: "001_initial_schema.sql",
+                applied_at: "2026-09-14T05:24:10.362Z",
+              },
+              {
+                name: "002_optional_registration_url.sql",
+                applied_at: "2026-09-14T05:24:10.362Z",
+              },
             ],
           });
         }
@@ -143,7 +155,10 @@ DB_PORT=5432
         if (queryText.includes("SELECT name, applied_at")) {
           return Promise.resolve({
             rows: [
-              { name: "001_initial_schema.sql", applied_at: "2026-09-14T05:24:10.362Z" },
+              {
+                name: "001_initial_schema.sql",
+                applied_at: "2026-09-14T05:24:10.362Z",
+              },
             ],
           });
         }
@@ -154,8 +169,13 @@ DB_PORT=5432
       const statuses = await getMigrationStatus(mockClient);
 
       expect(statuses.length).toBeGreaterThanOrEqual(8);
-      const first = statuses.find((s: { name: string }) => s.name === "001_initial_schema.sql");
-      const eighth = statuses.find((s: { name: string }) => s.name === "008_add_principal_and_vice_principal_roles.sql");
+      const first = statuses.find(
+        (s: { name: string }) => s.name === "001_initial_schema.sql",
+      );
+      const eighth = statuses.find(
+        (s: { name: string }) =>
+          s.name === "008_add_principal_and_vice_principal_roles.sql",
+      );
 
       expect(first?.applied).toBe(true);
       expect(eighth?.applied).toBe(false);
@@ -193,18 +213,58 @@ DB_PORT=5432
         if (sql.includes("SELECT name, applied_at")) {
           return Promise.resolve({
             rows: [
-              { name: "001_initial_schema.sql", applied_at: "2026-09-14T05:24:10.362Z" },
-              { name: "002_optional_registration_url.sql", applied_at: "2026-09-14T05:24:10.362Z" },
-              { name: "003_complete_rls_and_conflict_engine.sql", applied_at: "2026-09-14T05:24:10.544Z" },
-              { name: "004_fix_rls_recursion.sql", applied_at: "2026-09-14T05:24:59.525Z" },
-              { name: "005_auth_and_multicampus_hardening.sql", applied_at: "2026-09-14T05:42:38.160Z" },
-              { name: "006_community_onboarding.sql", applied_at: "2026-09-14T07:03:00.505Z" },
-              { name: "007_add_reviewed_by.sql", applied_at: "2026-10-08T12:00:00.000Z" },
-              { name: "008_add_principal_and_vice_principal_roles.sql", applied_at: "2026-10-10T12:00:00.000Z" },
-              { name: "009_add_target_audience.sql", applied_at: "2026-10-15T12:00:00.000Z" },
-              { name: "010_add_events_status_start_time_idx.sql", applied_at: "2026-10-18T12:00:00.000Z" },
-              { name: "011_harden_rpc_and_community_members_rls.sql", applied_at: "2026-10-23T12:00:00.000Z" },
-              { name: "012_add_auth_rate_limits.sql", applied_at: "2026-10-24T12:00:00.000Z" },
+              {
+                name: "001_initial_schema.sql",
+                applied_at: "2026-09-14T05:24:10.362Z",
+              },
+              {
+                name: "002_optional_registration_url.sql",
+                applied_at: "2026-09-14T05:24:10.362Z",
+              },
+              {
+                name: "003_complete_rls_and_conflict_engine.sql",
+                applied_at: "2026-09-14T05:24:10.544Z",
+              },
+              {
+                name: "004_fix_rls_recursion.sql",
+                applied_at: "2026-09-14T05:24:59.525Z",
+              },
+              {
+                name: "005_auth_and_multicampus_hardening.sql",
+                applied_at: "2026-09-14T05:42:38.160Z",
+              },
+              {
+                name: "006_community_onboarding.sql",
+                applied_at: "2026-09-14T07:03:00.505Z",
+              },
+              {
+                name: "007_add_reviewed_by.sql",
+                applied_at: "2026-10-08T12:00:00.000Z",
+              },
+              {
+                name: "008_add_principal_and_vice_principal_roles.sql",
+                applied_at: "2026-10-10T12:00:00.000Z",
+              },
+              {
+                name: "009_add_target_audience.sql",
+                applied_at: "2026-10-15T12:00:00.000Z",
+              },
+              {
+                name: "010_add_events_status_start_time_idx.sql",
+                applied_at: "2026-10-18T12:00:00.000Z",
+              },
+              {
+                name: "011_harden_rpc_and_community_members_rls.sql",
+                applied_at: "2026-10-23T12:00:00.000Z",
+              },
+              {
+                name: "012_add_auth_rate_limits.sql",
+                applied_at: "2026-10-24T12:00:00.000Z",
+              },
+              {
+                name: "013_v1_college_system.sql",
+                applied_at: "2026-11-26T10:00:00.000Z",
+              },
             ],
           });
         }
@@ -214,7 +274,7 @@ DB_PORT=5432
       const mockClient = { query: mockQuery };
       const res = await runMigrations({ client: mockClient });
 
-      expect(res.appliedCount).toBe(1); // Only 013 was pending
+      expect(res.appliedCount).toBe(1); // Only 014 was pending
       expect(queryLog).toContain("BEGIN;");
       expect(queryLog).toContain("COMMIT;");
       expect(queryLog.some((q) => q.includes("pg_advisory_lock"))).toBe(true);
@@ -238,7 +298,9 @@ DB_PORT=5432
       });
 
       const mockClient = { query: mockQuery };
-      await expect(runMigrations({ client: mockClient })).rejects.toThrow("Syntax error in SQL migration");
+      await expect(runMigrations({ client: mockClient })).rejects.toThrow(
+        "Syntax error in SQL migration",
+      );
 
       expect(queryLog).toContain("BEGIN;");
       expect(queryLog).toContain("ROLLBACK;");

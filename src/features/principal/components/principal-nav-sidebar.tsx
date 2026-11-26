@@ -1,8 +1,8 @@
 "use client";
 
-import { Inbox, Calendar, Clock, ShieldCheck } from "lucide-react";
+import { Inbox, Calendar, Clock, ShieldCheck, Sparkles, Sliders } from "lucide-react";
 
-export type PrincipalDeskTab = "inbox" | "master-schedule" | "history";
+export type PrincipalDeskTab = "inbox" | "master-schedule" | "history" | "governance";
 
 interface PrincipalNavSidebarProps {
   activeTab: PrincipalDeskTab;
@@ -12,6 +12,7 @@ interface PrincipalNavSidebarProps {
   historyCount: number;
   userName?: string;
   mobileDetailView: boolean;
+  onCreateCollegeEvent?: () => void;
 }
 
 export function PrincipalNavSidebar({
@@ -22,6 +23,7 @@ export function PrincipalNavSidebar({
   historyCount,
   userName,
   mobileDetailView,
+  onCreateCollegeEvent,
 }: PrincipalNavSidebarProps) {
   return (
     <aside
@@ -44,7 +46,7 @@ export function PrincipalNavSidebar({
         <nav
           role="tablist"
           aria-label="Principal desk view switcher"
-          className="grid grid-cols-3 lg:flex lg:flex-col gap-1 p-1 lg:p-0 rounded-xl lg:rounded-none bg-zinc-100/90 lg:bg-transparent border border-zinc-200/80 lg:border-none shadow-2xs lg:shadow-none text-xs w-full"
+          className="grid grid-cols-4 lg:flex lg:flex-col gap-1 p-1 lg:p-0 rounded-xl lg:rounded-none bg-zinc-100/90 lg:bg-transparent border border-zinc-200/80 lg:border-none shadow-2xs lg:shadow-none text-xs w-full"
         >
           <button
             type="button"
@@ -128,7 +130,36 @@ export function PrincipalNavSidebar({
               {historyCount}
             </span>
           </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "governance"}
+            onClick={() => onTabChange("governance")}
+            className={`py-1.5 lg:py-2.5 px-2.5 lg:px-3 rounded-lg lg:rounded-xl text-xs transition-all flex items-center justify-center lg:justify-between gap-1.5 sm:gap-2 cursor-pointer active:scale-95 ${
+              activeTab === "governance"
+                ? "bg-white text-zinc-900 font-semibold shadow-xs lg:shadow-2xs lg:border lg:border-zinc-200/90"
+                : "text-zinc-600 hover:text-zinc-900 font-medium lg:hover:bg-zinc-100/70 lg:border lg:border-transparent"
+            }`}
+          >
+            <div className="flex items-center gap-1.5 lg:gap-2">
+              <Sliders className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate lg:hidden">Govern</span>
+              <span className="hidden lg:inline">Governance</span>
+            </div>
+          </button>
         </nav>
+
+        {onCreateCollegeEvent && (
+          <button
+            type="button"
+            onClick={onCreateCollegeEvent}
+            className="mt-2.5 lg:mt-4 w-full py-2 px-3 rounded-xl bg-zinc-900 hover:bg-black text-white text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Schedule College Event</span>
+          </button>
+        )}
       </div>
 
       {/* Sidebar Footer info */}

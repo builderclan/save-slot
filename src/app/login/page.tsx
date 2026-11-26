@@ -101,13 +101,13 @@ const DEMO_PERSONAS: DemoAccount[] = SHOW_DEMO_PERSONAS
         badgeStyle: "bg-teal-50 text-teal-700 border-teal-200/70",
       },
       {
-        id: "tic",
-        name: "IEEE TIC",
-        role: "Teacher in Charge",
+        id: "fic",
+        name: "IEEE FIC",
+        role: "Faculty-in-Charge",
         context: "ECE / IEEE SB",
-        email: "tic.ieee@aisat.ac.in",
-        password: "tic123",
-        badge: "TIC",
+        email: "fic.ieee@aisat.ac.in",
+        password: "fic123",
+        badge: "FIC",
         icon: UserCheck,
         iconBg: "bg-cyan-50 text-cyan-700 border-cyan-200/70",
         iconColor: "text-cyan-700",
@@ -181,7 +181,17 @@ function LoginParamsHandler({
     }
     if (searchParams.get("error") === "lead_required") {
       onSetError(
-        "Community Lead privileges required to access the Lead Workspace. Please sign in with an authorized Lead account."
+        "Organizer privileges required to access the Workspace. Please sign in with an authorized account."
+      );
+    }
+    if (searchParams.get("error") === "hod_required") {
+      onSetError(
+        "HOD or active Acting HOD privileges required to access the HOD Desk."
+      );
+    }
+    if (searchParams.get("error") === "fic_required") {
+      onSetError(
+        "Faculty-in-Charge privileges required to access the FIC Desk."
       );
     }
     const redirectParam = searchParams.get("redirect") || searchParams.get("returnTo");
@@ -342,7 +352,11 @@ export default function LoginPage() {
                         ? "/admin"
                         : user.isPrincipal || user.isVicePrincipal
                         ? "/principal"
-                        : user.isLead
+                        : user.isHod || user.isActingHod
+                        ? "/hod"
+                        : user.isFic
+                        ? "/fic"
+                        : user.isLead || user.isStaff
                         ? "/lead"
                         : "/"
                     }

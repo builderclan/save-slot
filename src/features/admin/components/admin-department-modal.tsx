@@ -53,7 +53,7 @@ export function AdminDepartmentModal({
 
   const facultyOptions = useMemo(() => {
     const eligible = users.filter((u) =>
-      ["hod", "staff", "tic"].includes(u.role)
+      ["hod", "staff", "fic"].includes(u.role)
     );
     return [
       { value: "", label: "Unassigned" },

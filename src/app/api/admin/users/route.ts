@@ -142,7 +142,7 @@ export async function POST(request: Request) {
 
         if (communityId && communityId.trim() !== "") {
           const memberRole =
-            communityMemberRole || (role === "tic" ? "tic" : "lead");
+            communityMemberRole || (role === "fic" ? "fic" : "lead");
           await tx
             .insert(communityMembers)
             .values({

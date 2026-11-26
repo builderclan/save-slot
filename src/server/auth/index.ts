@@ -24,14 +24,14 @@ export interface AuthSession {
   email: string;
   profile: UserProfile;
   leadCommunities: Community[];
-  ticCommunities: Community[];
+  ficCommunities: Community[];
   hodDepartments: HodDepartmentScope[];
   isAdmin: boolean;
   isPrincipal: boolean;
   isVicePrincipal: boolean;
   isHod: boolean;
   isActingHod: boolean;
-  isTic: boolean;
+  isFic: boolean;
   isStaff: boolean;
   isLead: boolean;
 }
@@ -140,8 +140,8 @@ export async function resolveAuthSessionForUser(
     .filter((c) => c.memberRole === "lead")
     .map(mapCommunity);
 
-  const ticCommunities: Community[] = (memberComms || [])
-    .filter((c) => c.memberRole === "tic")
+  const ficCommunities: Community[] = (memberComms || [])
+    .filter((c) => c.memberRole === "fic")
     .map(mapCommunity);
 
   const hodDepartments: HodDepartmentScope[] = (deptRoles || []).map((d) => ({
@@ -165,10 +165,10 @@ export async function resolveAuthSessionForUser(
     (profile.role === "hod" || hodDepartments.length > 0);
   const isActingHod =
     !isAdmin && !isPrincipal && hodDepartments.some((d) => d.isActing);
-  const isTic =
+  const isFic =
     !isAdmin &&
     !isPrincipal &&
-    (profile.role === "tic" || ticCommunities.length > 0);
+    (profile.role === "fic" || ficCommunities.length > 0);
   const isStaff =
     !isAdmin &&
     !isPrincipal &&
@@ -183,14 +183,14 @@ export async function resolveAuthSessionForUser(
     email: fallbackEmail || profile.email,
     profile,
     leadCommunities,
-    ticCommunities,
+    ficCommunities,
     hodDepartments,
     isAdmin,
     isPrincipal,
     isVicePrincipal,
     isHod,
     isActingHod,
-    isTic,
+    isFic,
     isStaff,
     isLead,
   };
@@ -203,7 +203,7 @@ export function getDefaultRedirectPath(session: AuthSession | null): string {
   if (
     session.isHod ||
     session.isActingHod ||
-    session.isTic ||
+    session.isFic ||
     session.isStaff ||
     session.isLead
   ) {

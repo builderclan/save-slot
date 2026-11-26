@@ -114,7 +114,7 @@ function AdminConsoleContent() {
               {settings?.short_code || "AISAT"} System Configuration
             </h1>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Manage departments, acting HOD overrides, communities & TICs, users, venues, and letterhead settings. Event approvals belong strictly to HOD/TIC and Principal desks.
+              Manage departments, acting HOD overrides, communities & FICs, users, venues, and letterhead settings. Event approvals belong strictly to HOD/FIC and Principal desks.
             </p>
           </div>
 

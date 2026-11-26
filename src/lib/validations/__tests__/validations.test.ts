@@ -284,8 +284,8 @@ describe("Zod Validation Schemas", () => {
       }
     });
 
-    it("accepts all v1.0.0 faculty and student roles (hod, tic, staff, lead)", () => {
-      for (const role of ["hod", "tic", "staff", "lead"] as const) {
+    it("accepts all v1.0.0 faculty and student roles (hod, fic, staff, lead)", () => {
+      for (const role of ["hod", "fic", "staff", "lead"] as const) {
         expect(
           CreateUserSchema.safeParse({
             fullName: "AISAT Member",

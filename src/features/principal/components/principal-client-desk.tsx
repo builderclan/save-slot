@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CampusEvent, ConflictCheckResult, TargetAudience } from "@/types/database";
+import {
+  CampusEvent,
+  Community,
+  ConflictCheckResult,
+  Department,
+  TargetAudience,
+  UserProfile,
+  Venue,
+} from "@/types/database";
 import { EventDetailModal } from "@/features/events";
 import {
   PrincipalNavSidebar,
@@ -11,6 +19,8 @@ import {
 import { PrincipalInboxView } from "./principal-inbox-view";
 import { PrincipalScheduleView } from "./principal-schedule-view";
 import { PrincipalHistoryView } from "./principal-history-view";
+import { PrincipalGovernanceView } from "./principal-governance-view";
+import { PrincipalCollegeEventModal } from "./principal-college-event-modal";
 import {
   PrincipalRejectionModal,
   DEFAULT_REJECTION_PRESETS,
@@ -18,10 +28,11 @@ import {
 import { NotificationBanner, type NotificationType } from "@/components/ui/notification-banner";
 import { formatDisplayName } from "@/lib/utils";
 import PrincipalLoading from "@/app/principal/loading";
-import { eventsApi } from "@/features/events/api";
+import { principalApi } from "../api";
 import { conflictsApi } from "@/features/conflicts/api";
+import { ApiException } from "@/lib/api-client";
 
-const VALID_TABS: PrincipalDeskTab[] = ["inbox", "master-schedule", "history"];
+const VALID_TABS: PrincipalDeskTab[] = ["inbox", "master-schedule", "history", "governance"];
 
 function isValidPrincipalTab(tab: string | null): tab is PrincipalDeskTab {
   return tab !== null && VALID_TABS.includes(tab as PrincipalDeskTab);
@@ -69,26 +80,35 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
   );
 
   const [events, setEvents] = useState<CampusEvent[]>(initialEvents);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [staffUsers, setStaffUsers] = useState<UserProfile[]>([]);
+  const mutationVersionRef = useRef(0);
 
-  // Client hydration fallback: If server query was empty (e.g. transient failure), fetch client-side
-  useEffect(() => {
-    if (initialEvents.length === 0) {
-      eventsApi
-        .getLeadEvents()
-        .then((data) => {
-          if (data?.events) {
-            setEvents(data.events);
-          }
-        })
-        .catch(() => {});
+  const loadExecutiveQueue = useCallback(async () => {
+    const capturedVersion = mutationVersionRef.current;
+    try {
+      const data = await principalApi.getQueue();
+      if (data?.events && mutationVersionRef.current === capturedVersion) {
+        setEvents(data.events);
+      }
+      setDepartments(data.departments || []);
+      setCommunities(data.communities || []);
+      setVenues(data.venues || []);
+      setStaffUsers(data.staffUsers || []);
+    } catch {
+      // Initial SSR fallback remains usable if queue refresh fails silently
     }
-  }, [initialEvents.length]);
+  }, []);
+
+  useEffect(() => {
+    loadExecutiveQueue();
+  }, [loadExecutiveQueue]);
 
   // Selected event for split view
   const [selectedEventId, setSelectedEventId] = useState<string | null>(() => {
-    const firstPending = initialEvents.find(
-      (e) => e.status === "pending_executive" || e.status === "pending_stage2"
-    );
+    const firstPending = initialEvents.find((e) => e.status === "pending_executive");
     return firstPending?.id || initialEvents[0]?.id || null;
   });
 
@@ -96,10 +116,11 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
   const [activeConflictResult, setActiveConflictResult] = useState<ConflictCheckResult | null>(null);
   const [checkingActiveConflict, setCheckingActiveConflict] = useState(false);
 
-  // Preview modal state
+  // Preview, College Event, Override & Rejection modals
   const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
-
-  // Rejection modal state
+  const [showCollegeEventModal, setShowCollegeEventModal] = useState(false);
+  const [leadOverrideTargetId, setLeadOverrideTargetId] = useState<string | null>(null);
+  const [leadOverrideReason, setLeadOverrideReason] = useState("");
   const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
   const [rejectionNote, setRejectionNote] = useState("");
   const [rejectionError, setRejectionError] = useState<string | null>(null);
@@ -107,6 +128,11 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
 
   // Banner notification
   const [bannerNotice, setBannerNotice] = useState<{ message: string; type: NotificationType } | null>(null);
+
+  const showToast = useCallback((message: string, type: NotificationType = "success") => {
+    setBannerNotice({ message, type });
+    setTimeout(() => setBannerNotice(null), 5500);
+  }, []);
 
   // Search & Filter states for Calendar & History tabs
   const [calendarSearch, setCalendarSearch] = useState("");
@@ -116,9 +142,7 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
 
   // Derived subsets
   const pendingEvents = useMemo(() => {
-    return events.filter(
-      (e) => e.status === "pending_executive" || e.status === "pending_stage2"
-    );
+    return events.filter((e) => e.status === "pending_executive");
   }, [events]);
 
   const [nowTimestamp, setNowTimestamp] = useState<number>(0);
@@ -237,13 +261,32 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
     };
   }, [activeEvent]);
 
-  // Approve action
-  const handleApprove = async (eventId: string) => {
+  // Approve action (with explicit 7-day policy override gate)
+  const executeApprove = async (
+    eventId: string,
+    overrideLeadTime = false,
+    overrideReasonText?: string
+  ) => {
     setActionInProgress(eventId);
     try {
-      const updated = await eventsApi.updateEventStatus(eventId, { status: "published" });
+      const result = await principalApi.approveEvent(eventId, {
+        overrideLeadTime,
+        overrideReason: overrideReasonText,
+      });
+
+      mutationVersionRef.current += 1;
+      const targetEvent = events.find((e) => e.id === eventId);
       setEvents((prev) =>
-        prev.map((e) => (e.id === eventId ? { ...e, status: "published" } : e))
+        prev.map((e) =>
+          e.id === eventId
+            ? {
+                ...e,
+                status: "published",
+                reference_number: result.referenceNumber || e.reference_number,
+                academic_year: result.academicYear || e.academic_year,
+              }
+            : e
+        )
       );
 
       const remaining = pendingEvents.filter((e) => e.id !== eventId);
@@ -254,22 +297,30 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
         setMobileDetailView(false);
       }
 
-      setBannerNotice({
-        message: `Approved: "${updated.event?.title || "Event"}" is now published on the Student Notice Board.`,
-        type: "success",
-      });
-      setTimeout(() => setBannerNotice(null), 5000);
+      setLeadOverrideTargetId(null);
+      setLeadOverrideReason("");
+      showToast(
+        `Approved "${targetEvent?.title || "Event"}"${result.referenceNumber ? ` (${result.referenceNumber})` : ""} — now published.`
+      );
+      void loadExecutiveQueue();
       router.refresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to approve event.";
-      setBannerNotice({
-        message: msg,
-        type: "error",
-      });
-      setTimeout(() => setBannerNotice(null), 7000);
+      if (err instanceof ApiException && err.data && typeof err.data === "object") {
+        const errData = err.data as { code?: string; error?: string };
+        if (errData.code === "LEAD_TIME_OVERRIDE_REQUIRED" && !overrideLeadTime) {
+          setLeadOverrideTargetId(eventId);
+          setLeadOverrideReason("");
+          return;
+        }
+      }
+      showToast(err instanceof Error ? err.message : "Failed to approve event.", "error");
     } finally {
       setActionInProgress(null);
     }
+  };
+
+  const handleApprove = async (eventId: string) => {
+    await executeApprove(eventId, false);
   };
 
   // Reject action
@@ -287,11 +338,9 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
     setActionInProgress(eventId);
     setRejectionError(null);
     try {
-      await eventsApi.updateEventStatus(eventId, {
-        status: "rejected",
-        rejectionReason: rejectionNote.trim(),
-      });
+      await principalApi.rejectEvent(eventId, rejectionNote.trim());
 
+      mutationVersionRef.current += 1;
       setEvents((prev) =>
         prev.map((e) =>
           e.id === eventId
@@ -308,23 +357,21 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
         setMobileDetailView(false);
       }
 
-      setBannerNotice({
-        message: `Declined: Feedback note sent to ${rejectingEvent.community?.name || "Organizer"}.`,
-        type: "info",
-      });
-      setTimeout(() => setBannerNotice(null), 5000);
+      showToast(
+        `Declined: Feedback note sent to ${
+          rejectingEvent.community?.name || rejectingEvent.department?.name || "Organizer"
+        }.`,
+        "info"
+      );
       setRejectingEvent(null);
       setRejectionNote("");
       setRejectionError(null);
+      void loadExecutiveQueue();
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to decline event. Please try again.";
       setRejectionError(msg);
-      setBannerNotice({
-        message: msg,
-        type: "error",
-      });
-      setTimeout(() => setBannerNotice(null), 7000);
+      showToast(msg, "error");
     } finally {
       setActionInProgress(null);
     }
@@ -351,6 +398,7 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
         historyCount={historyEvents.length}
         userName={user?.fullName || user?.email}
         mobileDetailView={mobileDetailView}
+        onCreateCollegeEvent={() => setShowCollegeEventModal(true)}
       />
 
       {/* WORKSPACE CONTENT AREA */}
@@ -399,7 +447,82 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
             onSelectEvent={(ev) => setPreviewEvent(ev)}
           />
         )}
+
+        {activeTab === "governance" && (
+          <PrincipalGovernanceView
+            departments={departments}
+            communities={communities}
+            onRefresh={loadExecutiveQueue}
+            onNotify={(msg, type) => showToast(msg, type || "success")}
+            onOpenCollegeEventModal={() => setShowCollegeEventModal(true)}
+          />
+        )}
       </div>
+
+      {/* SCHEDULE COLLEGE EVENT MODAL */}
+      {showCollegeEventModal && (
+        <PrincipalCollegeEventModal
+          venues={venues}
+          staffUsers={staffUsers}
+          onClose={() => setShowCollegeEventModal(false)}
+          onSuccess={(title, bumped) => {
+            setShowCollegeEventModal(false);
+            mutationVersionRef.current += 1;
+            void loadExecutiveQueue();
+            showToast(
+              bumped > 0
+                ? `Published "${title}" and bumped ${bumped} colliding booking(s).`
+                : `Published College event "${title}".`
+            );
+          }}
+        />
+      )}
+
+      {/* 7-DAY ADVANCE NOTICE OVERRIDE MODAL */}
+      {leadOverrideTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs"
+            onClick={() => setLeadOverrideTargetId(null)}
+          />
+          <div className="relative w-full max-w-md rounded-2xl border border-amber-200 bg-white shadow-2xl p-5 sm:p-6 z-10 space-y-4">
+            <h3 className="text-sm font-bold text-zinc-900">
+              Confirm 7-Day Notice Policy Override
+            </h3>
+            <p className="text-xs text-zinc-600 leading-relaxed">
+              You are overriding the 7-day advance notice policy. This executive override and your reason will be logged in the audit trail and printable report.
+            </p>
+            <input
+              type="text"
+              value={leadOverrideReason}
+              onChange={(e) => setLeadOverrideReason(e.target.value)}
+              placeholder="Optional executive override note..."
+              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setLeadOverrideTargetId(null)}
+                className="px-3.5 py-2 rounded-xl border border-zinc-200 text-xs font-medium text-zinc-700 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={actionInProgress === leadOverrideTargetId}
+                onClick={() =>
+                  executeApprove(leadOverrideTargetId, true, leadOverrideReason.trim())
+                }
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-semibold text-white cursor-pointer disabled:opacity-50"
+              >
+                {actionInProgress === leadOverrideTargetId
+                  ? "Publishing..."
+                  : "Override & Publish"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* STUDENT DETAIL PREVIEW MODAL */}
       {previewEvent && (

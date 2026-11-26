@@ -25,11 +25,11 @@ export interface AuthUser {
   isVicePrincipal?: boolean;
   isHod?: boolean;
   isActingHod?: boolean;
-  isTic?: boolean;
+  isFic?: boolean;
   isStaff?: boolean;
   isLead: boolean;
   leadCommunities: Array<{ id: string; name: string; slug: string }>;
-  ticCommunities?: Array<{ id: string; name: string; slug: string }>;
+  ficCommunities?: Array<{ id: string; name: string; slug: string }>;
   hodDepartments?: Array<{ id: string; name: string; code: string; isActing: boolean }>;
 }
 

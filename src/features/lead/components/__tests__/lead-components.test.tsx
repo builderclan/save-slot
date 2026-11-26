@@ -46,7 +46,7 @@ const mockEvents: CampusEvent[] = [
     start_time: new Date(Date.now() + 86400000 * 5).toISOString(),
     end_time: new Date(Date.now() + 86400000 * 5 + 14400000).toISOString(),
     location_name: "Innovation Lab",
-    status: "pending_executive",
+    status: "pending_stage2",
     created_by: "user-1",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),

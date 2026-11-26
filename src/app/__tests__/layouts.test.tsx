@@ -30,14 +30,14 @@ function makeSession(overrides: Partial<AuthSession> & { role: AuthSession["prof
       role,
     },
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
     isAdmin: role === "admin",
     isPrincipal: role === "principal" || role === "vice_principal",
     isVicePrincipal: role === "vice_principal",
     isHod: role === "hod",
     isActingHod: false,
-    isTic: role === "tic",
+    isFic: role === "fic",
     isStaff: role === "staff",
     isLead: role === "lead",
     ...rest,
@@ -105,7 +105,7 @@ describe("Strict Role Isolation - Layout Guards (v1.0.0)", () => {
   });
 
   describe("LeadLayout (src/app/lead/layout.tsx)", () => {
-    it.each(["lead", "tic", "hod", "staff"] as const)(
+    it.each(["lead", "fic", "hod", "staff"] as const)(
       "allows %s into /lead",
       async (role) => {
         mockGetCurrentUser.mockResolvedValueOnce(makeSession({ role }));

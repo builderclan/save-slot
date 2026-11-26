@@ -91,11 +91,11 @@ describe("Admin Venue Details API (/api/admin/venues/[id])", () => {
     isVicePrincipal: false,
     isHod: false,
     isActingHod: false,
-    isTic: false,
+    isFic: false,
     isStaff: false,
     isLead: false,
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
   };
 
@@ -113,11 +113,11 @@ describe("Admin Venue Details API (/api/admin/venues/[id])", () => {
     isVicePrincipal: false,
     isHod: false,
     isActingHod: false,
-    isTic: false,
+    isFic: false,
     isStaff: false,
     isLead: true,
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
   };
 

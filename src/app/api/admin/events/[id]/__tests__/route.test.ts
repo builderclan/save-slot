@@ -54,11 +54,11 @@ describe("DELETE /api/admin/events/[id]", () => {
     isVicePrincipal: false,
     isHod: false,
     isActingHod: false,
-    isTic: false,
+    isFic: false,
     isStaff: false,
     isLead: false,
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
   };
 
@@ -76,11 +76,11 @@ describe("DELETE /api/admin/events/[id]", () => {
     isVicePrincipal: false,
     isHod: false,
     isActingHod: false,
-    isTic: false,
+    isFic: false,
     isStaff: false,
     isLead: true,
     leadCommunities: [],
-    ticCommunities: [],
+    ficCommunities: [],
     hodDepartments: [],
   };
 

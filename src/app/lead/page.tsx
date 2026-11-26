@@ -18,6 +18,7 @@ import {
   LeadFilterBar,
   LeadEventsList,
   LeadWithdrawModal,
+  LeadCancelEventModal,
   LeadRejectionNoticeModal,
   ProposeEventModal,
 } from "@/features/lead";
@@ -27,7 +28,10 @@ import LeadLoading from "./loading";
 function LeadWorkspaceContent() {
   const {
     user,
+    overdueReports,
     venues,
+    departments,
+    allCommunities,
     loading,
     setSelectedCommunityId,
     statusFilter,
@@ -48,13 +52,19 @@ function LeadWorkspaceContent() {
     withdrawingEvent,
     setWithdrawingEvent,
     isWithdrawing,
+    cancellingEvent,
+    setCancellingEvent,
+    isCancelling,
     actionNotice,
     setActionNotice,
     showNotice,
     handleStatusFilterChange,
     handleConfirmWithdraw,
+    handleConfirmCancel,
+    handleSubmitDraft,
     loadEvents,
     assignedCommunity,
+    assignedDepartment,
     communityEvents,
     filteredEvents,
     hasActiveFilters,
@@ -107,7 +117,7 @@ function LeadWorkspaceContent() {
           <p className="text-sm text-zinc-500 mt-1">
             Propose, monitor, and refine events on behalf of{" "}
             <span className="font-semibold text-zinc-700">
-              {assignedCommunity ? assignedCommunity.name : "your assigned club"}
+              {assignedCommunity?.name || assignedDepartment?.name || "your assigned club or department"}
             </span>
             .
           </p>
@@ -159,6 +169,21 @@ function LeadWorkspaceContent() {
         </div>
       </div>
 
+      {/* Overdue Closure Gate Banner */}
+      {overdueReports.length > 0 && (
+        <div className="p-4 rounded-2xl border border-amber-200 bg-amber-50/90 text-amber-950 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs space-y-1">
+            <p className="font-bold text-amber-950">
+              New submissions are paused: {overdueReports.length} overdue post-event closure report{overdueReports.length === 1 ? "" : "s"} required
+            </p>
+            <p className="text-amber-800">
+              Pending closure reports: {overdueReports.map((o) => o.reference_number ? `${o.title} (${o.reference_number})` : o.title).join(", ")}. You can still save new drafts while completing pending closures.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Metrics Row */}
       <div className="mt-8">
         <LeadStatsRow
@@ -196,6 +221,8 @@ function LeadWorkspaceContent() {
           }}
           onPreview={(e: CampusEvent) => setPreviewEvent(e)}
           onShowRejectionNotice={(e: CampusEvent) => setSelectedRejectedEvent(e)}
+          onSubmitDraft={handleSubmitDraft}
+          onCancelPublished={(e: CampusEvent) => setCancellingEvent(e)}
           onWithdraw={(e: CampusEvent) => setWithdrawingEvent(e)}
         />
       </div>
@@ -205,22 +232,33 @@ function LeadWorkspaceContent() {
         <ProposeEventModal
           venues={venues}
           communityId={assignedCommunity?.id}
-          communityName={assignedCommunity?.name}
+          communityName={assignedCommunity?.name || assignedDepartment?.name}
+          departmentId={user?.departmentId}
+          departments={departments}
+          communities={allCommunities}
+          leadCommunities={
+            allCommunities.length > 0
+              ? allCommunities.filter((c) => user?.leadCommunities.some((lc) => lc.id === c.id))
+              : user?.leadCommunities || []
+          }
+          overdueCount={overdueReports.length}
           initialEvent={editingEvent}
           mode={editingEvent ? "edit" : "create"}
           onClose={() => {
             setIsProposeOpen(false);
             setEditingEvent(null);
           }}
-          onSuccess={() => {
+          onSuccess={(action) => {
             setIsProposeOpen(false);
             const isEditing = Boolean(editingEvent);
             setEditingEvent(null);
             loadEvents();
             showNotice(
-              isEditing
-                ? "Event proposal updated and resubmitted for admin clearance!"
-                : "Event proposal submitted successfully for administrator clearance!"
+              action === "draft"
+                ? "Proposal saved as draft."
+                : isEditing
+                ? "Event proposal updated and submitted for Stage 2 review!"
+                : "Event proposal submitted successfully for Stage 2 review!"
             );
           }}
         />
@@ -254,6 +292,17 @@ function LeadWorkspaceContent() {
           isWithdrawing={isWithdrawing}
           onClose={() => setWithdrawingEvent(null)}
           onConfirm={handleConfirmWithdraw}
+        />
+      )}
+
+      {/* Cancel Published Event Modal */}
+      {cancellingEvent && (
+        <LeadCancelEventModal
+          isOpen={Boolean(cancellingEvent)}
+          event={cancellingEvent}
+          isSubmitting={isCancelling}
+          onClose={() => setCancellingEvent(null)}
+          onConfirm={handleConfirmCancel}
         />
       )}
       </div>

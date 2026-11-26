@@ -1,4 +1,5 @@
-import { CampusEvent, EventCategory, Venue } from "@/types/database";
+import { CampusEvent, Community, Department, EventCategory, Venue } from "@/types/database";
+import { EventMentorInput, CoHostEntityInput } from "@/lib/validations";
 
 export interface PresetCover {
   name: string;
@@ -34,12 +35,27 @@ export const CATEGORIES: EventCategory[] = [
   "Workshop",
 ];
 
+export const FUNDING_SOURCES = [
+  "No Cost",
+  "College Fund",
+  "Department Fund",
+  "Sponsor / External",
+  "Self-Funded",
+] as const;
+
 export interface ProposeEventModalProps {
   venues: Venue[];
   communityId?: string;
   communityName?: string;
+  departmentId?: string | null;
+  departments?: Department[];
+  communities?: Community[];
+  leadCommunities?: Array<{ id: string; name: string; slug: string; code?: string; scope?: string }>;
+  overdueCount?: number;
   initialEvent?: CampusEvent | null;
   mode?: "create" | "edit";
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (submittedAction?: "draft" | "submit") => void;
 }
+
+export type { EventMentorInput, CoHostEntityInput };
