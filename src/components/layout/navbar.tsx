@@ -26,6 +26,17 @@ import {
 import { UserAvatar } from "@/components/ui";
 import { campusConfig } from "@/lib/config/campus";
 
+function getRoleDisplayLabel(user: NonNullable<ReturnType<typeof useAuth>["user"]>): string {
+  if (user.role === "principal") return "College Principal";
+  if (user.role === "vice_principal") return "Vice Principal";
+  if (user.role === "admin") return "Campus Admin";
+  if (user.isActingHod) return "Acting HOD";
+  if (user.role === "hod" || user.isHod) return "Head of Department";
+  if (user.role === "tic" || user.isTic) return "Teacher-in-Charge";
+  if (user.role === "staff") return "Department Staff";
+  return "Community Lead";
+}
+
 export function Navbar() {
   const pathname = usePathname();
   const { user, loading, logout, isLoggingOut } = useAuth();
@@ -180,13 +191,7 @@ export function Navbar() {
                   {formatDisplayName(user.fullName)}
                 </div>
                 <div className="text-[10px] text-zinc-500 capitalize">
-                  {user.role === "principal"
-                    ? "College Principal"
-                    : user.role === "vice_principal"
-                    ? "Vice Principal"
-                    : user.role === "admin"
-                    ? "Campus Admin"
-                    : "Community Lead"}
+                  {getRoleDisplayLabel(user)}
                 </div>
               </div>
 
@@ -257,7 +262,7 @@ export function Navbar() {
                     {formatDisplayName(user.fullName)}
                   </div>
                   <div className="text-[11px] text-zinc-500 truncate">
-                    {user.email} · <span className="capitalize font-medium">{user.role === "principal" ? "College Principal" : user.role === "vice_principal" ? "Vice Principal" : user.role === "admin" ? "Campus Admin" : "Lead"}</span>
+                    {user.email} · <span className="capitalize font-medium">{getRoleDisplayLabel(user)}</span>
                   </div>
                 </div>
               </div>

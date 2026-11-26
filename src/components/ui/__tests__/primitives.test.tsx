@@ -13,7 +13,6 @@ import { Select } from "../select";
 import { DatePicker } from "../date-picker";
 import { TimePicker } from "../time-picker";
 import { RejectionModal } from "@/features/events";
-import { AdminRejectionModal } from "@/features/admin";
 import { PrincipalRejectionModal } from "@/features/principal";
 import type { CampusEvent } from "@/types/database";
 
@@ -154,7 +153,7 @@ describe("UI Design System Primitives", () => {
   describe("RejectionModal (src/features/events/components/rejection-modal.tsx)", () => {
     const mockEvent: CampusEvent = {
       id: "ev-1",
-      campus_id: "c-1",
+      origin_type: "community",
       community_id: "comm-1",
       title: "AI Hackathon",
       slug: "ai-hackathon",
@@ -162,13 +161,14 @@ describe("UI Design System Primitives", () => {
       description: "An annual hackathon",
       start_time: "2026-11-01T10:00:00Z",
       end_time: "2026-11-01T18:00:00Z",
-      status: "pending",
+      status: "pending_executive",
       category: "Tech",
       community: {
         id: "comm-1",
-        campus_id: "c-1",
         name: "Coding Club",
         slug: "coding-club",
+        code: "CC",
+        scope: "internal",
         category: "Tech",
       },
     };
@@ -197,19 +197,6 @@ describe("UI Design System Primitives", () => {
       expect(el).not.toBeNull();
       expect(el!.props.isOpen).toBe(true);
       expect(el!.props.title).toBe("Reject Event Proposal");
-    });
-
-    it("works identically with AdminRejectionModal wrapper", () => {
-      const el = AdminRejectionModal({
-        rejectingEvent: mockEvent,
-        rejectionNote: "",
-        onRejectionNoteChange: vi.fn(),
-        onSubmit: vi.fn(),
-        onClose: vi.fn(),
-        isSubmitting: false,
-      });
-      expect(el).not.toBeNull();
-      expect(el!.props.submitLabel).toBe("Submit Rejection");
     });
 
     it("works identically with PrincipalRejectionModal wrapper", () => {

@@ -14,16 +14,10 @@ export default async function PrincipalDeskPage() {
     return null;
   }
 
-  const campusId = session.profile?.campus_id;
-  if (!campusId) {
-    return <PrincipalClientDesk initialEvents={[]} user={session} />;
-  }
-
   let initialEvents: CampusEvent[] = [];
   try {
     const rows = await withDbRetry((client) =>
       client.query.events.findMany({
-        where: eq(events.campusId, campusId),
         orderBy: [desc(events.startTime)],
         with: {
           community: {
@@ -31,6 +25,8 @@ export default async function PrincipalDeskPage() {
               id: true,
               name: true,
               slug: true,
+              code: true,
+              scope: true,
             },
             with: {
               members: {

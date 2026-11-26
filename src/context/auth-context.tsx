@@ -17,12 +17,20 @@ export interface AuthUser {
   email: string;
   fullName: string;
   role: string;
+  designation?: string | null;
+  departmentId?: string | null;
   avatarUrl?: string | null;
   isAdmin: boolean;
   isPrincipal: boolean;
   isVicePrincipal?: boolean;
+  isHod?: boolean;
+  isActingHod?: boolean;
+  isTic?: boolean;
+  isStaff?: boolean;
   isLead: boolean;
   leadCommunities: Array<{ id: string; name: string; slug: string }>;
+  ticCommunities?: Array<{ id: string; name: string; slug: string }>;
+  hodDepartments?: Array<{ id: string; name: string; code: string; isActing: boolean }>;
 }
 
 export interface AuthContextType {

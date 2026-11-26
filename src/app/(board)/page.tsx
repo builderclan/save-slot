@@ -1,6 +1,6 @@
 import { withDbRetry } from "@/lib/db";
-import { events, communities, venues, users, communityMembers } from "@/db/schema";
-import { eq, asc, getTableColumns, aliasedTable, sql } from "drizzle-orm";
+import { events, communities, departments, venues, users, communityMembers } from "@/db/schema";
+import { eq, asc, getTableColumns, aliasedTable, sql, inArray } from "drizzle-orm";
 import { formatCampusEvent, formatVenue } from "@/db/adapters";
 import { CampusEvent, Venue } from "@/types/database";
 import { NoticeBoardClient } from "@/features/events";
@@ -23,16 +23,23 @@ export default async function StudentNoticeBoardPage() {
             ...getTableColumns(events),
             community: {
               id: communities.id,
-              campusId: communities.campusId,
               name: communities.name,
               slug: communities.slug,
+              code: communities.code,
+              scope: communities.scope,
               category: communities.category,
               logoUrl: communities.logoUrl,
               leadName: sql<string | null>`(SELECT u.full_name FROM ${communityMembers} cm JOIN ${users} u ON u.id = cm.user_id WHERE cm.community_id = ${communities.id} AND cm.role = 'lead' LIMIT 1)`,
             },
+            department: {
+              id: departments.id,
+              name: departments.name,
+              code: departments.code,
+              isActingHodActive: departments.isActingHodActive,
+              isActive: departments.isActive,
+            },
             venue: {
               id: venues.id,
-              campusId: venues.campusId,
               name: venues.name,
               building: venues.building,
               capacity: venues.capacity,
@@ -52,11 +59,12 @@ export default async function StudentNoticeBoardPage() {
             },
           })
           .from(events)
-          .innerJoin(communities, eq(communities.id, events.communityId))
+          .leftJoin(communities, eq(communities.id, events.communityId))
+          .leftJoin(departments, eq(departments.id, events.departmentId))
           .leftJoin(venues, eq(venues.id, events.venueId))
           .leftJoin(creators, eq(creators.id, events.createdBy))
           .leftJoin(reviewers, eq(reviewers.id, events.reviewedBy))
-          .where(eq(events.status, "published"))
+          .where(inArray(events.status, ["published", "pending_report_verification", "completed"]))
           .orderBy(asc(events.startTime))
           .limit(200)
       ),
@@ -64,7 +72,6 @@ export default async function StudentNoticeBoardPage() {
         client
           .select({
             id: venues.id,
-            campusId: venues.campusId,
             name: venues.name,
             building: venues.building,
             capacity: venues.capacity,

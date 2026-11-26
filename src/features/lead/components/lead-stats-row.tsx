@@ -22,7 +22,13 @@ export function LeadStatsRow({
     [communityEvents]
   );
   const pendingCount = useMemo(
-    () => communityEvents.filter((e) => e.status === "pending").length,
+    () =>
+      communityEvents.filter(
+        (e) =>
+          e.status === "pending_stage2" ||
+          e.status === "pending_executive" ||
+          e.status === "needs_reschedule"
+      ).length,
     [communityEvents]
   );
   const rejectedCount = useMemo(

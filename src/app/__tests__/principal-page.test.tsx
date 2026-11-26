@@ -87,7 +87,7 @@ import type { CampusEvent } from "@/types/database";
 
 const mockEvent: CampusEvent = {
   id: "ev-1",
-  campus_id: "campus-1",
+  origin_type: "community",
   community_id: "comm-1",
   title: "Annual Tech Symposium",
   slug: "annual-tech-symposium",
@@ -97,7 +97,7 @@ const mockEvent: CampusEvent = {
   end_time: new Date(Date.now() + 86400000 * 3 + 7200000).toISOString(),
   location_name: "Auditorium A",
   venue_id: "v-1",
-  status: "pending",
+  status: "pending_executive",
   created_by: "user-1",
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -120,7 +120,6 @@ describe("Principal Desk (RSC & Client Desk)", () => {
         email: "principal@campus.edu",
         full_name: "Dr. Mathew",
         role: "principal",
-        campus_id: "campus-1",
       },
     };
   });
@@ -134,38 +133,16 @@ describe("Principal Desk (RSC & Client Desk)", () => {
 
     it("redirects users without principal credentials", async () => {
       mockCurrentUser = {
-        id: "student-1",
-        email: "student@campus.edu",
+        id: "lead-1",
+        email: "lead@campus.edu",
         fullName: "John",
-        role: "student",
+        role: "lead",
         isAdmin: false,
         isPrincipal: false,
         isVicePrincipal: false,
       };
       await PrincipalDeskPage();
       expect(mockRedirect).toHaveBeenCalledWith("/login?error=principal_required");
-    });
-
-    it("renders PrincipalClientDesk with empty events when principal has no campus association", async () => {
-      mockCurrentUser = {
-        id: "principal-1",
-        email: "principal@campus.edu",
-        fullName: "Dr. Mathew",
-        role: "principal",
-        isAdmin: false,
-        isPrincipal: true,
-        isVicePrincipal: false,
-        profile: {
-          id: "principal-1",
-          email: "principal@campus.edu",
-          full_name: "Dr. Mathew",
-          role: "principal",
-        },
-      };
-      const pageJsx = await PrincipalDeskPage();
-      const html = renderToString(pageJsx);
-      expect(html).toContain("data-user=\"Dr. Mathew\"");
-      expect(html).toContain("data-tab=\"inbox\"");
     });
 
     it("renders PrincipalClientDesk when authorized as Principal", async () => {
@@ -189,7 +166,6 @@ describe("Principal Desk (RSC & Client Desk)", () => {
           email: "vp@campus.edu",
           full_name: "Prof. Sarah",
           role: "vice_principal",
-          campus_id: "campus-1",
         },
       };
       const pageJsx = await PrincipalDeskPage();
