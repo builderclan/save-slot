@@ -1,334 +1,196 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "../route";
+import type { AuthSession } from "@/server/auth";
 
-vi.mock("@/lib/auth", () => ({
+vi.mock("@/server/auth", () => ({
   getCurrentUser: vi.fn(),
-}));
-
-vi.mock("@/lib/campus", () => ({
-  getPrimaryCampusId: vi.fn(),
-  resetCampusCache: vi.fn(),
 }));
 
 const {
   mockSelect,
-  mockSelectFrom,
-  mockSelectWhere,
-  mockSelectLimit,
-  mockSelectOrderBy,
-  mockSelectLeftJoin,
-  mockSelectDistinctOn,
   mockInsert,
-  mockInsertValues,
-  mockInsertReturning,
-  mockInsertOnConflictDoUpdate,
-  mockUpdate,
-  mockUpdateSet,
-  mockUpdateWhere,
-  mockUpdateReturning,
   mockTransaction,
-} = vi.hoisted(() => {
-  const mockSelectLimit = vi.fn();
-  const mockSelectOrderBy = vi.fn();
-  const mockSelectWhere = vi.fn();
-  const mockSelectLeftJoin = vi.fn();
-  const mockSelectFrom = vi.fn();
-  const mockSelectDistinctOn = vi.fn();
-  const mockSelect = vi.fn();
-
-  const mockInsertReturning = vi.fn();
-  const mockInsertOnConflictDoUpdate = vi.fn();
-  const mockInsertValues = vi.fn();
-  const mockInsert = vi.fn();
-
-  const mockUpdateReturning = vi.fn();
-  const mockUpdateWhere = vi.fn();
-  const mockUpdateSet = vi.fn();
-  const mockUpdate = vi.fn();
-
-  const mockTransaction = vi.fn();
-
-  return {
-    mockSelect,
-    mockSelectFrom,
-    mockSelectWhere,
-    mockSelectLimit,
-    mockSelectOrderBy,
-    mockSelectLeftJoin,
-    mockSelectDistinctOn,
-    mockInsert,
-    mockInsertValues,
-    mockInsertReturning,
-    mockInsertOnConflictDoUpdate,
-    mockUpdate,
-    mockUpdateSet,
-    mockUpdateWhere,
-    mockUpdateReturning,
-    mockTransaction,
-  };
-});
+} = vi.hoisted(() => ({
+  mockSelect: vi.fn(),
+  mockInsert: vi.fn(),
+  mockTransaction: vi.fn(),
+}));
 
 vi.mock("@/lib/db", () => {
   const mockDbClient = {
     select: mockSelect,
-    selectDistinctOn: mockSelectDistinctOn,
+    selectDistinctOn: () => ({
+      from: () => ({
+        where: () => ({
+          orderBy: () => ({
+            as: () => ({}),
+          }),
+        }),
+      }),
+    }),
     insert: mockInsert,
-    update: mockUpdate,
     transaction: mockTransaction,
   };
-
   return {
+    db: mockDbClient,
     withDbRetry: (op: (client: typeof mockDbClient) => Promise<unknown>) => op(mockDbClient),
   };
 });
 
-import { getCurrentUser, type AuthSession } from "@/lib/auth";
-import { resetCampusCache } from "@/lib/campus";
+import { getCurrentUser } from "@/server/auth";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 
+function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
+  return {
+    userId: `${role}-1`,
+    email: `${role}@aisat.ac.in`,
+    profile: { id: `${role}-1`, email: `${role}@aisat.ac.in`, full_name: role, role },
+    isAdmin: role === "admin",
+    isPrincipal: role === "principal" || role === "vice_principal",
+    isVicePrincipal: role === "vice_principal",
+    isHod: role === "hod",
+    isActingHod: false,
+    isTic: role === "tic",
+    isStaff: role === "staff",
+    isLead: role === "lead",
+    leadCommunities: [],
+    ticCommunities: [],
+    hodDepartments: [],
+  };
+}
+
 describe("Admin Communities API (/api/admin/communities)", () => {
-  const adminSession: AuthSession = {
-    userId: "admin-1",
-    email: "admin@campus.edu",
-    profile: {
-      id: "admin-1",
-      email: "admin@campus.edu",
-      full_name: "Admin User",
-      role: "admin",
-      campus_id: "campus-uuid-1",
-    },
-    isAdmin: true,
-    isPrincipal: false,
-    isVicePrincipal: false,
-    isLead: false,
-    leadCommunities: [],
-  };
-
-  const studentSession: AuthSession = {
-    userId: "student-1",
-    email: "student@campus.edu",
-    profile: {
-      id: "student-1",
-      email: "student@campus.edu",
-      full_name: "Student",
-      role: "student",
-      campus_id: "campus-uuid-1",
-    },
-    isAdmin: false,
-    isPrincipal: false,
-    isVicePrincipal: false,
-    isLead: false,
-    leadCommunities: [],
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
-    resetCampusCache();
+  });
 
-    // Default Select chains
-    mockSelectLimit.mockResolvedValue([]);
-    mockSelectOrderBy.mockResolvedValue([]);
-    mockSelectWhere.mockReturnValue({
-      limit: mockSelectLimit,
-      orderBy: mockSelectOrderBy,
-    });
-    mockSelectLeftJoin.mockReturnValue({
-      leftJoin: mockSelectLeftJoin,
-      where: mockSelectWhere,
-      orderBy: mockSelectOrderBy,
-    });
-    mockSelectFrom.mockReturnValue({
-      where: mockSelectWhere,
-      leftJoin: mockSelectLeftJoin,
-      orderBy: mockSelectOrderBy,
-    });
-    mockSelectDistinctOn.mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            as: vi.fn().mockReturnValue("cm_lead"),
+  it("denies non-admin/non-principal users on GET", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("lead"));
+    const res = await GET();
+    expect(res.status).toBe(403);
+  });
+
+  it("lists communities with code, scope, lead, and TICs on GET", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
+
+    let selectCount = 0;
+    mockSelect.mockImplementation(() => {
+      selectCount++;
+      if (selectCount === 1) {
+        return {
+          from: () => ({
+            leftJoin: () => ({
+              leftJoin: () => ({
+                orderBy: vi.fn().mockResolvedValue([
+                  {
+                    id: "comm-1",
+                    name: "IEEE Student Branch",
+                    slug: "ieee",
+                    code: "IEEE",
+                    scope: "external",
+                    category: "Tech",
+                    status: "approved",
+                    leadId: "u-lead",
+                    leadName: "Nikhil Thomas",
+                    leadEmail: "lead.ieee@aisat.ac.in",
+                    memberCount: 12,
+                    eventCount: 2,
+                    createdAt: new Date("2026-10-01T00:00:00Z"),
+                  },
+                ]),
+              }),
+            }),
           }),
+        };
+      }
+      return {
+        from: () => ({
+          innerJoin: () => ({
+            where: vi.fn().mockResolvedValue([
+              { communityId: "comm-1", userId: "u-tic-1", fullName: "Prof. Deepa George" },
+            ]),
+          }),
+        }),
+      };
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.communities).toHaveLength(1);
+    expect(data.communities[0].code).toBe("IEEE");
+    expect(data.communities[0].scope).toBe("external");
+    expect(data.communities[0].tic_ids).toEqual(["u-tic-1"]);
+    expect(data.communities[0].tic_names).toEqual(["Prof. Deepa George"]);
+  });
+
+  it("rejects assigned leadUserId that is not a Lead or Staff account", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
+    mockSelect.mockReturnValue({
+      from: () => ({
+        where: () => ({
+          limit: vi.fn().mockResolvedValue([]),
         }),
       }),
     });
-    mockSelect.mockReturnValue({
-      from: mockSelectFrom,
-    });
 
-    // Default Insert chains
-    mockInsertReturning.mockResolvedValue([]);
-    mockInsertOnConflictDoUpdate.mockResolvedValue([]);
-    mockInsertValues.mockReturnValue({
-      returning: mockInsertReturning,
-      onConflictDoUpdate: mockInsertOnConflictDoUpdate,
-    });
-    mockInsert.mockReturnValue({
-      values: mockInsertValues,
-    });
-
-    // Default Update chains
-    mockUpdateReturning.mockResolvedValue([]);
-    mockUpdateWhere.mockReturnValue({
-      returning: mockUpdateReturning,
-    });
-    mockUpdateSet.mockReturnValue({
-      where: mockUpdateWhere,
-    });
-    mockUpdate.mockReturnValue({
-      set: mockUpdateSet,
-    });
-
-    // Default Transaction
-    mockTransaction.mockImplementation(async (cb) => {
-      const tx = {
-        insert: mockInsert,
-        update: mockUpdate,
-        select: mockSelect,
-      };
-      return cb(tx);
-    });
+    const res = await POST(
+      new Request("http://localhost/api/admin/communities", {
+        method: "POST",
+        body: JSON.stringify({
+          name: "Robotics Club",
+          category: "Tech",
+          scope: "internal",
+          leadUserId: "11111111-1111-4111-a111-111111111111",
+        }),
+      })
+    );
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toContain("Lead or Staff");
   });
 
-  describe("GET /api/admin/communities", () => {
-    it("returns 403 Forbidden for non-admin", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(studentSession);
-      const res = await GET();
-      expect(res.status).toBe(403);
-    });
+  it("creates community with scope, code, lead, and multi-TIC links on POST", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
 
-    it("returns communities list for admin", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      const mockComms = [
-        {
-          id: "comm-1",
-          campusId: "campus-uuid-1",
-          name: "Coding Club",
-          slug: "coding-club",
-          category: "Tech",
-          status: "approved",
-          memberCount: 42,
-          eventCount: 5,
-        },
-      ];
-      mockSelectOrderBy.mockResolvedValueOnce(mockComms);
+    const mockTxInsert = vi.fn().mockImplementation(() => ({
+      values: () => ({
+        returning: vi.fn().mockResolvedValue([
+          {
+            id: "comm-new",
+            name: "NSS Unit",
+            slug: "nss-unit",
+            code: "NSS",
+            scope: "external",
+            category: "Social",
+            status: "approved",
+            createdAt: new Date("2026-10-01T00:00:00Z"),
+          },
+        ]),
+        onConflictDoUpdate: vi.fn().mockResolvedValue([]),
+      }),
+    }));
 
-      const res = await GET();
-      expect(res.status).toBe(200);
-      const data = await res.json();
-      expect(data.communities).toHaveLength(1);
-      expect(data.communities[0].name).toBe("Coding Club");
-      expect(data.communities[0].member_count).toBe(42);
-      expect(data.communities[0].event_count).toBe(5);
-    });
-  });
+    mockTransaction.mockImplementation(async (cb) => cb({ insert: mockTxInsert }));
 
-  describe("POST /api/admin/communities", () => {
-    it("returns 403 Forbidden for non-admin", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(studentSession);
-      const req = new Request("http://localhost/api/admin/communities", {
-        method: "POST",
-        body: JSON.stringify({ name: "Robotics Club", category: "Tech" }),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(403);
-    });
-
-    it("returns 400 for invalid validation data", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      const req = new Request("http://localhost/api/admin/communities", {
-        method: "POST",
-        body: JSON.stringify({ name: "A", category: "Tech" }),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(400);
-    });
-
-    it("returns 400 if slug already exists on campus", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockSelectLimit.mockResolvedValueOnce([{ id: "existing-id" }]);
-
-      const req = new Request("http://localhost/api/admin/communities", {
-        method: "POST",
-        body: JSON.stringify({ name: "Coding Club", slug: "coding-club", category: "Tech" }),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data.error).toContain("already exists");
-    });
-
-    it("returns 403 if admin profile is missing campus_id", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce({
-        ...adminSession,
-        profile: { ...adminSession.profile, campus_id: "" },
-      });
-
-      const req = new Request("http://localhost/api/admin/communities", {
+    const res = await POST(
+      new Request("http://localhost/api/admin/communities", {
         method: "POST",
         body: JSON.stringify({
-          name: "Robotics Club",
-          category: "Tech",
+          name: "NSS Unit",
+          code: "nss",
+          scope: "external",
+          category: "Social",
+          ticUserIds: ["22222222-2222-4222-a222-222222222222"],
         }),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(403);
-      const data = await res.json();
-      expect(data.error).toContain("Campus association required");
-    });
-
-    it("returns 400 if assigned lead user does not exist or is ineligible", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockSelectLimit
-        .mockResolvedValueOnce([]) // No collision
-        .mockResolvedValueOnce([]); // Lead user not found in campus
-
-      const req = new Request("http://localhost/api/admin/communities", {
-        method: "POST",
-        body: JSON.stringify({
-          name: "Robotics Club",
-          category: "Tech",
-          leadUserId: "a0000000-0000-4000-8000-000000000001",
-        }),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data.error).toContain("Assigned lead user does not exist in this campus or is not an organizer");
-    });
-
-    it("creates community and returns 201 on success", async () => {
-      mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-      mockSelectLimit
-        .mockResolvedValueOnce([]) // No collision
-        .mockResolvedValueOnce([{ id: "a0000000-0000-4000-8000-000000000001" }]); // Lead user found & eligible
-
-      const createdComm = {
-        id: "new-comm-uuid",
-        campusId: "campus-uuid-1",
-        name: "Robotics Club",
-        slug: "robotics-club",
-        category: "Tech",
-        status: "approved",
-      };
-
-      mockInsertReturning.mockResolvedValueOnce([createdComm]);
-      mockUpdateReturning.mockResolvedValueOnce([{ id: "a0000000-0000-4000-8000-000000000001" }]);
-
-      const req = new Request("http://localhost/api/admin/communities", {
-        method: "POST",
-        body: JSON.stringify({
-          name: "Robotics Club",
-          category: "Tech",
-          leadUserId: "a0000000-0000-4000-8000-000000000001",
-        }),
-      });
-
-      const res = await POST(req);
-      expect(res.status).toBe(201);
-      const data = await res.json();
-      expect(data.success).toBe(true);
-      expect(data.community.name).toBe("Robotics Club");
-    });
+      })
+    );
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.community.code).toBe("NSS");
+    expect(data.community.scope).toBe("external");
+    expect(mockTxInsert).toHaveBeenCalledTimes(2);
   });
 });

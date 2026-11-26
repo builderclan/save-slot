@@ -9,7 +9,6 @@ export async function GET() {
       client
         .select({
           id: venues.id,
-          campus_id: venues.campusId,
           name: venues.name,
           building: venues.building,
           capacity: venues.capacity,

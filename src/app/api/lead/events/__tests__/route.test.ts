@@ -118,14 +118,14 @@ describe("Lead Events API - GET /api/lead/events", () => {
       isAdmin: false,
       isPrincipal: false,
       leadCommunities: [
-        { id: "comm-1", name: "Dev Club", slug: "dev-club", category: "Tech", campus_id: "campus-1" },
+        { id: "comm-1", name: "Dev Club", slug: "dev-club" },
       ],
     } as unknown as AuthSession);
 
     mockFindMany.mockResolvedValueOnce([
       {
         id: "ev-1",
-        campusId: "campus-1",
+        originType: "community",
         communityId: "comm-1",
         venueId: "v-1",
         title: "Hackathon 2026",
@@ -135,8 +135,8 @@ describe("Lead Events API - GET /api/lead/events", () => {
         startTime: new Date("2026-11-01T09:00:00Z"),
         endTime: new Date("2026-11-01T17:00:00Z"),
         locationName: "Main Hall",
-        status: "pending",
-        community: { id: "comm-1", name: "Dev Club", slug: "dev-club" },
+        status: "pending_executive",
+        community: { id: "comm-1", name: "Dev Club", slug: "dev-club", code: "DC", scope: "internal" },
         venue: { id: "v-1", name: "Main Hall", building: "Building A", capacity: 200 },
         reviewer: null,
       },
@@ -148,7 +148,6 @@ describe("Lead Events API - GET /api/lead/events", () => {
     expect(data.events).toHaveLength(1);
     expect(data.events[0].id).toBe("ev-1");
     expect(data.events[0].title).toBe("Hackathon 2026");
-    expect(data.events[0].campus_id).toBe("campus-1");
     expect(data.events[0].community.name).toBe("Dev Club");
     expect(data.events[0].venue.name).toBe("Main Hall");
     expect(data.events[0].reviewer).toBeUndefined();
@@ -156,29 +155,12 @@ describe("Lead Events API - GET /api/lead/events", () => {
     expect(mockFindMany).toHaveBeenCalledTimes(1);
   });
 
-  it("rejects admin users without campus association with 403", async () => {
+  it("allows admin and principal users to list all single-campus events", async () => {
     mockGetCurrentUser.mockResolvedValueOnce({
       userId: "u-admin",
       isLead: false,
       isAdmin: true,
       isPrincipal: false,
-      leadCommunities: [],
-    } as unknown as AuthSession);
-
-    const res = await GET();
-    expect(res.status).toBe(403);
-    const data = await res.json();
-    expect(data.error).toBe("Campus association required");
-    expect(mockFindMany).not.toHaveBeenCalled();
-  });
-
-  it("scopes events to campusId for admin users associated with a campus", async () => {
-    mockGetCurrentUser.mockResolvedValueOnce({
-      userId: "u-admin",
-      isLead: false,
-      isAdmin: true,
-      isPrincipal: false,
-      profile: { campus_id: "campus-aisat" },
       leadCommunities: [],
     } as unknown as AuthSession);
 
@@ -186,20 +168,15 @@ describe("Lead Events API - GET /api/lead/events", () => {
 
     const res = await GET();
     expect(res.status).toBe(200);
-    expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.anything(),
-      })
-    );
+    expect(mockFindMany).toHaveBeenCalledTimes(1);
   });
 
-  it("scopes events to campusId for principal users", async () => {
+  it("lists events for principal users", async () => {
     mockGetCurrentUser.mockResolvedValueOnce({
       userId: "u-principal",
       isLead: false,
       isAdmin: false,
       isPrincipal: true,
-      profile: { campus_id: "campus-aisat" },
       leadCommunities: [],
     } as unknown as AuthSession);
 
@@ -207,11 +184,7 @@ describe("Lead Events API - GET /api/lead/events", () => {
 
     const res = await GET();
     expect(res.status).toBe(200);
-    expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.anything(),
-      })
-    );
+    expect(mockFindMany).toHaveBeenCalledTimes(1);
   });
 
   it("handles query errors with 500 status", async () => {
@@ -329,14 +302,12 @@ describe("Lead Events API - POST /api/lead/events", () => {
       leadCommunities: [{ id: "22222222-2222-4222-a222-222222222222" }],
     } as unknown as AuthSession);
 
-    mockSelectLimit.mockResolvedValueOnce([
-      { name: "Tech Lab", campusId: "campus-1" },
-    ]);
+    mockSelectLimit.mockResolvedValueOnce([{ name: "Tech Lab" }]);
 
     mockInsertReturning.mockResolvedValueOnce([
       {
         id: "ev-new-1",
-        campusId: "campus-1",
+        originType: "community",
         communityId: "comm-1",
         venueId: "v-1",
         createdBy: "u-lead",
@@ -347,7 +318,7 @@ describe("Lead Events API - POST /api/lead/events", () => {
         startTime: new Date("2026-11-10T10:00:00.000Z"),
         endTime: new Date("2026-11-10T12:00:00.000Z"),
         locationName: "Tech Lab",
-        status: "pending",
+        status: "pending_executive",
         coverImageUrl: null,
         externalRegistrationUrl: null,
       },
@@ -363,8 +334,7 @@ describe("Lead Events API - POST /api/lead/events", () => {
     expect(data.success).toBe(true);
     expect(data.event.id).toBe("ev-new-1");
     expect(data.event.title).toBe("AI Workshop");
-    expect(data.event.status).toBe("pending");
-    expect(data.event.campus_id).toBe("campus-1");
+    expect(data.event.status).toBe("pending_executive");
   });
 
   it("returns 409 when venue conflict is detected by the server conflict guard", async () => {
@@ -375,9 +345,7 @@ describe("Lead Events API - POST /api/lead/events", () => {
       leadCommunities: [{ id: "22222222-2222-4222-a222-222222222222" }],
     } as unknown as AuthSession);
 
-    mockSelectLimit.mockResolvedValueOnce([
-      { name: "Tech Lab", campusId: "campus-1" },
-    ]);
+    mockSelectLimit.mockResolvedValueOnce([{ name: "Tech Lab" }]);
 
     mockCheckEventConflicts.mockResolvedValueOnce({
       hasConflict: true,

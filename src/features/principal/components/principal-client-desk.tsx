@@ -20,7 +20,6 @@ import { formatDisplayName } from "@/lib/utils";
 import PrincipalLoading from "@/app/principal/loading";
 import { eventsApi } from "@/features/events/api";
 import { conflictsApi } from "@/features/conflicts/api";
-import { adminApi } from "@/features/admin/api";
 
 const VALID_TABS: PrincipalDeskTab[] = ["inbox", "master-schedule", "history"];
 
@@ -87,7 +86,9 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
 
   // Selected event for split view
   const [selectedEventId, setSelectedEventId] = useState<string | null>(() => {
-    const firstPending = initialEvents.find((e) => e.status === "pending");
+    const firstPending = initialEvents.find(
+      (e) => e.status === "pending_executive" || e.status === "pending_stage2"
+    );
     return firstPending?.id || initialEvents[0]?.id || null;
   });
 
@@ -115,7 +116,9 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
 
   // Derived subsets
   const pendingEvents = useMemo(() => {
-    return events.filter((e) => e.status === "pending");
+    return events.filter(
+      (e) => e.status === "pending_executive" || e.status === "pending_stage2"
+    );
   }, [events]);
 
   const [nowTimestamp, setNowTimestamp] = useState<number>(0);
@@ -238,7 +241,7 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
   const handleApprove = async (eventId: string) => {
     setActionInProgress(eventId);
     try {
-      const updated = await adminApi.updateEventStatus(eventId, { status: "published" });
+      const updated = await eventsApi.updateEventStatus(eventId, { status: "published" });
       setEvents((prev) =>
         prev.map((e) => (e.id === eventId ? { ...e, status: "published" } : e))
       );
@@ -284,7 +287,7 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
     setActionInProgress(eventId);
     setRejectionError(null);
     try {
-      await adminApi.updateEventStatus(eventId, {
+      await eventsApi.updateEventStatus(eventId, {
         status: "rejected",
         rejectionReason: rejectionNote.trim(),
       });

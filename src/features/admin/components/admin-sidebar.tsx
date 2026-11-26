@@ -1,25 +1,26 @@
 "use client";
 
 import {
-  Inbox,
+  Building2,
   Calendar,
   Archive,
   Users,
   Building,
   ShieldCheck,
   Compass,
+  Settings,
 } from "lucide-react";
-import { AdminTab } from "./admin-metrics-row";
+import type { AdminTab } from "./admin-metrics-row";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
   onTabChange: (tab: AdminTab) => void;
-  pendingCount: number;
-  publishedCount: number;
-  archivedCount?: number;
+  departmentsCount: number;
+  communitiesCount: number;
   usersCount: number;
   venuesCount: number;
-  communitiesCount?: number;
+  publishedCount: number;
+  archivedCount?: number;
   currentUserName?: string;
   currentUserEmail?: string;
 }
@@ -27,38 +28,28 @@ interface AdminSidebarProps {
 export function AdminSidebar({
   activeTab,
   onTabChange,
-  pendingCount,
-  publishedCount,
-  archivedCount = 0,
+  departmentsCount,
+  communitiesCount,
   usersCount,
   venuesCount,
-  communitiesCount = 0,
-  currentUserName = "Campus Dean of Affairs",
+  publishedCount,
+  archivedCount = 0,
+  currentUserName = "Campus Admin",
 }: AdminSidebarProps) {
   const navItems = [
     {
-      id: "triage" as AdminTab,
-      label: "Review Inbox",
-      shortLabel: "Inbox",
-      icon: Inbox,
-      count: pendingCount,
-      highlight: pendingCount > 0,
+      id: "departments" as AdminTab,
+      label: "Departments",
+      shortLabel: "Depts",
+      icon: Building2,
+      count: departmentsCount,
     },
     {
-      id: "all-events" as AdminTab,
-      label: "Master Calendar",
-      shortLabel: "Calendar",
-      icon: Calendar,
-      count: publishedCount,
-      highlight: false,
-    },
-    {
-      id: "archive" as AdminTab,
-      label: "Event Archive",
-      shortLabel: "Archive",
-      icon: Archive,
-      count: archivedCount,
-      highlight: false,
+      id: "communities" as AdminTab,
+      label: "Communities",
+      shortLabel: "Clubs",
+      icon: Compass,
+      count: communitiesCount,
     },
     {
       id: "users" as AdminTab,
@@ -66,7 +57,6 @@ export function AdminSidebar({
       shortLabel: "Users",
       icon: Users,
       count: usersCount,
-      highlight: false,
     },
     {
       id: "venues" as AdminTab,
@@ -74,28 +64,38 @@ export function AdminSidebar({
       shortLabel: "Venues",
       icon: Building,
       count: venuesCount,
-      highlight: false,
     },
     {
-      id: "communities" as AdminTab,
-      label: "Clubs & Societies",
-      shortLabel: "Clubs",
-      icon: Compass,
-      count: communitiesCount,
-      highlight: false,
+      id: "settings" as AdminTab,
+      label: "College Settings",
+      shortLabel: "Settings",
+      icon: Settings,
+      count: null as number | null,
+    },
+    {
+      id: "all-events" as AdminTab,
+      label: "Master Calendar",
+      shortLabel: "Calendar",
+      icon: Calendar,
+      count: publishedCount,
+    },
+    {
+      id: "archive" as AdminTab,
+      label: "Event Archive",
+      shortLabel: "Archive",
+      icon: Archive,
+      count: archivedCount,
     },
   ];
 
   return (
-    <aside
-      className="w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-200/80 bg-white lg:bg-zinc-50/60 p-1.5 sm:p-3 lg:p-4 flex flex-col justify-between"
-    >
+    <aside className="w-full lg:w-60 xl:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-zinc-200/80 bg-white lg:bg-zinc-50/60 p-1.5 sm:p-3 lg:p-4 flex flex-col justify-between">
       <div className="space-y-1.5 lg:space-y-4">
         <div className="hidden lg:flex items-center justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2.5 px-2">
-          <span>Desk Views</span>
+          <span>IT & Ops Setup</span>
           {currentUserName && (
             <span
-              className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-200/70 truncate max-w-[120px]"
+              className="text-[10px] font-semibold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200/70 truncate max-w-[120px]"
               title={currentUserName}
             >
               {currentUserName}
@@ -129,32 +129,31 @@ export function AdminSidebar({
                   <span className="hidden lg:inline">{item.label}</span>
                 </div>
 
-                <span
-                  className={`px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[10px] font-bold shrink-0 border tabular-nums ${
-                    item.highlight
-                      ? "bg-amber-50 text-amber-700 border-amber-200/80"
-                      : isActive
-                      ? "bg-indigo-50 text-indigo-700 border-indigo-200/70 font-semibold"
-                      : "bg-zinc-100 text-zinc-600 border-zinc-200/60"
-                  }`}
-                >
-                  {item.count}
-                </span>
+                {item.count !== null && (
+                  <span
+                    className={`px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full text-[10px] font-bold shrink-0 border tabular-nums ${
+                      isActive
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-200/70 font-semibold"
+                        : "bg-zinc-100 text-zinc-600 border-zinc-200/60"
+                    }`}
+                  >
+                    {item.count}
+                  </span>
+                )}
               </button>
             );
           })}
         </nav>
       </div>
 
-      {/* Sidebar Footer Info */}
       <div className="hidden lg:block pt-4 border-t border-zinc-200/80">
         <div className="p-3.5 rounded-xl bg-white border border-zinc-200/80 text-[11px] text-zinc-600 shadow-2xs">
           <div className="font-semibold flex items-center gap-1.5 mb-1 text-zinc-900">
-            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Operations Console</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+            <span>IT & Operations Only</span>
           </div>
           <p className="text-[10px] text-zinc-500 leading-relaxed">
-            Deterministic Safe-Slot verification ensures zero double-booking or category clashes.
+            Manages departments, communities, venues, and accounts. Event approvals belong strictly to HODs, TICs, and Principal / VP.
           </p>
         </div>
       </div>

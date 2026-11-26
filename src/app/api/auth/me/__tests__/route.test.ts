@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "../route";
 
-vi.mock("@/lib/auth", () => ({
+vi.mock("@/server/auth", () => ({
   getCurrentUser: vi.fn(),
 }));
 
-import { getCurrentUser, type AuthSession } from "@/lib/auth";
+import { getCurrentUser, type AuthSession } from "@/server/auth";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 
@@ -35,9 +35,15 @@ describe("GET /api/auth/me", () => {
         role: "admin",
       },
       leadCommunities: [],
+      ticCommunities: [],
+      hodDepartments: [],
       isAdmin: true,
       isPrincipal: false,
       isVicePrincipal: false,
+      isHod: false,
+      isActingHod: false,
+      isTic: false,
+      isStaff: false,
       isLead: false,
     } as AuthSession);
 

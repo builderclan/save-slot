@@ -1,312 +1,177 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, POST } from "../route";
+import type { AuthSession } from "@/server/auth";
 
-vi.mock("@/lib/auth", () => ({
+vi.mock("@/server/auth", () => ({
   getCurrentUser: vi.fn(),
-}));
-
-vi.mock("@/lib/campus", () => ({
-  getPrimaryCampusId: vi.fn(),
 }));
 
 const {
   mockSelect,
-  mockSelectFrom,
-  mockSelectWhere,
-  mockSelectLimit,
-  mockSelectOrderBy,
-  mockInsert,
-  mockInsertValues,
-  mockInsertReturning,
-  mockInsertOnConflictDoUpdate,
-  mockExecute,
   mockTransaction,
-} = vi.hoisted(() => {
-  const mockSelectLimit = vi.fn();
-  const mockSelectOrderBy = vi.fn();
-  const mockSelectWhere = vi.fn();
-  const mockSelectFrom = vi.fn();
-  const mockSelect = vi.fn();
-
-  const mockInsertReturning = vi.fn();
-  const mockInsertOnConflictDoUpdate = vi.fn();
-  const mockInsertValues = vi.fn();
-  const mockInsert = vi.fn();
-
-  const mockExecute = vi.fn();
-  const mockTransaction = vi.fn();
-
-  return {
-    mockSelect,
-    mockSelectFrom,
-    mockSelectWhere,
-    mockSelectLimit,
-    mockSelectOrderBy,
-    mockInsert,
-    mockInsertValues,
-    mockInsertReturning,
-    mockInsertOnConflictDoUpdate,
-    mockExecute,
-    mockTransaction,
-  };
-});
+} = vi.hoisted(() => ({
+  mockSelect: vi.fn(),
+  mockTransaction: vi.fn(),
+}));
 
 vi.mock("@/lib/db", () => {
   const mockDbClient = {
     select: mockSelect,
-    insert: mockInsert,
-    execute: mockExecute,
     transaction: mockTransaction,
   };
-
   return {
     db: mockDbClient,
     withDbRetry: (op: (client: typeof mockDbClient) => Promise<unknown>) => op(mockDbClient),
   };
 });
 
-import { getCurrentUser, type AuthSession } from "@/lib/auth";
-import { getPrimaryCampusId } from "@/lib/campus";
+import { getCurrentUser } from "@/server/auth";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
-const mockGetPrimaryCampusId = vi.mocked(getPrimaryCampusId);
+
+function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
+  return {
+    userId: `${role}-1`,
+    email: `${role}@aisat.ac.in`,
+    profile: { id: `${role}-1`, email: `${role}@aisat.ac.in`, full_name: role, role },
+    isAdmin: role === "admin",
+    isPrincipal: role === "principal" || role === "vice_principal",
+    isVicePrincipal: role === "vice_principal",
+    isHod: role === "hod",
+    isActingHod: false,
+    isTic: role === "tic",
+    isStaff: role === "staff",
+    isLead: role === "lead",
+    leadCommunities: [],
+    ticCommunities: [],
+    hodDepartments: [],
+  };
+}
 
 describe("Admin Users API (/api/admin/users)", () => {
-  const adminSession: AuthSession = {
-    userId: "admin-1",
-    email: "admin@campus.edu",
-    profile: {
-      id: "admin-1",
-      email: "admin@campus.edu",
-      full_name: "Admin User",
-      role: "admin",
-      campus_id: "campus-uuid-1",
-    },
-    isAdmin: true,
-    isPrincipal: false,
-    isVicePrincipal: false,
-    isLead: false,
-    leadCommunities: [],
-  };
-
-  const studentSession: AuthSession = {
-    userId: "student-1",
-    email: "student@campus.edu",
-    profile: {
-      id: "student-1",
-      email: "student@campus.edu",
-      full_name: "Student",
-      role: "student",
-      campus_id: "campus-uuid-1",
-    },
-    isAdmin: false,
-    isPrincipal: false,
-    isVicePrincipal: false,
-    isLead: false,
-    leadCommunities: [],
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetPrimaryCampusId.mockResolvedValue("campus-uuid-1");
+  });
 
-    mockSelectLimit.mockResolvedValue([]);
-    mockSelectOrderBy.mockResolvedValue([]);
-    mockSelectWhere.mockReturnValue({
-      limit: mockSelectLimit,
-      orderBy: mockSelectOrderBy,
+  it("rejects non-admin/non-principal users on GET", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("staff"));
+    const res = await GET();
+    expect(res.status).toBe(403);
+  });
+
+  it("returns formatted users with department and community joins on GET", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
+
+    let call = 0;
+    mockSelect.mockImplementation(() => {
+      call++;
+      if (call === 1) {
+        return {
+          from: () => ({
+            innerJoin: () => ({
+              groupBy: () => ({
+                as: () => ({}),
+              }),
+            }),
+          }),
+        };
+      }
+      return {
+        from: () => ({
+          leftJoin: () => ({
+            leftJoin: () => ({
+              orderBy: vi.fn().mockResolvedValue([
+                {
+                  id: "u-hod-1",
+                  email: "hod.cse@aisat.ac.in",
+                  fullName: "Dr. Anitha S.",
+                  role: "hod",
+                  designation: "Professor & HOD, CSE",
+                  departmentId: "dept-cse",
+                  departmentName: "Computer Science",
+                  departmentCode: "CSE",
+                  isActive: true,
+                  createdAt: new Date("2026-10-01T00:00:00Z"),
+                },
+              ]),
+            }),
+          }),
+        }),
+      };
     });
-    const mockLeadQueryChain = {
-      where: vi.fn().mockReturnValue({
-        groupBy: vi.fn().mockReturnValue({
-          as: vi.fn().mockReturnValue("user_leads"),
+
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.users).toHaveLength(1);
+    expect(data.users[0].role).toBe("hod");
+    expect(data.users[0].department_code).toBe("CSE");
+  });
+
+  it("denies Principal from provisioning users on POST (IT Admin only)", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("principal"));
+    const res = await POST(
+      new Request("http://localhost/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify({}),
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("provisions faculty user with department and TIC membership on POST", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(makeSession("admin"));
+    mockSelect.mockReturnValue({
+      from: () => ({
+        where: () => ({
+          limit: vi.fn().mockResolvedValue([]),
         }),
       }),
-    };
-
-    const mockJoinChain = {
-      where: mockSelectWhere,
-      leftJoin: vi.fn(),
-      orderBy: mockSelectOrderBy,
-    };
-    mockJoinChain.leftJoin.mockReturnValue(mockJoinChain);
-
-    mockSelectFrom.mockReturnValue({
-      where: mockSelectWhere,
-      leftJoin: () => mockJoinChain,
-      innerJoin: () => mockLeadQueryChain,
-      orderBy: mockSelectOrderBy,
-    });
-    mockSelect.mockReturnValue({
-      from: mockSelectFrom,
     });
 
-    mockInsertReturning.mockResolvedValue([]);
-    mockInsertOnConflictDoUpdate.mockResolvedValue([]);
-    mockInsertValues.mockReturnValue({
-      returning: mockInsertReturning,
-      onConflictDoUpdate: mockInsertOnConflictDoUpdate,
-    });
-    mockInsert.mockReturnValue({
-      values: mockInsertValues,
-    });
+    const mockTxExecute = vi.fn().mockResolvedValue([]);
+    const mockTxInsert = vi.fn().mockImplementation(() => ({
+      values: () => ({
+        returning: vi.fn().mockResolvedValue([
+          {
+            id: "u-new-1",
+            email: "arun.cse@aisat.ac.in",
+            fullName: "Prof. Arun Kumar",
+            role: "staff",
+            designation: "Assistant Professor, CSE",
+            departmentId: "11111111-1111-4111-a111-111111111111",
+            isActive: true,
+            createdAt: new Date("2026-10-01T00:00:00Z"),
+          },
+        ]),
+        onConflictDoUpdate: vi.fn().mockResolvedValue([]),
+      }),
+    }));
 
-    mockExecute.mockResolvedValue({ rows: [] });
+    mockTransaction.mockImplementation(async (cb) =>
+      cb({ execute: mockTxExecute, insert: mockTxInsert })
+    );
 
-    mockTransaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => {
-      const mockTx = {
-        select: mockSelect,
-        insert: mockInsert,
-        execute: mockExecute,
-      };
-      return callback(mockTx);
-    });
-  });
-
-  describe("GET /api/admin/users", () => {
-    it("should reject non-admin with 403", async () => {
-      mockGetCurrentUser.mockResolvedValue(studentSession);
-      const res = await GET();
-      expect(res.status).toBe(403);
-    });
-
-    it("should return users list formatted with admin community metadata", async () => {
-      mockGetCurrentUser.mockResolvedValue(adminSession);
-      mockSelectOrderBy.mockResolvedValue([
-        {
-          id: "u-1",
-          email: "lead@campus.edu",
-          fullName: "Lead User",
-          role: "organizer",
-          avatarUrl: null,
-          campusId: "campus-uuid-1",
-          createdAt: new Date("2026-01-01T00:00:00Z"),
-          communityId: "comm-1",
-          communityName: "Robotics Club",
-        },
-      ]);
-
-      const res = await GET();
-      expect(res.status).toBe(200);
-      const data = await res.json();
-      expect(data.users).toHaveLength(1);
-      expect(data.users[0].id).toBe("u-1");
-      expect(data.users[0].full_name).toBe("Lead User");
-      expect(data.users[0].community_id).toBe("comm-1");
-      expect(data.users[0].community_name).toBe("Robotics Club");
-    });
-  });
-
-  describe("POST /api/admin/users", () => {
-    const validBody = {
-      fullName: "Jane Organizer",
-      email: "jane@campus.edu",
-      password: "SecurePassword123!",
-      role: "organizer",
-      communityId: "a0000000-0000-4000-8000-000000000001",
-    };
-
-    it("should reject non-admin with 403", async () => {
-      mockGetCurrentUser.mockResolvedValue(studentSession);
-      const req = new Request("http://localhost/api/admin/users", {
+    const res = await POST(
+      new Request("http://localhost/api/admin/users", {
         method: "POST",
-        body: JSON.stringify(validBody),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(403);
-    });
-
-    it("should return 400 for invalid body schema", async () => {
-      mockGetCurrentUser.mockResolvedValue(adminSession);
-      const req = new Request("http://localhost/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify({ email: "not-an-email" }),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(400);
-    });
-
-    it("should return 400 when email already exists", async () => {
-      mockGetCurrentUser.mockResolvedValue(adminSession);
-      mockSelectWhere.mockReturnValue({
-        limit: mockSelectLimit.mockResolvedValue([{ id: "existing-user-id" }]),
-      });
-
-      const req = new Request("http://localhost/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify(validBody),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data.error).toBe("A user with this email already exists.");
-    });
-
-    it("should return 403 when admin profile is missing campus_id", async () => {
-      mockGetCurrentUser.mockResolvedValue({
-        ...adminSession,
-        profile: { ...adminSession.profile, campus_id: undefined },
-      });
-
-      const req = new Request("http://localhost/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify(validBody),
-      });
-      const res = await POST(req);
-      expect(res.status).toBe(403);
-      const data = await res.json();
-      expect(data.error).toContain("Campus association required");
-    });
-
-    it("should create user in transaction and assign community lead", async () => {
-      mockGetCurrentUser.mockResolvedValue(adminSession);
-      mockSelectWhere.mockReturnValue({
-        limit: mockSelectLimit.mockResolvedValue([]),
-      });
-
-      mockInsertReturning.mockResolvedValue([
-        {
-          id: "new-user-id",
-          email: "jane@campus.edu",
-          fullName: "Jane Organizer",
-          role: "organizer",
-          campusId: "campus-uuid-1",
-          createdAt: new Date("2026-01-01T00:00:00Z"),
-        },
-      ]);
-
-      const req = new Request("http://localhost/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify(validBody),
-      });
-
-      const res = await POST(req);
-      expect(res.status).toBe(200);
-      const data = await res.json();
-      expect(data.success).toBe(true);
-      expect(data.user.id).toBe("new-user-id");
-      expect(data.user.full_name).toBe("Jane Organizer");
-      expect(mockExecute).toHaveBeenCalledTimes(2); // auth.users, auth.identities
-      expect(mockInsert).toHaveBeenCalledTimes(2); // users, communityMembers
-    });
-
-    it("should return 400 when unique constraint violation 23505 occurs on concurrent insert", async () => {
-      mockGetCurrentUser.mockResolvedValue(adminSession);
-      mockSelectWhere.mockReturnValue({
-        limit: mockSelectLimit.mockResolvedValue([]),
-      });
-
-      mockTransaction.mockRejectedValueOnce(Object.assign(new Error("duplicate key value violates unique constraint"), { code: "23505" }));
-
-      const req = new Request("http://localhost/api/admin/users", {
-        method: "POST",
-        body: JSON.stringify(validBody),
-      });
-
-      const res = await POST(req);
-      expect(res.status).toBe(400);
-      const data = await res.json();
-      expect(data.error).toBe("A user with this email already exists.");
-    });
+        body: JSON.stringify({
+          fullName: "Prof. Arun Kumar",
+          email: "arun.cse@aisat.ac.in",
+          password: "password123",
+          role: "staff",
+          designation: "Assistant Professor, CSE",
+          departmentId: "11111111-1111-4111-a111-111111111111",
+          communityId: "22222222-2222-4222-a222-222222222222",
+          communityMemberRole: "tic",
+        }),
+      })
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+    expect(data.user.role).toBe("staff");
+    expect(mockTxExecute).toHaveBeenCalledTimes(2);
+    expect(mockTxInsert).toHaveBeenCalledTimes(2);
   });
 });

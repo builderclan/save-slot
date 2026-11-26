@@ -3,7 +3,7 @@ import { safeRevalidatePath } from "@/lib/revalidate";
 import { getCurrentUser } from "@/lib/auth";
 import { withDbRetry } from "@/lib/db";
 import { events } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export async function DELETE(
   request: Request,
@@ -16,20 +16,11 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
 
     const deleted = await withDbRetry((client) =>
       client
         .delete(events)
-        .where(
-          and(
-            eq(events.id, id),
-            eq(events.campusId, campusId)
-          )
-        )
+        .where(eq(events.id, id))
         .returning({ id: events.id })
     );
 

@@ -1,6 +1,9 @@
 import { apiClient } from "@/lib/api-client";
 import type { CampusEvent } from "@/types/database";
-import type { ProposeEventInput } from "@/lib/validations";
+import type {
+  ProposeEventInput,
+  UpdateEventStatusInput,
+} from "@/lib/validations";
 
 export interface GetEventsParams {
   status?: string;
@@ -23,7 +26,10 @@ export const eventsApi = {
 
   getEvents(params?: GetEventsParams): Promise<{ events: CampusEvent[] }> {
     return apiClient.get<{ events: CampusEvent[] }>("/api/events", {
-      params: params as Record<string, string | number | boolean | undefined | null>,
+      params: params as Record<
+        string,
+        string | number | boolean | undefined | null
+      >,
     });
   },
 
@@ -31,15 +37,36 @@ export const eventsApi = {
     return apiClient.get<{ events: CampusEvent[] }>("/api/lead/events");
   },
 
-  propose(data: ProposeEventInput): Promise<{ success: boolean; event: CampusEvent }> {
-    return apiClient.post<{ success: boolean; event: CampusEvent }>("/api/lead/events", data);
+  propose(
+    data: ProposeEventInput,
+  ): Promise<{ success: boolean; event: CampusEvent }> {
+    return apiClient.post<{ success: boolean; event: CampusEvent }>(
+      "/api/lead/events",
+      data,
+    );
   },
 
-  update(id: string, data: ProposeEventInput): Promise<{ success: boolean; event: CampusEvent }> {
-    return apiClient.put<{ success: boolean; event: CampusEvent }>(`/api/lead/events/${id}`, data);
+  update(
+    id: string,
+    data: ProposeEventInput,
+  ): Promise<{ success: boolean; event: CampusEvent }> {
+    return apiClient.put<{ success: boolean; event: CampusEvent }>(
+      `/api/lead/events/${id}`,
+      data,
+    );
   },
 
   withdraw(id: string): Promise<{ success: boolean }> {
     return apiClient.delete<{ success: boolean }>(`/api/lead/events/${id}`);
+  },
+
+  updateEventStatus(
+    eventId: string,
+    data: UpdateEventStatusInput,
+  ): Promise<{ success: boolean; event?: CampusEvent }> {
+    return apiClient.patch<{ success: boolean; event?: CampusEvent }>(
+      `/api/admin/events/${eventId}/status`,
+      data,
+    );
   },
 };

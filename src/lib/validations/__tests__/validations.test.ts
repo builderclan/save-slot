@@ -9,6 +9,9 @@ import {
   CreateUserSchema,
   ForgotPasswordSchema,
   ResetPasswordSchema,
+  CreateDepartmentSchema,
+  UpdateDepartmentSchema,
+  UpdateCollegeSettingsSchema,
 } from "../index";
 
 
@@ -174,7 +177,7 @@ describe("Zod Validation Schemas", () => {
     it("accepts valid statuses", () => {
       expect(UpdateEventStatusSchema.safeParse({ status: "published" }).success).toBe(true);
       expect(UpdateEventStatusSchema.safeParse({ status: "rejected", rejectionReason: "Venue booked" }).success).toBe(true);
-      expect(UpdateEventStatusSchema.safeParse({ status: "pending" }).success).toBe(true);
+      expect(UpdateEventStatusSchema.safeParse({ status: "pending_executive" }).success).toBe(true);
     });
 
     it("rejects invalid status values", () => {
@@ -273,11 +276,24 @@ describe("Zod Validation Schemas", () => {
         fullName: "Student Lead",
         email: "lead@campus.edu",
         password: "12345",
-        role: "organizer",
+        role: "lead",
       });
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toContain("at least 6 characters");
+      }
+    });
+
+    it("accepts all v1.0.0 faculty and student roles (hod, tic, staff, lead)", () => {
+      for (const role of ["hod", "tic", "staff", "lead"] as const) {
+        expect(
+          CreateUserSchema.safeParse({
+            fullName: "AISAT Member",
+            email: `${role}@aisat.ac.in`,
+            password: "Password123",
+            role,
+          }).success
+        ).toBe(true);
       }
     });
 
@@ -309,7 +325,7 @@ describe("Zod Validation Schemas", () => {
       });
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues[0]?.message).toBe("Please enter a valid campus email address");
+        expect(result.error.issues[0]?.message).toBe("Please enter a valid college email address");
       }
     });
 
@@ -350,6 +366,43 @@ describe("Zod Validation Schemas", () => {
       if (!result.success) {
         expect(result.error.issues[0]?.message).toBe("Passwords do not match");
         expect(result.error.issues[0]?.path).toContain("confirmPassword");
+      }
+    });
+  });
+
+  describe("Department & College Settings Schemas (v1.0.0)", () => {
+    it("accepts valid department payload and uppercases code", () => {
+      const result = CreateDepartmentSchema.safeParse({
+        name: "Computer Science & Engineering",
+        code: "cse",
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.code).toBe("CSE");
+      }
+    });
+
+    it("rejects invalid department code symbols", () => {
+      expect(
+        CreateDepartmentSchema.safeParse({ name: "CSE Dept", code: "C$E!" }).success
+      ).toBe(false);
+    });
+
+    it("validates partial department Acting HOD toggles", () => {
+      expect(
+        UpdateDepartmentSchema.safeParse({ isActingHodActive: true }).success
+      ).toBe(true);
+    });
+
+    it("validates college settings update payload", () => {
+      const result = UpdateCollegeSettingsSchema.safeParse({
+        collegeName: "AISAT",
+        shortCode: "aisat",
+        academicYearStartMonth: 7,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.shortCode).toBe("AISAT");
       }
     });
   });

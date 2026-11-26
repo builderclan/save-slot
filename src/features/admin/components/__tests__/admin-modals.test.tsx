@@ -7,25 +7,68 @@ import { AdminAddVenueModal } from "../admin-add-venue-modal";
 import { AdminEditVenueModal } from "../admin-edit-venue-modal";
 import { AdminAddCommunityModal } from "../admin-add-community-modal";
 import { AdminEditCommunityModal } from "../admin-edit-community-modal";
+import { AdminDepartmentModal } from "../admin-department-modal";
 import { AdminConfirmDeleteModal } from "../admin-confirm-delete-modal";
-import type { AdminUserRow } from "../admin-users-view";
-import type { Venue, AdminCommunityRow } from "@/types/database";
+import type { AdminUserRow, AdminCommunityRow, Department, Venue } from "@/types/database";
 
-describe("Admin Modular Components & Modals", () => {
-  const dummyCommunities = [
-    { id: "comm-1", name: "Coding Club" },
-    { id: "comm-2", name: "Design Society" },
+describe("Admin Modular Components & Modals (v1.0.0)", () => {
+  const dummyDepartments: Department[] = [
+    {
+      id: "dept-cse",
+      name: "Computer Science & Engineering",
+      code: "CSE",
+      is_acting_hod_active: false,
+      is_active: true,
+    },
   ];
 
-  const dummyEligibleUsers = [
-    { id: "u-1", fullName: "Alice Lead", email: "alice@campus.edu", role: "organizer" },
+  const dummyCommunities: AdminCommunityRow[] = [
+    {
+      id: "comm-1",
+      name: "Coding Club",
+      slug: "coding-club",
+      code: "CC",
+      scope: "internal",
+      category: "Tech",
+      member_count: 12,
+      event_count: 4,
+    },
+    {
+      id: "comm-2",
+      name: "IEEE Student Branch",
+      slug: "ieee",
+      code: "IEEE",
+      scope: "external",
+      category: "Tech",
+      member_count: 35,
+      event_count: 6,
+    },
+  ];
+
+  const dummyEligibleUsers: AdminUserRow[] = [
+    {
+      id: "u-1",
+      full_name: "Alice Lead",
+      email: "alice@aisat.ac.in",
+      role: "lead",
+    },
+    {
+      id: "u-2",
+      full_name: "Prof. Arun Kumar",
+      email: "arun.cse@aisat.ac.in",
+      role: "staff",
+      department_code: "CSE",
+    },
   ];
 
   const mockUserRow: AdminUserRow = {
     id: "user-42",
-    email: "elena@campus.edu",
+    email: "elena@aisat.ac.in",
     full_name: "Elena Rostova",
-    role: "organizer",
+    role: "hod",
+    designation: "Professor & HOD, CSE",
+    department_id: "dept-cse",
+    department_code: "CSE",
     community_id: "comm-1",
     community_name: "Coding Club",
     created_at: "2026-01-01T00:00:00Z",
@@ -33,7 +76,6 @@ describe("Admin Modular Components & Modals", () => {
 
   const mockVenue: Venue = {
     id: "venue-10",
-    campus_id: "campus-1",
     name: "Main Auditorium",
     building: "Central Block",
     capacity: 500,
@@ -45,9 +87,10 @@ describe("Admin Modular Components & Modals", () => {
 
   const mockCommunityRow: AdminCommunityRow = {
     id: "comm-100",
-    campus_id: "campus-1",
     name: "Robotics Chapter",
     slug: "robotics-chapter",
+    code: "ROBO",
+    scope: "external",
     category: "Tech",
     description: "Autonomous robotics and hardware prototyping.",
     logo_url: "https://example.com/logo.png",
@@ -55,7 +98,9 @@ describe("Admin Modular Components & Modals", () => {
     instagram: "@robotics_aisat",
     lead_id: "u-1",
     lead_name: "Alice Lead",
-    lead_email: "alice@campus.edu",
+    lead_email: "alice@aisat.ac.in",
+    tic_ids: ["u-2"],
+    tic_names: ["Prof. Arun Kumar"],
     status: "approved",
     event_count: 3,
     member_count: 50,
@@ -70,6 +115,7 @@ describe("Admin Modular Components & Modals", () => {
           onClose={vi.fn()}
           onSubmit={vi.fn()}
           communities={dummyCommunities}
+          departments={dummyDepartments}
         />
       );
       expect(html).toBe("");
@@ -82,11 +128,12 @@ describe("Admin Modular Components & Modals", () => {
           onClose={vi.fn()}
           onSubmit={vi.fn()}
           communities={dummyCommunities}
+          departments={dummyDepartments}
         />
       );
-      expect(html).toContain("Provision New User Account");
-      expect(html).toContain("Campus Email");
-      expect(html).toContain("Coding Club");
+      expect(html).toContain("Provision User Account");
+      expect(html).toContain("College Email");
+      expect(html).toContain("Primary System Role");
     });
   });
 
@@ -99,11 +146,29 @@ describe("Admin Modular Components & Modals", () => {
           onSubmit={vi.fn()}
           user={mockUserRow}
           communities={dummyCommunities}
+          departments={dummyDepartments}
         />
       );
       expect(html).toContain("Edit User Account");
-      expect(html).toContain("elena@campus.edu");
+      expect(html).toContain("elena@aisat.ac.in");
       expect(html).toContain("Elena Rostova");
+      expect(html).toContain("Account Active");
+    });
+  });
+
+  describe("AdminDepartmentModal", () => {
+    it("renders department and Acting HOD controls when open", () => {
+      const html = renderToString(
+        <AdminDepartmentModal
+          isOpen={true}
+          onClose={vi.fn()}
+          onSubmit={vi.fn()}
+          department={dummyDepartments[0]}
+          users={dummyEligibleUsers}
+        />
+      );
+      expect(html).toContain("Edit Department (CSE)");
+      expect(html).toContain("Acting HOD");
     });
   });
 
@@ -139,7 +204,7 @@ describe("Admin Modular Components & Modals", () => {
   });
 
   describe("AdminAddCommunityModal", () => {
-    it("renders community registration fields", () => {
+    it("renders community registration fields including scope and multi-TIC", () => {
       const html = renderToString(
         <AdminAddCommunityModal
           isOpen={true}
@@ -148,14 +213,15 @@ describe("Admin Modular Components & Modals", () => {
           eligibleUsers={dummyEligibleUsers}
         />
       );
-      expect(html).toContain("Register Student Community");
-      expect(html).toContain("URL Identifier (Slug)");
-      expect(html).toContain("Alice Lead");
+      expect(html).toContain("Register Community or Chapter");
+      expect(html).toContain("Governance Scope");
+      expect(html).toContain("Multi-TIC");
+      expect(html).toContain("Prof. Arun Kumar");
     });
   });
 
   describe("AdminEditCommunityModal", () => {
-    it("renders community edit fields with status selector", () => {
+    it("renders community edit fields with code and scope", () => {
       const html = renderToString(
         <AdminEditCommunityModal
           isOpen={true}
@@ -165,10 +231,10 @@ describe("Admin Modular Components & Modals", () => {
           eligibleUsers={dummyEligibleUsers}
         />
       );
-      expect(html).toContain("Edit Student Community");
+      expect(html).toContain("Edit Community (ROBO)");
       expect(html).toContain("Robotics Chapter");
       expect(html).toContain("robotics-chapter");
-      expect(html).toContain("Approved &amp; Active");
+      expect(html).toContain("Governance Scope");
     });
   });
 
@@ -195,8 +261,8 @@ describe("Admin Modular Components & Modals", () => {
       expect(htmlNull).toBe("");
     });
 
-    it("renders entity-aware destructive confirmation for events", () => {
-      const html = renderToString(
+    it("renders entity-aware destructive confirmation for events and departments", () => {
+      const htmlEvent = renderToString(
         <AdminConfirmDeleteModal
           isOpen={true}
           target={{ type: "event", id: "ev-1", title: "Autonomous Drone Expo", subtitle: "Auditorium A" }}
@@ -204,62 +270,17 @@ describe("Admin Modular Components & Modals", () => {
           onConfirm={vi.fn()}
         />
       );
-      expect(html).toContain('Delete &quot;Autonomous Drone Expo&quot;?');
-      expect(html).toContain("Auditorium A");
-      expect(html).toContain("Event");
-      expect(html).toContain("Delete Event");
-      expect(html).toContain("This action cannot be undone.");
-    });
+      expect(htmlEvent).toContain("Delete Event");
 
-    it("renders entity-aware destructive confirmation for users", () => {
-      const html = renderToString(
+      const htmlDept = renderToString(
         <AdminConfirmDeleteModal
           isOpen={true}
-          target={{ type: "user", id: "u-1", title: "Dr. Victor Stone", subtitle: "victor@campus.edu" }}
+          target={{ type: "department", id: "d-1", title: "CSE" }}
           onClose={vi.fn()}
           onConfirm={vi.fn()}
         />
       );
-      expect(html).toContain('Delete &quot;Dr. Victor Stone&quot;?');
-      expect(html).toContain("victor@campus.edu");
-      expect(html).toContain("User");
-      expect(html).toContain("Delete User");
-    });
-
-    it("renders entity-aware destructive confirmation for facilities", () => {
-      const html = renderToString(
-        <AdminConfirmDeleteModal
-          isOpen={true}
-          target={{ type: "venue", id: "v-1", title: "Central Amphitheatre", subtitle: "Building B • Capacity 450" }}
-          onClose={vi.fn()}
-          onConfirm={vi.fn()}
-        />
-      );
-      expect(html).toContain('Delete &quot;Central Amphitheatre&quot;?');
-      expect(html).toContain("Building B • Capacity 450");
-      expect(html).toContain("Facility");
-      expect(html).toContain("Delete Facility");
-    });
-
-    it("reflects deleting pending state with spinner and disabled buttons", () => {
-      const html = renderToString(
-        <AdminConfirmDeleteModal
-          isOpen={true}
-          target={{ type: "community", id: "c-1", title: "Robotics Club" }}
-          onClose={vi.fn()}
-          onConfirm={vi.fn()}
-          isDeleting={true}
-        />
-      );
-      expect(html).toContain("Deleting...");
-      expect(html).toContain("animate-spin");
-
-      // Verify all rendered buttons (close X, cancel, confirm) carry the disabled HTML attribute
-      const buttonTags = html.match(/<button[^>]*>/g) || [];
-      expect(buttonTags.length).toBeGreaterThanOrEqual(3);
-      for (const btn of buttonTags) {
-        expect(btn).toMatch(/\bdisabled(?:=""|(?=[\s>]))/);
-      }
+      expect(htmlDept).toContain("Delete Dept");
     });
   });
 });

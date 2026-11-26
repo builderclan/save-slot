@@ -10,23 +10,22 @@ import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
     if (!session || (!session.isLead && !session.isAdmin)) {
-      return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized access" },
+        { status: 401 },
+      );
     }
 
     const { id } = await params;
 
     // Check if event exists and lead is authorized
     const [existingEvent] = await withDbRetry((client) =>
-      client
-        .select()
-        .from(events)
-        .where(eq(events.id, id))
-        .limit(1)
+      client.select().from(events).where(eq(events.id, id)).limit(1),
     );
 
     if (!existingEvent) {
@@ -39,16 +38,22 @@ export async function PUT(
       !session.leadCommunities.some((c) => c.id === existingEvent.communityId)
     ) {
       return NextResponse.json(
-        { error: "Forbidden: You are not authorized to edit events for this community." },
-        { status: 403 }
+        {
+          error:
+            "Forbidden: You are not authorized to edit events for this community.",
+        },
+        { status: 403 },
       );
     }
 
     // Published events cannot be modified directly by leads
     if (existingEvent.status === "published") {
       return NextResponse.json(
-        { error: "Published events cannot be modified directly. Please contact a campus administrator." },
-        { status: 400 }
+        {
+          error:
+            "Published events cannot be modified directly. Please contact a campus administrator.",
+        },
+        { status: 400 },
       );
     }
 
@@ -56,7 +61,8 @@ export async function PUT(
     const parsed = ProposeEventSchema.safeParse(rawBody);
 
     if (!parsed.success) {
-      const errorMsg = parsed.error.issues[0]?.message || "Invalid event proposal data";
+      const errorMsg =
+        parsed.error.issues[0]?.message || "Invalid event proposal data";
       return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
 
@@ -78,11 +84,14 @@ export async function PUT(
         .select({ name: venues.name })
         .from(venues)
         .where(eq(venues.id, venueId))
-        .limit(1)
+        .limit(1),
     );
 
     if (!venue) {
-      return NextResponse.json({ error: "Selected venue not found." }, { status: 404 });
+      return NextResponse.json(
+        { error: "Selected venue not found." },
+        { status: 404 },
+      );
     }
 
     // Server-side venue collision guard (excluding the current event)
@@ -98,10 +107,11 @@ export async function PUT(
     if (conflictCheck.hasVenueConflict) {
       return NextResponse.json(
         {
-          error: "Conflict: This venue is already booked for the selected time slot.",
+          error:
+            "Conflict: This venue is already booked for the selected time slot.",
           conflict: conflictCheck,
         },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -120,13 +130,13 @@ export async function PUT(
           locationName: venue.name,
           coverImageUrl: coverImageUrl || null,
           externalRegistrationUrl: externalRegistrationUrl || null,
-          status: "pending",
+          status: "pending_stage2",
           rejectionReason: null,
           reviewedBy: null,
           updatedAt: new Date(),
         })
         .where(and(eq(events.id, id), ne(events.status, "published")))
-        .returning()
+        .returning(),
     );
 
     if (!updated) {
@@ -137,21 +147,30 @@ export async function PUT(
     safeRevalidatePath("/lead");
     safeRevalidatePath("/admin");
 
-    return NextResponse.json({ success: true, event: formatCampusEvent(updated) });
+    return NextResponse.json({
+      success: true,
+      event: formatCampusEvent(updated),
+    });
   } catch (err: unknown) {
     console.error("[PUT /api/lead/events/[id]] Error:", err);
-    return NextResponse.json({ error: "Failed to update event proposal" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update event proposal" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await getCurrentUser();
     if (!session || (!session.isLead && !session.isAdmin)) {
-      return NextResponse.json({ error: "Unauthorized access" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized access" },
+        { status: 401 },
+      );
     }
 
     const { id } = await params;
@@ -166,7 +185,7 @@ export async function DELETE(
         })
         .from(events)
         .where(eq(events.id, id))
-        .limit(1)
+        .limit(1),
     );
 
     if (!existingEvent) {
@@ -179,16 +198,22 @@ export async function DELETE(
       !session.leadCommunities.some((c) => c.id === existingEvent.communityId)
     ) {
       return NextResponse.json(
-        { error: "Forbidden: You are not authorized to withdraw events for this community." },
-        { status: 403 }
+        {
+          error:
+            "Forbidden: You are not authorized to withdraw events for this community.",
+        },
+        { status: 403 },
       );
     }
 
     // Prevent deletion of published events
     if (existingEvent.status === "published") {
       return NextResponse.json(
-        { error: "Published events cannot be withdrawn. Please request cancellation from administration." },
-        { status: 400 }
+        {
+          error:
+            "Published events cannot be withdrawn. Please request cancellation from administration.",
+        },
+        { status: 400 },
       );
     }
 
@@ -196,13 +221,13 @@ export async function DELETE(
       client
         .delete(events)
         .where(and(eq(events.id, id), ne(events.status, "published")))
-        .returning({ id: events.id })
+        .returning({ id: events.id }),
     );
 
     if (!deleted) {
       return NextResponse.json(
         { error: "Event not found or no longer withdrawable" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -213,6 +238,9 @@ export async function DELETE(
     return NextResponse.json({ success: true, deletedId: id });
   } catch (err: unknown) {
     console.error("[DELETE /api/lead/events/[id]] Error:", err);
-    return NextResponse.json({ error: "Failed to withdraw event proposal" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to withdraw event proposal" },
+      { status: 500 },
+    );
   }
 }

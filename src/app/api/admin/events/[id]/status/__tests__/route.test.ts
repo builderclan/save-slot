@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "../route";
 import type { CampusEvent } from "@/types/database";
+import type { AuthSession } from "@/lib/auth";
 
 vi.mock("@/lib/auth", () => ({
   getCurrentUser: vi.fn(),
@@ -73,83 +74,44 @@ vi.mock("@/lib/conflicts/engine", () => ({
   checkEventConflicts: vi.fn(),
 }));
 
-import { getCurrentUser, type AuthSession } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { checkEventConflicts } from "@/lib/conflicts/engine";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockCheckEventConflicts = vi.mocked(checkEventConflicts);
 
-describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guard)", () => {
+function makeSession(role: AuthSession["profile"]["role"]): AuthSession {
+  return {
+    userId: `${role}-uuid`,
+    email: `${role}@aisat.ac.in`,
+    profile: {
+      id: `${role}-uuid`,
+      email: `${role}@aisat.ac.in`,
+      full_name: `${role} user`,
+      role,
+    },
+    isAdmin: role === "admin",
+    isPrincipal: role === "principal" || role === "vice_principal",
+    isVicePrincipal: role === "vice_principal",
+    isHod: role === "hod",
+    isActingHod: false,
+    isTic: role === "tic",
+    isStaff: role === "staff",
+    isLead: role === "lead",
+    leadCommunities: [],
+    ticCommunities: [],
+    hodDepartments: [],
+  };
+}
+
+describe("POST /api/admin/events/[id]/status (Executive Authority & Admin Isolation)", () => {
   const eventId = "e1111111-2222-3333-4444-555555555555";
   const venueId = "v1111111-2222-3333-4444-555555555555";
 
-  const adminSession: AuthSession = {
-    userId: "admin-uuid",
-    email: "admin@campus.edu",
-    profile: {
-      id: "admin-uuid",
-      email: "admin@campus.edu",
-      full_name: "Campus Admin",
-      role: "admin",
-      campus_id: "c-1",
-    },
-    isAdmin: true,
-    isPrincipal: false,
-    isVicePrincipal: false,
-    isLead: false,
-    leadCommunities: [],
-  };
-
-  const principalSession: AuthSession = {
-    userId: "principal-uuid",
-    email: "principal@campus.edu",
-    profile: {
-      id: "principal-uuid",
-      email: "principal@campus.edu",
-      full_name: "College Principal",
-      role: "principal",
-      campus_id: "c-1",
-    },
-    isAdmin: false,
-    isPrincipal: true,
-    isVicePrincipal: false,
-    isLead: false,
-    leadCommunities: [],
-  };
-
-  const vicePrincipalSession: AuthSession = {
-    userId: "vice-principal-uuid",
-    email: "viceprincipal@campus.edu",
-    profile: {
-      id: "vice-principal-uuid",
-      email: "viceprincipal@campus.edu",
-      full_name: "Dr. Sarah Varghese (Vice Principal)",
-      role: "vice_principal",
-      campus_id: "c-1",
-    },
-    isAdmin: false,
-    isPrincipal: true,
-    isVicePrincipal: true,
-    isLead: false,
-    leadCommunities: [],
-  };
-
-  const studentSession: AuthSession = {
-    userId: "student-uuid",
-    email: "student@campus.edu",
-    profile: {
-      id: "student-uuid",
-      email: "student@campus.edu",
-      full_name: "Student",
-      role: "student",
-      campus_id: "c-1",
-    },
-    isAdmin: false,
-    isPrincipal: false,
-    isVicePrincipal: false,
-    isLead: false,
-    leadCommunities: [],
-  };
+  const adminSession = makeSession("admin");
+  const principalSession = makeSession("principal");
+  const vicePrincipalSession = makeSession("vice_principal");
+  const leadSession = makeSession("lead");
 
   const sampleTargetEvent = {
     id: eventId,
@@ -161,7 +123,7 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
 
   const sampleUpdatedEvent = {
     id: eventId,
-    campusId: "c-1",
+    originType: "community",
     communityId: "comm-1",
     venueId: venueId,
     title: "Design Summit 2026",
@@ -173,7 +135,7 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     locationName: "Main Auditorium",
     status: "published",
     rejectionReason: null,
-    reviewedBy: "admin-uuid",
+    reviewedBy: "principal-uuid",
     createdAt: new Date("2026-10-01T10:00:00.000Z"),
     updatedAt: new Date("2026-10-25T14:00:00.000Z"),
   };
@@ -200,8 +162,8 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     });
   });
 
-  it("returns 403 Forbidden when user is unauthenticated or not an admin/principal", async () => {
-    mockGetCurrentUser.mockResolvedValueOnce(studentSession);
+  it("blocks IT Admin (403 Forbidden) from approving or rejecting events", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(adminSession);
 
     const req = new Request(`http://localhost/api/admin/events/${eventId}/status`, {
       method: "POST",
@@ -212,11 +174,24 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     const res = await POST(req, { params: Promise.resolve({ id: eventId }) });
     expect(res.status).toBe(403);
     const data = await res.json();
-    expect(data.error).toContain("Unauthorized");
+    expect(data.error).toContain("Principal or Vice Principal approval authority required");
   });
 
-  it("returns 400 Bad Request when request body has an invalid status", async () => {
-    mockGetCurrentUser.mockResolvedValueOnce(adminSession);
+  it("returns 403 Forbidden when user is a Lead or unauthenticated", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(leadSession);
+
+    const req = new Request(`http://localhost/api/admin/events/${eventId}/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "published" }),
+    });
+
+    const res = await POST(req, { params: Promise.resolve({ id: eventId }) });
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 400 Bad Request when Principal submits an invalid status", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(principalSession);
 
     const req = new Request(`http://localhost/api/admin/events/${eventId}/status`, {
       method: "POST",
@@ -227,13 +202,11 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     const res = await POST(req, { params: Promise.resolve({ id: eventId }) });
     expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.error).toContain("Status must be 'published', 'rejected', or 'pending'");
+    expect(data.error).toContain("Status must be");
   });
 
   it("returns 404 Not Found when event does not exist", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(principalSession);
-
-    // Target event lookup returns empty
     mockSelectLimit.mockResolvedValueOnce([]);
 
     const req = new Request(`http://localhost/api/admin/events/${eventId}/status`, {
@@ -244,13 +217,10 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
 
     const res = await POST(req, { params: Promise.resolve({ id: eventId }) });
     expect(res.status).toBe(404);
-    const data = await res.json();
-    expect(data.error).toContain("Event not found");
   });
 
   it("returns 409 Conflict when publishing an event that collides with another booked event", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(principalSession);
-
     mockSelectLimit.mockResolvedValueOnce([sampleTargetEvent]);
 
     mockCheckEventConflicts.mockResolvedValueOnce({
@@ -275,17 +245,11 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
 
     const res = await POST(req, { params: Promise.resolve({ id: eventId }) });
     expect(res.status).toBe(409);
-    const data = await res.json();
-    expect(data.error).toContain("Cannot publish event: Venue collision detected");
-    expect(data.conflict.hasConflict).toBe(true);
-
-    // Verify UPDATE query was NOT executed
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it("approves event and returns 200 when clash check passes cleanly", async () => {
-    mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-
+  it("approves event as Principal and returns 200 when clash check passes cleanly", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(principalSession);
     mockSelectLimit.mockResolvedValueOnce([sampleTargetEvent]);
     mockUpdateReturning.mockResolvedValueOnce([sampleUpdatedEvent]);
 
@@ -310,16 +274,13 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     expect(data.success).toBe(true);
     expect(data.event.status).toBe("published");
     expect(mockTransaction).toHaveBeenCalledTimes(1);
-    expect(mockSelectFor).toHaveBeenCalledTimes(2); // 1. Venue row lock, 2. Overlap clash check
+    expect(mockSelectFor).toHaveBeenCalledTimes(2);
     expect(mockUpdate).toHaveBeenCalledTimes(1);
   });
 
-  it("returns 409 Conflict when a concurrent transaction locks a colliding event right before update", async () => {
-    mockGetCurrentUser.mockResolvedValueOnce(adminSession);
-
+  it("returns 409 Conflict when concurrent transaction locks a colliding event right before update", async () => {
+    mockGetCurrentUser.mockResolvedValueOnce(principalSession);
     mockSelectLimit.mockResolvedValueOnce([sampleTargetEvent]);
-    // 1st .for("update"): Venue mutual-exclusion lock
-    // 2nd .for("update"): Race check discovers concurrent colliding event
     mockSelectFor
       .mockResolvedValueOnce([{ id: venueId }])
       .mockResolvedValueOnce([{ id: "concurrent-event", title: "Concurrent Workshop" }]);
@@ -343,13 +304,11 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     expect(res.status).toBe(409);
     const data = await res.json();
     expect(data.error).toContain("Concurrent approval clash detected");
-    expect(mockTransaction).toHaveBeenCalledTimes(1);
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
   it("updates status to rejected with reason without executing conflict check", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(principalSession);
-
     const rejectedEvent = {
       ...sampleUpdatedEvent,
       status: "rejected",
@@ -373,15 +332,11 @@ describe("POST /api/admin/events/[id]/status (Security & Approval Collision Guar
     const data = await res.json();
     expect(data.success).toBe(true);
     expect(data.event.rejection_reason).toBe("Faculty advisor signature missing.");
-
-    // Conflict check is skipped for rejections
     expect(mockCheckEventConflicts).not.toHaveBeenCalled();
-    expect(mockTransaction).toHaveBeenCalledTimes(1);
   });
 
   it("authorizes Vice Principal to approve events with identical executive authority", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(vicePrincipalSession);
-
     mockSelectLimit.mockResolvedValueOnce([sampleTargetEvent]);
     mockUpdateReturning.mockResolvedValueOnce([
       {

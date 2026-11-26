@@ -1,305 +1,348 @@
 "use client";
 
 import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { CheckCircle2, AlertTriangle } from "lucide-react";
+import { RefreshCw, CheckCircle2, AlertCircle, X, ShieldCheck } from "lucide-react";
+import { EventDetailModal } from "@/features/events";
 import {
   AdminSidebar,
-  AdminTriageView,
-  AdminEventsView,
-  AdminArchiveView,
+  AdminMetricsRow,
+  AdminDepartmentsView,
+  AdminCommunitiesView,
   AdminUsersView,
   AdminVenuesView,
-  AdminCommunitiesView,
+  AdminSettingsView,
+  AdminEventsView,
+  AdminArchiveView,
+  AdminDepartmentModal,
+  AdminAddCommunityModal,
+  AdminEditCommunityModal,
   AdminAddUserModal,
   AdminEditUserModal,
   AdminAddVenueModal,
   AdminEditVenueModal,
-  AdminAddCommunityModal,
-  AdminEditCommunityModal,
   AdminConfirmDeleteModal,
   useAdminDashboard,
 } from "@/features/admin";
-import { RejectionModal, EventDetailModal } from "@/features/events";
-import AdminLoading from "./loading";
-
-function AdminLoadingFallback() {
-  return <AdminLoading />;
-}
 
 function AdminConsoleContent() {
   const {
-    user,
-    authLoading,
     activeTab,
     handleTabChange,
-    initialLoading,
     allEvents,
     users,
     venues,
-    adminCommunities,
     communities,
-    eligibleUsers,
-    pendingEvents,
-    publishedEvents,
-    archivedEvents,
-    activePublishedEvents,
+    departments,
+    settings,
+    isLoading,
+    authLoading,
+    isRefreshing,
     actionInProgress,
-    adminNotice,
-    setAdminNotice,
-    previewEvent,
-    setPreviewEvent,
-    rejectingEvent,
-    setRejectingEvent,
-    rejectionNote,
-    setRejectionNote,
-    rejectionError,
-    setRejectionError,
-    isAddUserOpen,
-    setIsAddUserOpen,
+    isSubmittingModal,
+    isSavingSettings,
+    notice,
+    setNotice,
+    showAddUserModal,
+    setShowAddUserModal,
     editingUser,
     setEditingUser,
-    isAddVenueOpen,
-    setIsAddVenueOpen,
+    showAddVenueModal,
+    setShowAddVenueModal,
     editingVenue,
     setEditingVenue,
-    isAddCommunityOpen,
-    setIsAddCommunityOpen,
+    showAddCommunityModal,
+    setShowAddCommunityModal,
     editingCommunity,
     setEditingCommunity,
-    handleApprove,
-    handleReject,
-    handleDeleteEvent,
-    handleCreateUser,
-    handleSaveEditUser,
-    handleDeleteUser,
-    handleCreateVenue,
-    handleSaveEditVenue,
-    handleDeleteVenue,
-    handleToggleVenueActive,
-    handleCreateCommunity,
-    handleSaveEditCommunity,
-    handleDeleteCommunity,
+    showDepartmentModal,
+    setShowDepartmentModal,
+    editingDepartment,
+    setEditingDepartment,
     deleteTarget,
     setDeleteTarget,
-    isDeleting,
+    previewEvent,
+    setPreviewEvent,
+    publishedCount,
+    archivedCount,
+    eligibleUsers,
+    loadData,
+    handleSaveSettings,
+    handleOpenCreateDepartment,
+    handleOpenEditDepartment,
+    handleSaveDepartment,
+    handleToggleActingHod,
+    handleCreateUser,
+    handleUpdateUser,
+    handleCreateCommunity,
+    handleUpdateCommunity,
+    handleCreateVenue,
+    handleUpdateVenue,
+    handleToggleVenueActive,
+    requestDeleteEvent,
+    requestDeleteUser,
+    requestDeleteVenue,
+    requestDeleteCommunity,
+    requestDeleteDepartment,
     handleConfirmDelete,
-    nowTimestamp,
+    user,
   } = useAdminDashboard();
 
-  const searchParams = useSearchParams();
-  const isSkeletonPreview = searchParams.get("skeleton") === "1";
-
-  if (initialLoading || authLoading || isSkeletonPreview) {
-    return <AdminLoadingFallback />;
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex-1 bg-zinc-50 flex flex-col">
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="flex flex-col items-center gap-3 text-zinc-500">
+            <div className="w-7 h-7 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs font-medium">Loading IT & Ops Console...</span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col lg:flex-row overflow-hidden bg-white relative">
-      {/* FLOATING TOAST NOTIFICATION */}
-      {adminNotice && (
-        <div
-          role="status"
-          className={`fixed top-18 right-6 z-50 p-3.5 rounded-2xl border text-xs sm:text-sm font-medium flex items-center justify-between gap-3 shadow-lg backdrop-blur-md animate-in fade-in slide-in-from-top-2 ${
-            adminNotice.type === "success"
-              ? "bg-emerald-50/95 border-emerald-200 text-emerald-950"
-              : "bg-rose-50/95 border-rose-200 text-rose-950"
-          }`}
-        >
-          <div className="flex items-center gap-2.5">
-            {adminNotice.type === "success" ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
-            )}
-            <span>{adminNotice.message}</span>
+    <div className="flex-1 bg-zinc-50 flex flex-col">
+      <div className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 flex flex-col">
+        {/* Console Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200/80 mb-1.5">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>IT & Ops Administration</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">
+              {settings?.short_code || "AISAT"} System Configuration
+            </h1>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Manage departments, acting HOD overrides, communities & TICs, users, venues, and letterhead settings. Event approvals belong strictly to HOD/TIC and Principal desks.
+            </p>
           </div>
+
           <button
             type="button"
-            onClick={() => setAdminNotice(null)}
-            className="text-zinc-400 hover:text-zinc-600 cursor-pointer p-1"
+            onClick={() => loadData(true)}
+            disabled={isRefreshing}
+            className="self-start sm:self-auto px-3.5 py-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-semibold text-zinc-700 shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
           >
-            ✕
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
           </button>
         </div>
-      )}
 
-      {/* LEFT SIDEBAR NAVIGATION */}
-      <AdminSidebar
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        pendingCount={pendingEvents.length}
-        publishedCount={activePublishedEvents.length}
-        archivedCount={archivedEvents.length}
-        usersCount={users.length}
-        venuesCount={venues.length}
-        communitiesCount={adminCommunities.length}
-        currentUserName={user?.fullName || "Campus Administrator"}
-        currentUserEmail={user?.email || "admin@campus.edu"}
-      />
-
-      {/* WORKSPACE CONTENT AREA */}
-      <div className="flex-1 flex min-w-0 h-full overflow-hidden bg-white">
-        {activeTab === "triage" && (
-          <AdminTriageView
-            pendingEvents={pendingEvents}
-            publishedEvents={publishedEvents}
-            communities={communities}
-            onApprove={handleApprove}
-            onOpenReject={(ev) => {
-              setRejectingEvent(ev);
-              setRejectionNote("");
-            }}
-            actionInProgress={actionInProgress}
-          />
+        {/* Inline Notice Banner */}
+        {notice && (
+          <div
+            className={`mb-5 px-4 py-2.5 rounded-xl border text-xs font-medium flex items-center justify-between gap-3 shadow-2xs ${
+              notice.type === "error"
+                ? "bg-rose-50 border-rose-200 text-rose-800"
+                : "bg-emerald-50 border-emerald-200 text-emerald-800"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {notice.type === "error" ? (
+                <AlertCircle className="w-4 h-4 shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+              )}
+              <span>{notice.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNotice(null)}
+              className="p-0.5 rounded hover:bg-black/5 cursor-pointer"
+              aria-label="Dismiss notification"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
         )}
 
-        {activeTab === "all-events" && (
-          <AdminEventsView
-            allEvents={allEvents}
-            onDeleteEvent={handleDeleteEvent}
-            onPreviewEvent={(ev) => setPreviewEvent(ev)}
-            onNavigateToArchive={() => handleTabChange("archive")}
-            actionInProgress={actionInProgress}
-            nowTimestamp={nowTimestamp}
-          />
-        )}
+        {/* Quick Metric Switcher Cards */}
+        <AdminMetricsRow
+          activeTab={activeTab}
+          onTabSelect={handleTabChange}
+          departmentsCount={departments.length}
+          communitiesCount={communities.length}
+          usersCount={users.length}
+          venuesCount={venues.length}
+          publishedCount={publishedCount}
+        />
 
-        {activeTab === "archive" && (
-          <AdminArchiveView
-            events={allEvents}
-            onDeleteEvent={handleDeleteEvent}
-            onPreviewEvent={(ev) => setPreviewEvent(ev)}
-            actionInProgress={actionInProgress}
+        {/* Main Sidebar + Workspace Surface */}
+        <div className="flex-1 rounded-2xl border border-zinc-200/90 bg-white shadow-xs overflow-hidden flex flex-col lg:flex-row min-h-[540px]">
+          <AdminSidebar
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            departmentsCount={departments.length}
+            communitiesCount={communities.length}
+            usersCount={users.length}
+            venuesCount={venues.length}
+            publishedCount={publishedCount}
+            archivedCount={archivedCount}
+            currentUserName={user?.fullName || "Campus Admin"}
+            currentUserEmail={user?.email}
           />
-        )}
 
-        {activeTab === "users" && (
-          <AdminUsersView
-            users={users}
-            currentUserId={user?.id}
-            onAddUserClick={() => setIsAddUserOpen(true)}
-            onEditUserClick={(u) => setEditingUser(u)}
-            onDeleteUserClick={handleDeleteUser}
-            actionInProgress={actionInProgress}
-          />
-        )}
+          <div className="flex-1 flex flex-col min-w-0">
+            {activeTab === "departments" && (
+              <AdminDepartmentsView
+                departments={departments}
+                onAddDepartmentClick={handleOpenCreateDepartment}
+                onEditDepartmentClick={handleOpenEditDepartment}
+                onToggleActingHod={handleToggleActingHod}
+                onDeleteDepartmentClick={requestDeleteDepartment}
+                actionInProgress={actionInProgress}
+              />
+            )}
 
-        {activeTab === "venues" && (
-          <AdminVenuesView
-            venues={venues}
-            onToggleVenueActive={handleToggleVenueActive}
-            onAddVenueClick={() => setIsAddVenueOpen(true)}
-            onEditVenueClick={(v) => setEditingVenue(v)}
-            onDeleteVenueClick={handleDeleteVenue}
-            actionInProgress={actionInProgress}
-          />
-        )}
+            {activeTab === "communities" && (
+              <AdminCommunitiesView
+                communities={communities}
+                onAddCommunityClick={() => setShowAddCommunityModal(true)}
+                onEditCommunityClick={setEditingCommunity}
+                onDeleteCommunityClick={requestDeleteCommunity}
+                actionInProgress={actionInProgress}
+              />
+            )}
 
-        {activeTab === "communities" && (
-          <AdminCommunitiesView
-            communities={adminCommunities}
-            onAddCommunityClick={() => setIsAddCommunityOpen(true)}
-            onEditCommunityClick={(c) => setEditingCommunity(c)}
-            onDeleteCommunityClick={handleDeleteCommunity}
-            actionInProgress={actionInProgress}
-          />
-        )}
+            {activeTab === "users" && (
+              <AdminUsersView
+                users={users}
+                currentUserId={user?.id}
+                onAddUserClick={() => setShowAddUserModal(true)}
+                onEditUserClick={setEditingUser}
+                onDeleteUserClick={requestDeleteUser}
+                actionInProgress={actionInProgress}
+              />
+            )}
+
+            {activeTab === "venues" && (
+              <AdminVenuesView
+                venues={venues}
+                onToggleVenueActive={handleToggleVenueActive}
+                onAddVenueClick={() => setShowAddVenueModal(true)}
+                onEditVenueClick={setEditingVenue}
+                onDeleteVenueClick={requestDeleteVenue}
+                actionInProgress={actionInProgress}
+              />
+            )}
+
+            {activeTab === "settings" && (
+              <AdminSettingsView
+                settings={settings}
+                onSaveSettings={handleSaveSettings}
+                isSaving={isSavingSettings}
+              />
+            )}
+
+            {activeTab === "all-events" && (
+              <AdminEventsView
+                allEvents={allEvents}
+                onDeleteEvent={requestDeleteEvent}
+                onPreviewEvent={setPreviewEvent}
+                onNavigateToArchive={() => handleTabChange("archive")}
+                actionInProgress={actionInProgress}
+              />
+            )}
+
+            {activeTab === "archive" && (
+              <AdminArchiveView
+                events={allEvents}
+                onDeleteEvent={requestDeleteEvent}
+                onPreviewEvent={setPreviewEvent}
+                actionInProgress={actionInProgress}
+              />
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* PREVIEW MODAL */}
-      <EventDetailModal
-        event={previewEvent}
-        onClose={() => setPreviewEvent(null)}
-      />
-
-      {/* REJECT MODAL WITH NOTE & PRESETS */}
-      <RejectionModal
-        rejectingEvent={rejectingEvent}
-        rejectionNote={rejectionNote}
-        onRejectionNoteChange={setRejectionNote}
-        onSubmit={handleReject}
+      {/* Modals */}
+      <AdminDepartmentModal
+        isOpen={showDepartmentModal}
         onClose={() => {
-          setRejectingEvent(null);
-          setRejectionError(null);
+          setShowDepartmentModal(false);
+          setEditingDepartment(null);
         }}
-        isSubmitting={actionInProgress === rejectingEvent?.id}
-        errorMessage={rejectionError}
-        title="Reject Event Proposal"
-        submitLabel="Submit Rejection"
-        submittingLabel="Rejecting..."
+        onSubmit={handleSaveDepartment}
+        department={editingDepartment}
+        users={eligibleUsers}
+        isSubmitting={isSubmittingModal}
       />
 
-      {/* ADD USER MODAL */}
-      <AdminAddUserModal
-        isOpen={isAddUserOpen}
-        onClose={() => setIsAddUserOpen(false)}
-        onSubmit={handleCreateUser}
-        communities={communities}
-        isSubmitting={actionInProgress === "create-user"}
-      />
-
-      {/* EDIT USER MODAL */}
-      <AdminEditUserModal
-        isOpen={Boolean(editingUser)}
-        onClose={() => setEditingUser(null)}
-        onSubmit={handleSaveEditUser}
-        user={editingUser}
-        communities={communities}
-        isSubmitting={actionInProgress === editingUser?.id}
-      />
-
-      {/* ADD VENUE MODAL */}
-      <AdminAddVenueModal
-        isOpen={isAddVenueOpen}
-        onClose={() => setIsAddVenueOpen(false)}
-        onSubmit={handleCreateVenue}
-        isSubmitting={actionInProgress === "create-venue"}
-      />
-
-      {/* EDIT VENUE MODAL */}
-      <AdminEditVenueModal
-        isOpen={Boolean(editingVenue)}
-        onClose={() => setEditingVenue(null)}
-        onSubmit={handleSaveEditVenue}
-        venue={editingVenue}
-        isSubmitting={actionInProgress === editingVenue?.id}
-      />
-
-      {/* ADD COMMUNITY MODAL */}
       <AdminAddCommunityModal
-        isOpen={isAddCommunityOpen}
-        onClose={() => setIsAddCommunityOpen(false)}
+        isOpen={showAddCommunityModal}
+        onClose={() => setShowAddCommunityModal(false)}
         onSubmit={handleCreateCommunity}
         eligibleUsers={eligibleUsers}
-        isSubmitting={actionInProgress === "create-community"}
+        isSubmitting={isSubmittingModal}
       />
 
-      {/* EDIT COMMUNITY MODAL */}
       <AdminEditCommunityModal
         isOpen={Boolean(editingCommunity)}
         onClose={() => setEditingCommunity(null)}
-        onSubmit={handleSaveEditCommunity}
+        onSubmit={handleUpdateCommunity}
         community={editingCommunity}
         eligibleUsers={eligibleUsers}
-        isSubmitting={actionInProgress === editingCommunity?.id}
+        isSubmitting={isSubmittingModal}
       />
 
-      {/* CONFIRM DELETION MODAL */}
+      <AdminAddUserModal
+        isOpen={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
+        onSubmit={handleCreateUser}
+        communities={communities}
+        departments={departments}
+        isSubmitting={isSubmittingModal}
+      />
+
+      <AdminEditUserModal
+        isOpen={Boolean(editingUser)}
+        onClose={() => setEditingUser(null)}
+        onSubmit={handleUpdateUser}
+        user={editingUser}
+        communities={communities}
+        departments={departments}
+        isSubmitting={isSubmittingModal}
+      />
+
+      <AdminAddVenueModal
+        isOpen={showAddVenueModal}
+        onClose={() => setShowAddVenueModal(false)}
+        onSubmit={handleCreateVenue}
+        isSubmitting={isSubmittingModal}
+      />
+
+      <AdminEditVenueModal
+        isOpen={Boolean(editingVenue)}
+        onClose={() => setEditingVenue(null)}
+        onSubmit={handleUpdateVenue}
+        venue={editingVenue}
+        isSubmitting={isSubmittingModal}
+      />
+
       <AdminConfirmDeleteModal
         isOpen={Boolean(deleteTarget)}
         target={deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleConfirmDelete}
-        isDeleting={isDeleting}
+        isDeleting={Boolean(actionInProgress && deleteTarget?.id === actionInProgress)}
       />
+
+      <EventDetailModal event={previewEvent} onClose={() => setPreviewEvent(null)} />
     </div>
   );
 }
 
-export default function AdminConsolePage() {
+export default function AdminPage() {
   return (
-    <Suspense fallback={<AdminLoadingFallback />}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-zinc-50 flex items-center justify-center">
+          <div className="w-7 h-7 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
       <AdminConsoleContent />
     </Suspense>
   );

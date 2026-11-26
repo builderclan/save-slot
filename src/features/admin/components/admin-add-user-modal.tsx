@@ -3,28 +3,36 @@
 import { useState, useEffect, useMemo } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import type { AdminCommunityRow, Department, UserRole } from "@/types/database";
 
 export interface NewUserData {
   fullName: string;
   email: string;
   password: string;
-  role: "admin" | "principal" | "vice_principal" | "organizer";
+  role: UserRole;
+  designation: string;
+  departmentId: string;
   communityId: string;
+  communityMemberRole: "lead" | "tic" | "member";
 }
 
-export interface AdminAddUserModalProps {
+interface AdminAddUserModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: NewUserData) => Promise<void>;
-  communities: Array<{ id: string; name: string }>;
+  communities: AdminCommunityRow[];
+  departments: Department[];
   isSubmitting?: boolean;
 }
 
-const ROLE_OPTIONS = [
-  { value: "organizer", label: "Community Lead" },
-  { value: "principal", label: "College Principal (Executive Approver)" },
-  { value: "vice_principal", label: "Vice Principal (Executive Approver)" },
-  { value: "admin", label: "Campus Administrator (Operations)" },
+const ROLE_OPTIONS: { value: UserRole; label: string }[] = [
+  { value: "staff", label: "Faculty / Staff (Organizer / Mentor)" },
+  { value: "tic", label: "Teacher-in-Charge (TIC)" },
+  { value: "hod", label: "Head of Department (HOD)" },
+  { value: "lead", label: "Student Community Lead" },
+  { value: "vice_principal", label: "Vice Principal (Executive)" },
+  { value: "principal", label: "Principal (Final Approver)" },
+  { value: "admin", label: "IT / Ops Administrator" },
 ];
 
 export function AdminAddUserModal({
@@ -32,124 +40,182 @@ export function AdminAddUserModal({
   onClose,
   onSubmit,
   communities,
+  departments,
   isSubmitting = false,
 }: AdminAddUserModalProps) {
-  const [name, setName] = useState("");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "principal" | "vice_principal" | "organizer">("organizer");
+  const [role, setRole] = useState<UserRole>("staff");
+  const [designation, setDesignation] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [communityId, setCommunityId] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [communityMemberRole, setCommunityMemberRole] = useState<"lead" | "tic" | "member">("member");
 
   useEffect(() => {
     if (isOpen) {
-      setName("");
+      setFullName("");
       setEmail("");
       setPassword("");
-      setRole("organizer");
+      setRole("staff");
+      setDesignation("");
+      setDepartmentId("");
       setCommunityId("");
-      setError(null);
+      setCommunityMemberRole("member");
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (role === "lead") {
+      setCommunityMemberRole("lead");
+    } else if (role === "tic") {
+      setCommunityMemberRole("tic");
+    } else {
+      setCommunityMemberRole("member");
+    }
+  }, [role]);
+
+  const departmentOptions = useMemo(
+    () => [
+      { value: "", label: "No Department Linked" },
+      ...departments.map((d) => ({ value: d.id, label: `${d.code} — ${d.name}` })),
+    ],
+    [departments]
+  );
+
   const communityOptions = useMemo(
     () => [
-      { value: "", label: "Select Club..." },
-      ...communities.map((c) => ({ value: c.id, label: c.name })),
+      { value: "", label: "No Community Linked" },
+      ...communities.map((c) => ({ value: c.id, label: `${c.code} — ${c.name}` })),
     ],
     [communities]
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    if (role === "organizer" && !communityId) {
-      setError("Please select a recognized student community for this organizer.");
-      return;
-    }
-    try {
-      await onSubmit({
-        fullName: name.trim(),
-        email: email.trim(),
-        password,
-        role,
-        communityId: role === "organizer" ? communityId : "",
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error creating user account");
-    }
+    await onSubmit({
+      fullName,
+      email,
+      password,
+      role,
+      designation,
+      departmentId,
+      communityId,
+      communityMemberRole,
+    });
   };
+
+  const showCommunityLink = role === "lead" || role === "tic" || role === "staff" || role === "hod";
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Provision New User Account"
-      description="Create official credentials for an Administrator, Executive Approver, or Community Lead."
+      title="Provision User Account"
+      description="Create a college faculty, executive, TIC, student lead, or IT admin account."
+      maxWidth="md"
     >
-      {error && (
-        <div className="p-3 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs">
-          {error}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-zinc-900 mb-1">Full Name *</label>
-          <input
-            type="text"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Elena Rostova"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-900 mb-1">
+              Full Name *
+            </label>
+            <input
+              type="text"
+              required
+              minLength={2}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="e.g. Dr. Meera Nair"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-900 mb-1">
+              Designation
+            </label>
+            <input
+              type="text"
+              value={designation}
+              onChange={(e) => setDesignation(e.target.value)}
+              placeholder="e.g. Assistant Professor, CSE"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-zinc-900 mb-1">Campus Email *</label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="e.g. elena@campus.edu"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-900 mb-1">
+              College Email *
+            </label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="e.g. meera.cse@aisat.ac.in"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-900 mb-1">
+              Temporary Password *
+            </label>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Min. 6 characters"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-zinc-900 mb-1">Temporary Password *</label>
-          <input
-            type="password"
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Min 6 characters (e.g. TempPass#2026)"
-            className="w-full px-3.5 py-2.5 rounded-xl border border-zinc-200/90 bg-white text-xs sm:text-sm font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/10 shadow-2xs transition-all"
-          />
-        </div>
-
-        <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           <Select
-            label="Role *"
+            label="Primary System Role *"
             value={role}
-            onChange={(val) =>
-              setRole(val as "admin" | "principal" | "vice_principal" | "organizer")
-            }
+            onChange={(val) => setRole(val as UserRole)}
             options={ROLE_OPTIONS}
           />
+
+          <Select
+            label="Home Department"
+            value={departmentId}
+            onChange={setDepartmentId}
+            options={departmentOptions}
+          />
         </div>
 
-        {role === "organizer" && (
-          <div>
-            <Select
-              label="Assigned Community *"
-              value={communityId}
-              onChange={(val) => setCommunityId(val)}
-              options={communityOptions}
-            />
+        {showCommunityLink && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1 border-t border-zinc-100">
+            <div className="sm:col-span-2">
+              <Select
+                label="Link Community (Optional)"
+                value={communityId}
+                onChange={setCommunityId}
+                options={communityOptions}
+              />
+            </div>
+            <div>
+              <Select
+                label="Community Role"
+                value={communityMemberRole}
+                onChange={(val) => setCommunityMemberRole(val as "lead" | "tic" | "member")}
+                disabled={!communityId}
+                options={[
+                  { value: "lead", label: "Student Lead" },
+                  { value: "tic", label: "Faculty TIC" },
+                  { value: "member", label: "Member" },
+                ]}
+              />
+            </div>
           </div>
         )}
 

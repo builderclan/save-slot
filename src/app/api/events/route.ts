@@ -1,9 +1,27 @@
 import { NextResponse } from "next/server";
 import { withDbRetry } from "@/lib/db";
-import { events, communities, venues, users, communityMembers } from "@/db/schema";
+import {
+  events,
+  communities,
+  departments,
+  venues,
+  users,
+  communityMembers,
+} from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
 import { formatCampusEvent } from "@/db/adapters";
-import { eq, and, or, ilike, asc, getTableColumns, SQL, aliasedTable, sql } from "drizzle-orm";
+import {
+  eq,
+  and,
+  or,
+  ilike,
+  asc,
+  getTableColumns,
+  SQL,
+  aliasedTable,
+  sql,
+  inArray,
+} from "drizzle-orm";
 
 const creators = aliasedTable(users, "creators");
 const reviewers = aliasedTable(users, "reviewers");
@@ -27,11 +45,23 @@ export async function GET(request: Request) {
 
     // Safe pagination defaults
     const rawLimit = parseInt(searchParams.get("limit") || "150", 10);
-    const limit = isNaN(rawLimit) || rawLimit < 1 ? 150 : Math.min(rawLimit, 300);
+    const limit =
+      isNaN(rawLimit) || rawLimit < 1 ? 150 : Math.min(rawLimit, 300);
     const rawOffset = parseInt(searchParams.get("offset") || "0", 10);
     const offset = isNaN(rawOffset) || rawOffset < 0 ? 0 : rawOffset;
 
-    const conditions: (SQL | undefined)[] = [eq(events.status, effectiveStatus)];
+    const conditions: (SQL | undefined)[] = [];
+    if (effectiveStatus === "published") {
+      conditions.push(
+        inArray(events.status, [
+          "published",
+          "pending_report_verification",
+          "completed",
+        ]),
+      );
+    } else if (effectiveStatus !== "all") {
+      conditions.push(eq(events.status, effectiveStatus));
+    }
 
     if (category && category !== "all") {
       conditions.push(eq(events.category, category));
@@ -47,8 +77,9 @@ export async function GET(request: Request) {
         or(
           ilike(events.title, `%${searchTerm}%`),
           ilike(events.description, `%${searchTerm}%`),
-          ilike(communities.name, `%${searchTerm}%`)
-        )
+          ilike(communities.name, `%${searchTerm}%`),
+          ilike(departments.name, `%${searchTerm}%`),
+        ),
       );
     }
 
@@ -58,16 +89,25 @@ export async function GET(request: Request) {
           ...getTableColumns(events),
           community: {
             id: communities.id,
-            campusId: communities.campusId,
             name: communities.name,
             slug: communities.slug,
+            code: communities.code,
+            scope: communities.scope,
             category: communities.category,
             logoUrl: communities.logoUrl,
-            leadName: sql<string | null>`(SELECT u.full_name FROM ${communityMembers} cm JOIN ${users} u ON u.id = cm.user_id WHERE cm.community_id = ${communities.id} AND cm.role = 'lead' LIMIT 1)`,
+            leadName: sql<
+              string | null
+            >`(SELECT u.full_name FROM ${communityMembers} cm JOIN ${users} u ON u.id = cm.user_id WHERE cm.community_id = ${communities.id} AND cm.role = 'lead' LIMIT 1)`,
+          },
+          department: {
+            id: departments.id,
+            name: departments.name,
+            code: departments.code,
+            isActingHodActive: departments.isActingHodActive,
+            isActive: departments.isActive,
           },
           venue: {
             id: venues.id,
-            campusId: venues.campusId,
             name: venues.name,
             building: venues.building,
             capacity: venues.capacity,
@@ -87,21 +127,23 @@ export async function GET(request: Request) {
           },
         })
         .from(events)
-        .innerJoin(communities, eq(communities.id, events.communityId))
+        .leftJoin(communities, eq(communities.id, events.communityId))
+        .leftJoin(departments, eq(departments.id, events.departmentId))
         .leftJoin(venues, eq(venues.id, events.venueId))
         .leftJoin(creators, eq(creators.id, events.createdBy))
         .leftJoin(reviewers, eq(reviewers.id, events.reviewedBy))
-        .where(and(...conditions))
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
         .orderBy(asc(events.startTime))
         .limit(limit)
-        .offset(offset)
+        .offset(offset),
     );
 
     const formattedEvents = rows.map(formatCampusEvent);
 
     const headers: Record<string, string> = {};
     if (requestedStatus === "published") {
-      headers["Cache-Control"] = "public, s-maxage=10, stale-while-revalidate=59";
+      headers["Cache-Control"] =
+        "public, s-maxage=10, stale-while-revalidate=59";
     } else {
       headers["Cache-Control"] = "private, no-cache, no-store, must-revalidate";
     }
@@ -109,6 +151,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ events: formattedEvents }, { headers });
   } catch (err: unknown) {
     console.error("[GET /api/events] Error:", err);
-    return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch events" },
+      { status: 500 },
+    );
   }
 }

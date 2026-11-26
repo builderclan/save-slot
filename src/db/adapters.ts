@@ -1,20 +1,117 @@
 import {
   CampusEvent,
+  CollegeSettings,
   Community,
+  CommunityScope,
   AdminCommunityRow,
+  Department,
   Venue,
   EventCategory,
+  EventOriginType,
   EventStatus,
   UserRole,
   UserProfile,
   AdminUserRow,
 } from "@/types/database";
 
+const VALID_ROLES: UserRole[] = [
+  "admin",
+  "principal",
+  "vice_principal",
+  "hod",
+  "tic",
+  "staff",
+  "lead",
+];
+
+function normalizeRole(role?: string | null): UserRole {
+  if (role && VALID_ROLES.includes(role as UserRole)) {
+    return role as UserRole;
+  }
+  if (role === "organizer" || role === "student") {
+    return "lead";
+  }
+  return "lead";
+}
+
+function toIsoString(value?: Date | string | null): string | undefined {
+  if (!value) return undefined;
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
+export interface DrizzleCollegeSettingsRow {
+  id: number;
+  collegeName: string;
+  shortCode: string;
+  letterheadSubtitle?: string | null;
+  logoUrl?: string | null;
+  academicYearStartMonth: number;
+  timezone: string;
+  updatedAt?: Date | string | null;
+}
+
+export function formatCollegeSettings(row: DrizzleCollegeSettingsRow): CollegeSettings {
+  return {
+    id: row.id,
+    college_name: row.collegeName,
+    short_code: row.shortCode,
+    letterhead_subtitle: row.letterheadSubtitle ?? null,
+    logo_url: row.logoUrl ?? null,
+    academic_year_start_month: row.academicYearStartMonth,
+    timezone: row.timezone,
+    updated_at: toIsoString(row.updatedAt),
+  };
+}
+
+export interface DrizzleDepartmentRow {
+  id: string;
+  name: string;
+  code: string;
+  hodUserId?: string | null;
+  actingHodUserId?: string | null;
+  isActingHodActive: boolean;
+  actingHodToggledBy?: string | null;
+  actingHodToggledAt?: Date | string | null;
+  isActive: boolean;
+  createdAt?: Date | string | null;
+  hod?: { id: string; fullName: string; email: string } | null;
+  actingHod?: { id: string; fullName: string; email: string } | null;
+}
+
+export function formatDepartment(row: DrizzleDepartmentRow): Department {
+  return {
+    id: row.id,
+    name: row.name,
+    code: row.code,
+    hod_user_id: row.hodUserId ?? null,
+    acting_hod_user_id: row.actingHodUserId ?? null,
+    is_acting_hod_active: row.isActingHodActive,
+    acting_hod_toggled_by: row.actingHodToggledBy ?? null,
+    acting_hod_toggled_at: toIsoString(row.actingHodToggledAt) ?? null,
+    is_active: row.isActive,
+    created_at: toIsoString(row.createdAt),
+    hod: row.hod
+      ? { id: row.hod.id, full_name: row.hod.fullName, email: row.hod.email }
+      : null,
+    acting_hod: row.actingHod
+      ? {
+          id: row.actingHod.id,
+          full_name: row.actingHod.fullName,
+          email: row.actingHod.email,
+        }
+      : null,
+  };
+}
+
 export interface DrizzleEventRow {
   id: string;
-  campusId: string;
-  communityId: string;
+  originType?: string | null;
+  communityId?: string | null;
+  departmentId?: string | null;
   venueId?: string | null;
+  coordinatorId?: string | null;
+  referenceNumber?: string | null;
+  academicYear?: string | null;
   title: string;
   slug: string;
   description: string;
@@ -29,6 +126,10 @@ export interface DrizzleEventRow {
   virtualLink?: string | null;
   externalRegistrationUrl?: string | null;
   coverImageUrl?: string | null;
+  estimatedBudget?: string | number | null;
+  fundingSource?: string | null;
+  isLeadTimeOverridden?: boolean | null;
+  overrideReason?: string | null;
   status: string;
   rejectionReason?: string | null;
   cancellationReason?: string | null;
@@ -36,32 +137,9 @@ export interface DrizzleEventRow {
   reviewedBy?: string | null;
   createdAt?: Date | string | null;
   updatedAt?: Date | string | null;
-  community?: {
-    id: string;
-    campusId?: string;
-    name: string;
-    slug: string;
-    category?: string;
-    logoUrl?: string | null;
-    bannerUrl?: string | null;
-    website?: string | null;
-    instagram?: string | null;
-    status?: string | null;
-    leadName?: string | null;
-    leadEmail?: string | null;
-    createdAt?: Date | string | null;
-  } | null;
-  venue?: {
-    id: string;
-    campusId?: string;
-    name: string;
-    building?: string;
-    capacity?: number | null;
-    address?: string | null;
-    notes?: string | null;
-    isActive?: boolean | null;
-    createdAt?: Date | string | null;
-  } | null;
+  community?: DrizzleCommunityRow | null;
+  department?: DrizzleDepartmentRow | null;
+  venue?: DrizzleVenueRow | null;
   creator?: {
     id: string;
     fullName?: string | null;
@@ -78,7 +156,6 @@ export interface DrizzleEventRow {
 
 export interface DrizzleVenueRow {
   id: string;
-  campusId?: string | null;
   name: string;
   building?: string | null;
   capacity?: number | null;
@@ -89,165 +166,29 @@ export interface DrizzleVenueRow {
 }
 
 /**
- * Adapter utility that maps Drizzle ORM venue records (camelCase) to
- * Venue domain types (snake_case) expected by the frontend.
+ * Maps Drizzle venue rows (camelCase) to frontend Venue contracts (snake_case).
  */
 export function formatVenue(row: DrizzleVenueRow): Venue {
   const rowAny = row as unknown as Record<string, unknown>;
   return {
     id: row.id,
-    campus_id: row.campusId || (rowAny.campus_id as string) || "",
     name: row.name,
     building: row.building || (rowAny.building as string) || "",
     capacity: row.capacity ?? (rowAny.capacity as number) ?? null,
     address: row.address ?? (rowAny.address as string) ?? null,
     notes: row.notes ?? (rowAny.notes as string) ?? null,
     is_active: row.isActive ?? (rowAny.is_active as boolean) ?? true,
-    created_at:
-      row.createdAt instanceof Date
-        ? row.createdAt.toISOString()
-        : row.createdAt
-        ? String(row.createdAt)
-        : (rowAny.created_at as string | undefined),
-  };
-}
-
-/**
- * Adapter utility that maps Drizzle ORM query results (camelCase) to
- * CampusEvent and database domain types (snake_case) expected by the frontend.
- */
-export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
-  const rowAny = row as unknown as Record<string, unknown>;
-  let community: Community | undefined = undefined;
-  if (row.community && row.community.id) {
-    const commAny = row.community as unknown as Record<string, unknown>;
-    const members = commAny.members as
-      | Array<{ role?: string; user?: { fullName?: string; email?: string } }>
-      | undefined;
-    const leadMember = Array.isArray(members)
-      ? members.find((m) => m.role === "lead")
-      : undefined;
-
-    community = {
-      id: row.community.id,
-      campus_id: row.community.campusId || (commAny.campus_id as string) || "",
-      name: row.community.name,
-      slug: row.community.slug,
-      category: (row.community.category as EventCategory) || (commAny.category as EventCategory) || "Social",
-      logo_url: row.community.logoUrl || (commAny.logo_url as string) || undefined,
-      banner_url: row.community.bannerUrl || (commAny.banner_url as string) || undefined,
-      website: row.community.website || undefined,
-      instagram: row.community.instagram || undefined,
-      status: (row.community.status as "pending" | "approved" | "rejected") || undefined,
-      lead_name:
-        row.community.leadName ||
-        (commAny.lead_name as string) ||
-        leadMember?.user?.fullName ||
-        undefined,
-      lead_email:
-        row.community.leadEmail ||
-        (commAny.lead_email as string) ||
-        leadMember?.user?.email ||
-        undefined,
-      created_at: row.community.createdAt instanceof Date ? row.community.createdAt.toISOString() : (row.community.createdAt || (commAny.created_at as string) || undefined),
-    };
-  }
-
-  let venue: Venue | undefined = undefined;
-  if (row.venue && row.venue.id) {
-    venue = formatVenue(row.venue as DrizzleVenueRow);
-  }
-
-  let creator: CampusEvent["creator"] = undefined;
-  if (row.creator && row.creator.id) {
-    const validRoles: UserRole[] = ["admin", "principal", "vice_principal", "organizer", "student"];
-    const parsedRole = row.creator.role && validRoles.includes(row.creator.role as UserRole)
-      ? (row.creator.role as UserRole)
-      : "organizer";
-
-    creator = {
-      id: row.creator.id,
-      full_name: row.creator.fullName || "",
-      email: row.creator.email || undefined,
-      role: parsedRole,
-    };
-  }
-
-  let reviewer: CampusEvent["reviewer"] = undefined;
-  if (row.reviewer && row.reviewer.id) {
-    const validRoles: UserRole[] = ["admin", "principal", "vice_principal", "organizer", "student"];
-    const parsedRole = row.reviewer.role && validRoles.includes(row.reviewer.role as UserRole)
-      ? (row.reviewer.role as UserRole)
-      : "student";
-
-    reviewer = {
-      id: row.reviewer.id,
-      full_name: row.reviewer.fullName || "",
-      email: row.reviewer.email || undefined,
-      role: parsedRole,
-    };
-  }
-
-  const rawStart = row.startTime ?? (rowAny.start_time as Date | string | undefined);
-  const rawEnd = row.endTime ?? (rowAny.end_time as Date | string | undefined);
-  const rawCreatedAt = row.createdAt ?? (rowAny.created_at as Date | string | undefined);
-  const rawUpdatedAt = row.updatedAt ?? (rowAny.updated_at as Date | string | undefined);
-
-  return {
-    id: row.id,
-    campus_id: row.campusId || (rowAny.campus_id as string) || "",
-    community_id: row.communityId || (rowAny.community_id as string) || "",
-    venue_id: row.venueId !== undefined ? row.venueId : (rowAny.venue_id as string | null),
-    title: row.title,
-    slug: row.slug,
-    description: row.description,
-    category: (row.category as EventCategory) || (rowAny.category as EventCategory),
-    target_audience: row.targetAudience || (rowAny.target_audience as string[]) || ["All Students"],
-    tags: row.tags || (rowAny.tags as string[]) || [],
-    start_time:
-      rawStart instanceof Date
-        ? rawStart.toISOString()
-        : String(rawStart ?? ""),
-    end_time:
-      rawEnd instanceof Date
-        ? rawEnd.toISOString()
-        : String(rawEnd ?? ""),
-    timezone: row.timezone || (rowAny.timezone as string) || undefined,
-    location_name: row.locationName || (rowAny.location_name as string) || "",
-    is_virtual: row.isVirtual ?? (rowAny.is_virtual as boolean) ?? false,
-    virtual_link: row.virtualLink || (rowAny.virtual_link as string) || undefined,
-    external_registration_url: row.externalRegistrationUrl || (rowAny.external_registration_url as string) || undefined,
-    cover_image_url: row.coverImageUrl || (rowAny.cover_image_url as string) || undefined,
-    status: (row.status as EventStatus) || (rowAny.status as EventStatus),
-    rejection_reason: row.rejectionReason || (rowAny.rejection_reason as string) || undefined,
-    cancellation_reason: row.cancellationReason || (rowAny.cancellation_reason as string) || undefined,
-    created_by: row.createdBy || (rowAny.created_by as string) || undefined,
-    reviewed_by: row.reviewedBy || (rowAny.reviewed_by as string) || undefined,
-    created_at:
-      rawCreatedAt instanceof Date
-        ? rawCreatedAt.toISOString()
-        : rawCreatedAt
-        ? String(rawCreatedAt)
-        : undefined,
-    updated_at:
-      rawUpdatedAt instanceof Date
-        ? rawUpdatedAt.toISOString()
-        : rawUpdatedAt
-        ? String(rawUpdatedAt)
-        : undefined,
-    community,
-    venue,
-    creator,
-    reviewer,
+    created_at: toIsoString(row.createdAt ?? (rowAny.created_at as string | undefined)),
   };
 }
 
 export interface DrizzleCommunityRow {
   id: string;
-  campusId: string;
   name: string;
   slug: string;
-  category: string;
+  code?: string | null;
+  scope?: string | null;
+  category?: string | null;
   description?: string | null;
   logoUrl?: string | null;
   bannerUrl?: string | null;
@@ -259,6 +200,8 @@ export interface DrizzleCommunityRow {
   rejectionReason?: string | null;
   reviewedAt?: Date | string | null;
   reviewedBy?: string | null;
+  leadName?: string | null;
+  leadEmail?: string | null;
   createdAt?: Date | string | null;
 }
 
@@ -266,56 +209,157 @@ export interface DrizzleAdminCommunityRow extends DrizzleCommunityRow {
   leadId?: string | null;
   leadName?: string | null;
   leadEmail?: string | null;
+  ticIds?: string[];
+  ticNames?: string[];
   memberCount: number | string;
   eventCount: number | string;
 }
 
 /**
- * Adapter utility that maps Drizzle ORM community records (camelCase) to
- * Community domain types (snake_case) expected by the frontend.
+ * Maps Drizzle community rows (camelCase) to frontend Community contracts (snake_case).
  */
 export function formatCommunity(row: DrizzleCommunityRow): Community {
+  const commAny = row as unknown as Record<string, unknown>;
+  const members = commAny.members as
+    | Array<{ role?: string; user?: { fullName?: string; email?: string } }>
+    | undefined;
+  const leadMember = Array.isArray(members)
+    ? members.find((m) => m.role === "lead")
+    : undefined;
+
   return {
     id: row.id,
-    campus_id: row.campusId,
     name: row.name,
     slug: row.slug,
-    category: row.category as EventCategory,
+    code:
+      row.code ||
+      (commAny.code as string) ||
+      row.slug.replace(/[^a-zA-Z0-9]/g, "").slice(0, 10).toUpperCase(),
+    scope: (row.scope === "external" ? "external" : "internal") as CommunityScope,
+    category: (row.category as EventCategory) || (commAny.category as EventCategory) || "Social",
     description: row.description ?? undefined,
-    logo_url: row.logoUrl ?? undefined,
-    banner_url: row.bannerUrl ?? undefined,
+    logo_url: row.logoUrl ?? (commAny.logo_url as string) ?? undefined,
+    banner_url: row.bannerUrl ?? (commAny.banner_url as string) ?? undefined,
     website: row.website ?? undefined,
     instagram: row.instagram ?? undefined,
     status: (row.status as "pending" | "approved" | "rejected") ?? undefined,
     applicant_name: row.applicantName ?? undefined,
     applicant_email: row.applicantEmail ?? undefined,
     rejection_reason: row.rejectionReason ?? undefined,
-    reviewed_at:
-      row.reviewedAt instanceof Date
-        ? row.reviewedAt.toISOString()
-        : row.reviewedAt ?? undefined,
+    lead_name:
+      row.leadName ||
+      (commAny.lead_name as string) ||
+      leadMember?.user?.fullName ||
+      undefined,
+    lead_email:
+      row.leadEmail ||
+      (commAny.lead_email as string) ||
+      leadMember?.user?.email ||
+      undefined,
+    reviewed_at: toIsoString(row.reviewedAt),
     reviewed_by: row.reviewedBy ?? undefined,
-    created_at:
-      row.createdAt instanceof Date
-        ? row.createdAt.toISOString()
-        : row.createdAt
-        ? String(row.createdAt)
-        : undefined,
+    created_at: toIsoString(row.createdAt ?? (commAny.created_at as string | undefined)),
+  };
+}
+
+export function formatAdminCommunity(row: DrizzleAdminCommunityRow): AdminCommunityRow {
+  const formatted = formatCommunity(row);
+  return {
+    ...formatted,
+    lead_id: row.leadId ?? null,
+    lead_name: row.leadName ?? formatted.lead_name ?? null,
+    lead_email: row.leadEmail ?? formatted.lead_email ?? null,
+    tic_ids: row.ticIds ?? [],
+    tic_names: row.ticNames ?? [],
+    member_count: Number(row.memberCount || 0),
+    event_count: Number(row.eventCount || 0),
   };
 }
 
 /**
- * Adapter utility that maps Drizzle ORM admin community records with aggregated metrics
- * to AdminCommunityRow domain types (snake_case) expected by the frontend.
+ * Maps Drizzle event rows (camelCase) to frontend CampusEvent contracts (snake_case).
  */
-export function formatAdminCommunity(row: DrizzleAdminCommunityRow): AdminCommunityRow {
+export function formatCampusEvent(row: DrizzleEventRow): CampusEvent {
+  const rowAny = row as unknown as Record<string, unknown>;
+  const community = row.community && row.community.id ? formatCommunity(row.community) : undefined;
+  const department =
+    row.department && row.department.id ? formatDepartment(row.department) : undefined;
+  const venue = row.venue && row.venue.id ? formatVenue(row.venue) : undefined;
+
+  const creator =
+    row.creator && row.creator.id
+      ? {
+          id: row.creator.id,
+          full_name: row.creator.fullName || "",
+          email: row.creator.email || undefined,
+          role: normalizeRole(row.creator.role),
+        }
+      : undefined;
+
+  const reviewer =
+    row.reviewer && row.reviewer.id
+      ? {
+          id: row.reviewer.id,
+          full_name: row.reviewer.fullName || "",
+          email: row.reviewer.email || undefined,
+          role: normalizeRole(row.reviewer.role),
+        }
+      : undefined;
+
+  const rawStart = row.startTime ?? (rowAny.start_time as Date | string | undefined);
+  const rawEnd = row.endTime ?? (rowAny.end_time as Date | string | undefined);
+  const rawCreatedAt = row.createdAt ?? (rowAny.created_at as Date | string | undefined);
+  const rawUpdatedAt = row.updatedAt ?? (rowAny.updated_at as Date | string | undefined);
+  const rawBudget = row.estimatedBudget ?? (rowAny.estimated_budget as string | number | undefined);
+
   return {
-    ...formatCommunity(row),
-    lead_id: row.leadId ?? null,
-    lead_name: row.leadName ?? null,
-    lead_email: row.leadEmail ?? null,
-    member_count: Number(row.memberCount || 0),
-    event_count: Number(row.eventCount || 0),
+    id: row.id,
+    origin_type: ((row.originType ?? (rowAny.origin_type as string)) || "community") as EventOriginType,
+    community_id: row.communityId !== undefined ? row.communityId : (rowAny.community_id as string | null),
+    department_id:
+      row.departmentId !== undefined ? row.departmentId : (rowAny.department_id as string | null),
+    venue_id: row.venueId !== undefined ? row.venueId : (rowAny.venue_id as string | null),
+    coordinator_id:
+      row.coordinatorId !== undefined ? row.coordinatorId : (rowAny.coordinator_id as string | null),
+    reference_number:
+      row.referenceNumber !== undefined
+        ? row.referenceNumber
+        : (rowAny.reference_number as string | null),
+    academic_year:
+      row.academicYear !== undefined ? row.academicYear : (rowAny.academic_year as string | null),
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    category: (row.category as EventCategory) || (rowAny.category as EventCategory),
+    target_audience: row.targetAudience || (rowAny.target_audience as string[]) || ["All Students"],
+    tags: row.tags || (rowAny.tags as string[]) || [],
+    start_time: toIsoString(rawStart) ?? "",
+    end_time: toIsoString(rawEnd) ?? "",
+    timezone: row.timezone || (rowAny.timezone as string) || undefined,
+    location_name: row.locationName || (rowAny.location_name as string) || "",
+    is_virtual: row.isVirtual ?? (rowAny.is_virtual as boolean) ?? false,
+    virtual_link: row.virtualLink || (rowAny.virtual_link as string) || undefined,
+    external_registration_url:
+      row.externalRegistrationUrl || (rowAny.external_registration_url as string) || undefined,
+    cover_image_url: row.coverImageUrl || (rowAny.cover_image_url as string) || undefined,
+    estimated_budget: rawBudget !== undefined && rawBudget !== null ? Number(rawBudget) : 0,
+    funding_source: row.fundingSource || (rowAny.funding_source as string) || "No Cost",
+    is_lead_time_overridden:
+      row.isLeadTimeOverridden ?? (rowAny.is_lead_time_overridden as boolean) ?? false,
+    override_reason: row.overrideReason ?? (rowAny.override_reason as string | null) ?? null,
+    status: (row.status as EventStatus) || (rowAny.status as EventStatus),
+    rejection_reason: row.rejectionReason || (rowAny.rejection_reason as string) || undefined,
+    cancellation_reason:
+      row.cancellationReason || (rowAny.cancellation_reason as string) || undefined,
+    created_by: row.createdBy || (rowAny.created_by as string) || undefined,
+    reviewed_by: row.reviewedBy || (rowAny.reviewed_by as string) || undefined,
+    created_at: toIsoString(rawCreatedAt),
+    updated_at: toIsoString(rawUpdatedAt),
+    community,
+    department,
+    venue,
+    creator,
+    reviewer,
   };
 }
 
@@ -324,45 +368,43 @@ export interface DrizzleUserRow {
   email: string;
   fullName: string;
   role: string;
+  designation?: string | null;
+  departmentId?: string | null;
   avatarUrl?: string | null;
-  campusId?: string | null;
+  isActive?: boolean | null;
   createdAt?: Date | string | null;
 }
 
 export interface DrizzleAdminUserRow extends DrizzleUserRow {
+  departmentName?: string | null;
+  departmentCode?: string | null;
   communityId?: string | null;
   communityName?: string | null;
+  communityMemberRole?: string | null;
 }
 
-/**
- * Adapter utility that maps Drizzle ORM user records (camelCase) to
- * UserProfile domain types (snake_case) expected by the frontend.
- */
 export function formatUser(row: DrizzleUserRow): UserProfile {
   return {
     id: row.id,
     email: row.email,
     full_name: row.fullName,
-    role: row.role as UserRole,
+    role: normalizeRole(row.role),
+    designation: row.designation ?? null,
+    department_id: row.departmentId ?? null,
     avatar_url: row.avatarUrl ?? undefined,
-    campus_id: row.campusId ?? undefined,
-    created_at:
-      row.createdAt instanceof Date
-        ? row.createdAt.toISOString()
-        : row.createdAt
-        ? String(row.createdAt)
-        : undefined,
+    is_active: row.isActive ?? true,
+    created_at: toIsoString(row.createdAt),
   };
 }
 
-/**
- * Adapter utility that maps Drizzle ORM admin user records with associated
- * lead community info to AdminUserRow domain types (snake_case) expected by the frontend.
- */
 export function formatAdminUser(row: DrizzleAdminUserRow): AdminUserRow {
   return {
     ...formatUser(row),
+    department_name: row.departmentName ?? null,
+    department_code: row.departmentCode ?? null,
     community_id: row.communityId ?? null,
     community_name: row.communityName ?? null,
+    community_member_role:
+      (row.communityMemberRole as "lead" | "tic" | "member" | null) ?? null,
   };
 }

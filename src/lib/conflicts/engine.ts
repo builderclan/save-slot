@@ -1,10 +1,10 @@
 import { withDbRetry } from "@/lib/db";
-import { events, venues, communities } from "@/db/schema";
+import { events, venues, communities, departments } from "@/db/schema";
 import {
   eq,
   ne,
   and,
-  notInArray,
+  inArray,
   lt,
   gt,
   desc,
@@ -19,7 +19,12 @@ import {
   SafeSlotSuggestion,
   Venue,
 } from "@/types/database";
-import { addDays, addMinutes, differenceInCalendarDays, format } from "date-fns";
+import {
+  addDays,
+  addMinutes,
+  differenceInCalendarDays,
+  format,
+} from "date-fns";
 import {
   doAudiencesOverlap,
   getOverlappingAudience,
@@ -65,7 +70,6 @@ export async function checkEventConflicts(params: {
     client
       .select({
         id: venues.id,
-        campusId: venues.campusId,
         name: venues.name,
         building: venues.building,
         capacity: venues.capacity,
@@ -76,16 +80,24 @@ export async function checkEventConflicts(params: {
       })
       .from(venues)
       .where(eq(venues.id, venueId))
-      .limit(1)
+      .limit(1),
   );
   const targetVenue: Venue | null = targetVenueRows[0]
     ? formatVenue(targetVenueRows[0])
     : null;
 
-  // 3. Query Colliding Events in the Same Venue (Physical Venue Collision)
+  const ACTIVE_BOOKING_STATUSES = [
+    "pending_stage2",
+    "pending_executive",
+    "published",
+    "pending_report_verification",
+    "completed",
+  ];
+
+  // 3. Query Colliding Events in the Same Venue (Soft + Hard Reservations)
   const clashConditions = [
     eq(events.venueId, venueId),
-    notInArray(events.status, ["rejected", "cancelled"]),
+    inArray(events.status, ACTIVE_BOOKING_STATUSES),
     lt(events.startTime, end),
     gt(events.endTime, start),
   ];
@@ -99,15 +111,22 @@ export async function checkEventConflicts(params: {
         ...getTableColumns(events),
         community: {
           id: communities.id,
-          campusId: communities.campusId,
           name: communities.name,
           slug: communities.slug,
+          code: communities.code,
+          scope: communities.scope,
           category: communities.category,
           logoUrl: communities.logoUrl,
         },
+        department: {
+          id: departments.id,
+          name: departments.name,
+          code: departments.code,
+          isActingHodActive: departments.isActingHodActive,
+          isActive: departments.isActive,
+        },
         venue: {
           id: venues.id,
-          campusId: venues.campusId,
           name: venues.name,
           building: venues.building,
           capacity: venues.capacity,
@@ -117,10 +136,11 @@ export async function checkEventConflicts(params: {
         },
       })
       .from(events)
-      .innerJoin(communities, eq(communities.id, events.communityId))
+      .leftJoin(communities, eq(communities.id, events.communityId))
+      .leftJoin(departments, eq(departments.id, events.departmentId))
       .leftJoin(venues, eq(venues.id, events.venueId))
       .where(and(...clashConditions))
-      .limit(1)
+      .limit(1),
   );
 
   const conflictingEvent: CampusEvent | null = clashRows[0]
@@ -130,9 +150,10 @@ export async function checkEventConflicts(params: {
   const hasConflict = hasVenueConflict;
 
   // 4. Query Concurrent Active Events for Audience Overlap Protection
-  const potentiallyOverlappingCohorts = getPotentiallyOverlappingCohorts(targetAudience);
+  const potentiallyOverlappingCohorts =
+    getPotentiallyOverlappingCohorts(targetAudience);
   const audienceConditions = [
-    notInArray(events.status, ["rejected", "cancelled"]),
+    inArray(events.status, ACTIVE_BOOKING_STATUSES),
     lt(events.startTime, end),
     gt(events.endTime, start),
     arrayOverlaps(events.targetAudience, potentiallyOverlappingCohorts),
@@ -143,9 +164,6 @@ export async function checkEventConflicts(params: {
   if (conflictingEvent?.id) {
     audienceConditions.push(ne(events.id, conflictingEvent.id));
   }
-  if (targetVenue?.campus_id) {
-    audienceConditions.push(eq(events.campusId, targetVenue.campus_id));
-  }
 
   const concurrentAudienceRows = await withDbRetry((client) =>
     client
@@ -153,15 +171,22 @@ export async function checkEventConflicts(params: {
         ...getTableColumns(events),
         community: {
           id: communities.id,
-          campusId: communities.campusId,
           name: communities.name,
           slug: communities.slug,
+          code: communities.code,
+          scope: communities.scope,
           category: communities.category,
           logoUrl: communities.logoUrl,
         },
+        department: {
+          id: departments.id,
+          name: departments.name,
+          code: departments.code,
+          isActingHodActive: departments.isActingHodActive,
+          isActive: departments.isActive,
+        },
         venue: {
           id: venues.id,
-          campusId: venues.campusId,
           name: venues.name,
           building: venues.building,
           capacity: venues.capacity,
@@ -171,19 +196,26 @@ export async function checkEventConflicts(params: {
         },
       })
       .from(events)
-      .innerJoin(communities, eq(communities.id, events.communityId))
+      .leftJoin(communities, eq(communities.id, events.communityId))
+      .leftJoin(departments, eq(departments.id, events.departmentId))
       .leftJoin(venues, eq(venues.id, events.venueId))
       .where(and(...audienceConditions))
-      .limit(5)
+      .limit(5),
   );
 
   let conflictingAudienceEvent: CampusEvent | null = null;
   let overlappingAudience: string[] = [];
 
   // Check if conflictingEvent in the same venue also overlaps audience
-  if (conflictingEvent && doAudiencesOverlap(targetAudience, conflictingEvent.target_audience)) {
+  if (
+    conflictingEvent &&
+    doAudiencesOverlap(targetAudience, conflictingEvent.target_audience)
+  ) {
     conflictingAudienceEvent = conflictingEvent;
-    overlappingAudience = getOverlappingAudience(targetAudience, conflictingEvent.target_audience);
+    overlappingAudience = getOverlappingAudience(
+      targetAudience,
+      conflictingEvent.target_audience,
+    );
   }
 
   // Otherwise, inspect concurrent events in other campus venues
@@ -192,7 +224,10 @@ export async function checkEventConflicts(params: {
       const candidate = formatCampusEvent(row);
       if (doAudiencesOverlap(targetAudience, candidate.target_audience)) {
         conflictingAudienceEvent = candidate;
-        overlappingAudience = getOverlappingAudience(targetAudience, candidate.target_audience);
+        overlappingAudience = getOverlappingAudience(
+          targetAudience,
+          candidate.target_audience,
+        );
         break;
       }
     }
@@ -206,9 +241,8 @@ export async function checkEventConflicts(params: {
   if (hasConflict || hasLeadTimeViolation || hasAudienceConflict) {
     const durationMinutes = Math.max(
       30,
-      Math.round((end.getTime() - start.getTime()) / 60000)
+      Math.round((end.getTime() - start.getTime()) / 60000),
     );
-    const campusId = targetVenue?.campus_id;
 
     if (hasLeadTimeViolation) {
       // SCENARIO A: Lead-time policy violation (< 7 days)
@@ -222,7 +256,7 @@ export async function checkEventConflicts(params: {
 
       const slot1Conditions = [
         eq(events.venueId, venueId),
-        notInArray(events.status, ["rejected", "cancelled"]),
+        inArray(events.status, ACTIVE_BOOKING_STATUSES),
         lt(events.startTime, safeEnd1),
         gt(events.endTime, safeStart1),
       ];
@@ -235,7 +269,7 @@ export async function checkEventConflicts(params: {
           .select({ id: events.id })
           .from(events)
           .where(and(...slot1Conditions))
-          .limit(1)
+          .limit(1),
       );
 
       if (slot1Clash.length === 0) {
@@ -250,11 +284,11 @@ export async function checkEventConflicts(params: {
         });
       }
 
-      // Option 2: Alternative Active Campus Venue on the Earliest Safe Date
-      if (campusId) {
+      // Option 2: Alternative Active Venue on the Earliest Safe Date
+      if (targetVenue) {
         const altEventConditions = [
           eq(events.venueId, venues.id),
-          notInArray(events.status, ["rejected", "cancelled"]),
+          inArray(events.status, ACTIVE_BOOKING_STATUSES),
           lt(events.startTime, safeEnd1),
           gt(events.endTime, safeStart1),
         ];
@@ -266,7 +300,6 @@ export async function checkEventConflicts(params: {
           client
             .select({
               id: venues.id,
-              campusId: venues.campusId,
               name: venues.name,
               building: venues.building,
               capacity: venues.capacity,
@@ -277,19 +310,18 @@ export async function checkEventConflicts(params: {
             .from(venues)
             .where(
               and(
-                eq(venues.campusId, campusId),
                 ne(venues.id, venueId),
                 eq(venues.isActive, true),
                 notExists(
                   client
                     .select({ id: events.id })
                     .from(events)
-                    .where(and(...altEventConditions))
-                )
-              )
+                    .where(and(...altEventConditions)),
+                ),
+              ),
             )
             .orderBy(desc(venues.capacity))
-            .limit(1)
+            .limit(1),
         );
 
         for (const altV of altVenuesRes) {
@@ -311,7 +343,7 @@ export async function checkEventConflicts(params: {
 
       const slot3Conditions = [
         eq(events.venueId, venueId),
-        notInArray(events.status, ["rejected", "cancelled"]),
+        inArray(events.status, ACTIVE_BOOKING_STATUSES),
         lt(events.startTime, safeEnd3),
         gt(events.endTime, safeStart3),
       ];
@@ -324,7 +356,7 @@ export async function checkEventConflicts(params: {
           .select({ id: events.id })
           .from(events)
           .where(and(...slot3Conditions))
-          .limit(1)
+          .limit(1),
       );
 
       if (slot3Clash.length === 0) {
@@ -349,7 +381,7 @@ export async function checkEventConflicts(params: {
 
         const slot1Conditions = [
           eq(events.venueId, venueId),
-          notInArray(events.status, ["rejected", "cancelled"]),
+          inArray(events.status, ACTIVE_BOOKING_STATUSES),
           lt(events.startTime, slot1End),
           gt(events.endTime, slot1Start),
         ];
@@ -362,7 +394,7 @@ export async function checkEventConflicts(params: {
             .select({ id: events.id })
             .from(events)
             .where(and(...slot1Conditions))
-            .limit(1)
+            .limit(1),
         );
 
         if (slot1Clash.length === 0 && slot1Start.getHours() < 22) {
@@ -374,17 +406,19 @@ export async function checkEventConflicts(params: {
             start_time: slot1Start.toISOString(),
             end_time: slot1End.toISOString(),
             reason: `30-minute buffer after ${
-              eventToClear.community?.name || "prior event"
+              eventToClear.community?.name ||
+              eventToClear.department?.name ||
+              "prior event"
             } concludes.`,
           });
         }
       }
 
-      // Option 2: Alternative Active Campus Venue at the Exact Same Time (only if free of audience conflict!)
-      if (campusId && !hasAudienceConflict) {
+      // Option 2: Alternative Active Venue at the Exact Same Time (only if free of audience conflict!)
+      if (targetVenue && !hasAudienceConflict) {
         const altEventConditions = [
           eq(events.venueId, venues.id),
-          notInArray(events.status, ["rejected", "cancelled"]),
+          inArray(events.status, ACTIVE_BOOKING_STATUSES),
           lt(events.startTime, end),
           gt(events.endTime, start),
         ];
@@ -396,7 +430,6 @@ export async function checkEventConflicts(params: {
           client
             .select({
               id: venues.id,
-              campusId: venues.campusId,
               name: venues.name,
               building: venues.building,
               capacity: venues.capacity,
@@ -407,19 +440,18 @@ export async function checkEventConflicts(params: {
             .from(venues)
             .where(
               and(
-                eq(venues.campusId, campusId),
                 ne(venues.id, venueId),
                 eq(venues.isActive, true),
                 notExists(
                   client
                     .select({ id: events.id })
                     .from(events)
-                    .where(and(...altEventConditions))
-                )
-              )
+                    .where(and(...altEventConditions)),
+                ),
+              ),
             )
             .orderBy(desc(venues.capacity))
-            .limit(2)
+            .limit(2),
         );
 
         for (const altV of altVenuesRes) {
@@ -441,7 +473,7 @@ export async function checkEventConflicts(params: {
 
       const slot3Conditions = [
         eq(events.venueId, venueId),
-        notInArray(events.status, ["rejected", "cancelled"]),
+        inArray(events.status, ACTIVE_BOOKING_STATUSES),
         lt(events.startTime, slot3End),
         gt(events.endTime, slot3Start),
       ];
@@ -454,7 +486,7 @@ export async function checkEventConflicts(params: {
           .select({ id: events.id })
           .from(events)
           .where(and(...slot3Conditions))
-          .limit(1)
+          .limit(1),
       );
 
       if (slot3Clash.length === 0) {
@@ -477,17 +509,28 @@ export async function checkEventConflicts(params: {
   if (hasConflict) {
     messages.push(
       `${targetVenue?.name || "This venue"} is already booked for "${conflictingEvent?.title}" by ${
-        conflictingEvent?.community?.name || "another club"
-      }.`
+        conflictingEvent?.community?.name ||
+        conflictingEvent?.department?.name ||
+        "another organizer"
+      }.`,
     );
   }
 
-  if (hasAudienceConflict && conflictingAudienceEvent && conflictingAudienceEvent.id !== conflictingEvent?.id) {
-    const cohortsStr = overlappingAudience.length > 0 ? overlappingAudience.join(", ") : "your target audience";
+  if (
+    hasAudienceConflict &&
+    conflictingAudienceEvent &&
+    conflictingAudienceEvent.id !== conflictingEvent?.id
+  ) {
+    const cohortsStr =
+      overlappingAudience.length > 0
+        ? overlappingAudience.join(", ")
+        : "your target audience";
     messages.push(
       `"${conflictingAudienceEvent.title}" (${
-        conflictingAudienceEvent.community?.name || "another club"
-      }) is scheduled at the same time for ${cohortsStr}. Student turnout may be divided.`
+        conflictingAudienceEvent.community?.name ||
+        conflictingAudienceEvent.department?.name ||
+        "another organizer"
+      }) is scheduled at the same time for ${cohortsStr}. Student turnout may be divided.`,
     );
   }
 
@@ -495,12 +538,14 @@ export async function checkEventConflicts(params: {
     messages.push(
       `Events must be submitted at least 7 days in advance (this date is in ${diffDays} day${
         diffDays === 1 ? "" : "s"
-      }).`
+      }).`,
     );
   }
 
   if (messages.length > 0) {
-    message = messages.join(" ") + (safeSlots.length > 0 ? " Choose a recommended safe slot below." : "");
+    message =
+      messages.join(" ") +
+      (safeSlots.length > 0 ? " Choose a recommended safe slot below." : "");
   }
 
   return {

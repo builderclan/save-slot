@@ -4,7 +4,7 @@ import { withDbRetry } from "@/lib/db";
 import { venues } from "@/db/schema";
 import { formatVenue } from "@/db/adapters";
 import { CreateVenueSchema, UpdateVenueSchema } from "@/lib/validations";
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 export async function GET() {
   try {
@@ -13,16 +13,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
-
     const rows = await withDbRetry((client) =>
       client
         .select()
         .from(venues)
-        .where(eq(venues.campusId, campusId))
         .orderBy(asc(venues.name))
     );
 
@@ -49,16 +43,11 @@ export async function POST(request: Request) {
     }
 
     const { name, building, capacity, address, notes } = parsed.data;
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
 
     const [newVenue] = await withDbRetry((client) =>
       client
         .insert(venues)
         .values({
-          campusId,
           name: name.trim(),
           building: building.trim(),
           capacity: capacity ?? null,
@@ -93,23 +82,13 @@ export async function PATCH(request: Request) {
 
     const { id, is_active } = parsed.data;
 
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
-
     const [updatedVenue] = await withDbRetry((client) =>
       client
         .update(venues)
         .set({
           isActive: is_active,
         })
-        .where(
-          and(
-            eq(venues.id, id),
-            eq(venues.campusId, campusId)
-          )
-        )
+        .where(eq(venues.id, id))
         .returning()
     );
 

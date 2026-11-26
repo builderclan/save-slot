@@ -43,7 +43,11 @@ export function UserAvatar({
       ? "ring-1 ring-purple-300/80"
       : role === "admin"
       ? "ring-1 ring-amber-300/80"
-      : role === "organizer" || role === "lead"
+      : role === "hod"
+      ? "ring-1 ring-teal-300/80"
+      : role === "tic" || role === "staff"
+      ? "ring-1 ring-sky-300/80"
+      : role === "lead"
       ? "ring-1 ring-indigo-300/80"
       : "ring-1 ring-zinc-200/80";
 

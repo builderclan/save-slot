@@ -1,25 +1,64 @@
 import { apiClient } from "@/lib/api-client";
-import type { CampusEvent, AdminCommunityRow, AdminUserRow } from "@/types/database";
 import type {
-  CreateUserInput,
-  UpdateUserInput,
+  AdminCommunityRow,
+  AdminUserRow,
+  CollegeSettings,
+  Department,
+} from "@/types/database";
+import type {
   CreateCommunityInput,
+  CreateDepartmentInput,
+  CreateUserInput,
+  UpdateCollegeSettingsInput,
   UpdateCommunityFullInput,
-  UpdateEventStatusInput,
+  UpdateDepartmentInput,
+  UpdateUserInput,
 } from "@/lib/validations";
 
 export const adminApi = {
-  // Event Triage & Actions
-  updateEventStatus(
-    eventId: string,
-    payload: UpdateEventStatusInput
-  ): Promise<{ success: boolean; event: CampusEvent }> {
-    return apiClient.post<{ success: boolean; event: CampusEvent }>(
-      `/api/admin/events/${eventId}/status`,
-      payload
+  // College Settings
+  getSettings(): Promise<{ settings: CollegeSettings | null }> {
+    return apiClient.get<{ settings: CollegeSettings | null }>("/api/admin/settings");
+  },
+
+  updateSettings(
+    data: UpdateCollegeSettingsInput
+  ): Promise<{ success: boolean; settings: CollegeSettings }> {
+    return apiClient.patch<{ success: boolean; settings: CollegeSettings }>(
+      "/api/admin/settings",
+      data
     );
   },
 
+  // Departments
+  getDepartments(): Promise<{ departments: Department[] }> {
+    return apiClient.get<{ departments: Department[] }>("/api/admin/departments");
+  },
+
+  createDepartment(
+    data: CreateDepartmentInput
+  ): Promise<{ success: boolean; department: Department }> {
+    return apiClient.post<{ success: boolean; department: Department }>(
+      "/api/admin/departments",
+      data
+    );
+  },
+
+  updateDepartment(
+    id: string,
+    data: UpdateDepartmentInput
+  ): Promise<{ success: boolean; department: Department }> {
+    return apiClient.patch<{ success: boolean; department: Department }>(
+      `/api/admin/departments/${id}`,
+      data
+    );
+  },
+
+  deleteDepartment(id: string): Promise<{ success: boolean }> {
+    return apiClient.delete<{ success: boolean }>(`/api/admin/departments/${id}`);
+  },
+
+  // Event cleanup (IT/Ops deletion only — zero approval powers)
   deleteEvent(eventId: string): Promise<{ success: boolean }> {
     return apiClient.delete<{ success: boolean }>(`/api/admin/events/${eventId}`);
   },
@@ -50,8 +89,14 @@ export const adminApi = {
     return apiClient.post<{ community: AdminCommunityRow }>("/api/admin/communities", data);
   },
 
-  updateCommunity(id: string, data: UpdateCommunityFullInput): Promise<{ community: AdminCommunityRow }> {
-    return apiClient.patch<{ community: AdminCommunityRow }>(`/api/admin/communities/${id}`, data);
+  updateCommunity(
+    id: string,
+    data: UpdateCommunityFullInput
+  ): Promise<{ community: AdminCommunityRow }> {
+    return apiClient.patch<{ community: AdminCommunityRow }>(
+      `/api/admin/communities/${id}`,
+      data
+    );
   },
 
   deleteCommunity(id: string): Promise<{ success: boolean }> {

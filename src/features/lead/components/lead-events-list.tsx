@@ -131,10 +131,12 @@ export function LeadEventsList({
                   </span>
                 )}
 
-                {ev.status === "pending" && (
+                {(ev.status === "pending_stage2" || ev.status === "pending_executive") && (
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-amber-200 bg-amber-50 text-amber-800 text-[10px] font-medium">
                     <Clock3 className="w-3 h-3 text-amber-600" />
-                    <span>Pending Review</span>
+                    <span>
+                      {ev.status === "pending_stage2" ? "Pending Stage 2 Review" : "Pending Executive"}
+                    </span>
                   </span>
                 )}
 
@@ -253,7 +255,9 @@ export function LeadEventsList({
               )}
 
               {/* Edit Proposal for Pending Events */}
-              {ev.status === "pending" && (
+              {(ev.status === "pending_stage2" ||
+                ev.status === "pending_executive" ||
+                ev.status === "draft") && (
                 <button
                   type="button"
                   onClick={() => onEdit(ev)}

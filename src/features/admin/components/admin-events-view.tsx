@@ -86,11 +86,16 @@ export function AdminEventsView({
       hideCompleted && nowTimestamp
         ? allEvents.filter((ev) => !ev.end_time || new Date(ev.end_time).getTime() >= nowTimestamp)
         : allEvents;
+    const isPendingStage = (status: CampusEvent["status"]) =>
+      status === "pending_stage2" ||
+      status === "pending_executive" ||
+      status === "needs_reschedule" ||
+      status === "pending_report_verification";
     return {
       all: pool.length,
-      published: pool.filter((e) => e.status === "published").length,
-      pending: pool.filter((e) => e.status === "pending").length,
-      rejected: pool.filter((e) => e.status === "rejected").length,
+      published: pool.filter((e) => e.status === "published" || e.status === "completed").length,
+      pending: pool.filter((e) => isPendingStage(e.status)).length,
+      rejected: pool.filter((e) => e.status === "rejected" || e.status === "cancelled").length,
     };
   }, [allEvents, hideCompleted, nowTimestamp]);
 
@@ -144,7 +149,21 @@ export function AdminEventsView({
       }
 
       // Status filter
-      if (statusFilter !== "all" && ev.status !== statusFilter) return false;
+      if (statusFilter === "published" && ev.status !== "published" && ev.status !== "completed") {
+        return false;
+      }
+      if (
+        statusFilter === "pending" &&
+        ev.status !== "pending_stage2" &&
+        ev.status !== "pending_executive" &&
+        ev.status !== "needs_reschedule" &&
+        ev.status !== "pending_report_verification"
+      ) {
+        return false;
+      }
+      if (statusFilter === "rejected" && ev.status !== "rejected" && ev.status !== "cancelled") {
+        return false;
+      }
 
       // Category filter
       if (categoryFilter !== "all" && ev.category !== categoryFilter) return false;
@@ -536,14 +555,17 @@ export function AdminEventsView({
                           <CategoryBadge category={ev.category} size="sm" showDot />
                           <span
                             className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.2 rounded-md border ${
-                              ev.status === "published"
+                              ev.status === "published" || ev.status === "completed"
                                 ? "bg-emerald-50 border-emerald-200/80 text-emerald-800"
-                                : ev.status === "pending"
+                                : ev.status === "pending_stage2" ||
+                                  ev.status === "pending_executive" ||
+                                  ev.status === "needs_reschedule" ||
+                                  ev.status === "pending_report_verification"
                                 ? "bg-amber-50 border-amber-200/80 text-amber-800"
                                 : "bg-rose-50 border-rose-200/80 text-rose-800"
                             }`}
                           >
-                            {ev.status}
+                            {ev.status.replace(/_/g, " ")}
                           </span>
                         </div>
                         <h4
@@ -684,14 +706,17 @@ export function AdminEventsView({
                             <td className="py-3 px-4 text-center whitespace-nowrap">
                               <span
                                 className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                                  ev.status === "published"
+                                  ev.status === "published" || ev.status === "completed"
                                     ? "bg-emerald-50 border-emerald-200/80 text-emerald-800"
-                                    : ev.status === "pending"
+                                    : ev.status === "pending_stage2" ||
+                                      ev.status === "pending_executive" ||
+                                      ev.status === "needs_reschedule" ||
+                                      ev.status === "pending_report_verification"
                                     ? "bg-amber-50 border-amber-200/80 text-amber-800"
                                     : "bg-rose-50 border-rose-200/80 text-rose-800"
                                 }`}
                               >
-                                {ev.status}
+                                {ev.status.replace(/_/g, " ")}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right whitespace-nowrap">

@@ -11,7 +11,6 @@ const mockLimit = vi.fn();
 const mockOrderBy = vi.fn();
 const mockWhere = vi.fn();
 const mockLeftJoin = vi.fn();
-const mockInnerJoin = vi.fn();
 const mockFrom = vi.fn();
 const mockSelect = vi.fn();
 
@@ -21,8 +20,7 @@ function setupQueryChain(defaultRows: DrizzleEventRow[] = []) {
   mockOrderBy.mockReturnValue({ limit: mockLimit });
   mockWhere.mockReturnValue({ orderBy: mockOrderBy });
   mockLeftJoin.mockReturnValue({ leftJoin: mockLeftJoin, where: mockWhere });
-  mockInnerJoin.mockReturnValue({ leftJoin: mockLeftJoin });
-  mockFrom.mockReturnValue({ innerJoin: mockInnerJoin });
+  mockFrom.mockReturnValue({ leftJoin: mockLeftJoin });
   mockSelect.mockReturnValue({ from: mockFrom });
 }
 
@@ -44,7 +42,7 @@ import { getCurrentUser, type AuthSession } from "@/lib/auth";
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 
-describe("Events Public & Authenticated API (GET /api/events with Drizzle Core Joins)", () => {
+describe("Events Public & Authenticated API (GET /api/events v1.0.0)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupQueryChain();
@@ -54,7 +52,7 @@ describe("Events Public & Authenticated API (GET /api/events with Drizzle Core J
     mockGetCurrentUser.mockResolvedValue(null);
     const mockRow: DrizzleEventRow = {
       id: "event-1",
-      campusId: "campus-1",
+      originType: "community",
       communityId: "comm-1",
       title: "Orientation Day",
       slug: "orientation-day",
@@ -67,14 +65,14 @@ describe("Events Public & Authenticated API (GET /api/events with Drizzle Core J
       status: "published",
       community: {
         id: "comm-1",
-        campusId: "campus-1",
         name: "Student Life",
         slug: "student-life",
+        code: "SL",
+        scope: "internal",
         category: "General",
       },
       venue: {
         id: "venue-1",
-        campusId: "campus-1",
         name: "Main Auditorium",
         building: "Hall A",
       },
@@ -88,13 +86,11 @@ describe("Events Public & Authenticated API (GET /api/events with Drizzle Core J
     const data = await res.json();
     expect(data.events).toHaveLength(1);
     expect(data.events[0].title).toBe("Orientation Day");
-    expect(data.events[0].campus_id).toBe("campus-1");
     expect(data.events[0].community?.name).toBe("Student Life");
     expect(data.events[0].venue?.name).toBe("Main Auditorium");
 
     expect(mockSelect).toHaveBeenCalledTimes(1);
-    expect(mockInnerJoin).toHaveBeenCalledTimes(1);
-    expect(mockLeftJoin).toHaveBeenCalledTimes(3);
+    expect(mockLeftJoin).toHaveBeenCalledTimes(5);
     expect(mockLimit).toHaveBeenCalledWith(150);
     expect(mockOffset).toHaveBeenCalledWith(0);
 
@@ -106,7 +102,7 @@ describe("Events Public & Authenticated API (GET /api/events with Drizzle Core J
     mockGetCurrentUser.mockResolvedValue(null);
     mockOffset.mockResolvedValueOnce([]);
 
-    const req = new Request("http://localhost/api/events?status=pending");
+    const req = new Request("http://localhost/api/events?status=pending_executive");
     const res = await GET(req);
 
     expect(res.status).toBe(200);
@@ -115,30 +111,36 @@ describe("Events Public & Authenticated API (GET /api/events with Drizzle Core J
 
     const whereQuery = dialect.sqlToQuery(mockWhere.mock.calls[0][0] as SQL);
     expect(whereQuery.params).toContain("published");
-    expect(whereQuery.params).not.toContain("pending");
+    expect(whereQuery.params).not.toContain("pending_executive");
   });
 
-  it("allows administrators to query non-published events (e.g. pending)", async () => {
+  it("allows administrators to query non-published events (e.g. pending_executive)", async () => {
     const adminSession: AuthSession = {
       userId: "admin-1",
-      email: "admin@campus.edu",
+      email: "admin@aisat.ac.in",
       profile: {
         id: "admin-1",
-        email: "admin@campus.edu",
+        email: "admin@aisat.ac.in",
         full_name: "Admin User",
         role: "admin",
       },
       isAdmin: true,
       isPrincipal: false,
       isVicePrincipal: false,
+      isHod: false,
+      isActingHod: false,
+      isTic: false,
+      isStaff: false,
       isLead: false,
       leadCommunities: [],
+      ticCommunities: [],
+      hodDepartments: [],
     };
 
     mockGetCurrentUser.mockResolvedValue(adminSession);
     const mockRow: DrizzleEventRow = {
       id: "event-pending-1",
-      campusId: "campus-1",
+      originType: "community",
       communityId: "comm-1",
       title: "Hackathon Proposal",
       slug: "hackathon-proposal",
@@ -147,19 +149,68 @@ describe("Events Public & Authenticated API (GET /api/events with Drizzle Core J
       startTime: new Date("2026-10-20T10:00:00Z"),
       endTime: new Date("2026-10-20T18:00:00Z"),
       locationName: "Tech Hub",
-      status: "pending",
+      status: "pending_executive",
     };
     mockOffset.mockResolvedValueOnce([mockRow]);
 
-    const req = new Request("http://localhost/api/events?status=pending");
+    const req = new Request("http://localhost/api/events?status=pending_executive");
     const res = await GET(req);
 
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.events[0].status).toBe("pending");
+    expect(data.events[0].status).toBe("pending_executive");
 
     const whereQuery = dialect.sqlToQuery(mockWhere.mock.calls[0][0] as SQL);
-    expect(whereQuery.params).toContain("pending");
+    expect(whereQuery.params).toContain("pending_executive");
+  });
+
+  it("allows administrators and principals to query all statuses without filtering status = 'all'", async () => {
+    const adminSession: AuthSession = {
+      userId: "admin-1",
+      email: "admin@aisat.ac.in",
+      profile: {
+        id: "admin-1",
+        email: "admin@aisat.ac.in",
+        full_name: "Admin User",
+        role: "admin",
+      },
+      isAdmin: true,
+      isPrincipal: false,
+      isVicePrincipal: false,
+      isHod: false,
+      isActingHod: false,
+      isTic: false,
+      isStaff: false,
+      isLead: false,
+      leadCommunities: [],
+      ticCommunities: [],
+      hodDepartments: [],
+    };
+
+    mockGetCurrentUser.mockResolvedValue(adminSession);
+    const mockRow: DrizzleEventRow = {
+      id: "event-all-1",
+      originType: "community",
+      communityId: "comm-1",
+      title: "Published Event",
+      slug: "published-event",
+      description: "Live event",
+      category: "Tech",
+      startTime: new Date("2026-10-20T10:00:00Z"),
+      endTime: new Date("2026-10-20T18:00:00Z"),
+      locationName: "Main Hall",
+      status: "published",
+    };
+    mockOffset.mockResolvedValueOnce([mockRow]);
+
+    const req = new Request("http://localhost/api/events?status=all&limit=200");
+    const res = await GET(req);
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.events).toHaveLength(1);
+    expect(data.events[0].id).toBe("event-all-1");
+    expect(mockWhere).toHaveBeenCalledWith(undefined);
   });
 
   it("applies category, community, and search filters directly in SQL joins", async () => {
@@ -177,7 +228,7 @@ describe("Events Public & Authenticated API (GET /api/events with Drizzle Core J
     const whereQuery = dialect.sqlToQuery(mockWhere.mock.calls[0][0] as SQL);
     expect(whereQuery.sql).toContain('"events"."category" = $');
     expect(whereQuery.sql).toContain('"communities"."slug" = $');
-    expect(whereQuery.sql).toContain('ilike');
+    expect(whereQuery.sql).toContain("ilike");
     expect(whereQuery.params).toContain("Tech");
     expect(whereQuery.params).toContain("coding-club");
     expect(whereQuery.params).toContain("%hack%");

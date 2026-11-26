@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/server/auth";
 import { withDbRetry } from "@/lib/db";
 import { communities, communityMembers, users, events } from "@/db/schema";
 import { formatCommunity, formatAdminCommunity } from "@/db/adapters";
 import { CreateCommunitySchema } from "@/lib/validations";
-import { and, eq, or, isNull, asc, sql } from "drizzle-orm";
+import { and, eq, inArray, asc, sql } from "drizzle-orm";
 
 function generateSlug(name: string): string {
   return name
@@ -14,19 +14,18 @@ function generateSlug(name: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+function generateCode(slug: string): string {
+  return slug.replace(/[^a-z0-9]/gi, "").slice(0, 10).toUpperCase() || "COMM";
+}
+
 export async function GET() {
   try {
     const session = await getCurrentUser();
-    if (!session || !session.isAdmin) {
-      return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
+    if (!session || (!session.isAdmin && !session.isPrincipal)) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 403 });
     }
 
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
-
-    const rows = await withDbRetry(async (client) => {
+    const [rows, ticRows] = await withDbRetry(async (client) => {
       const leadSubquery = client
         .selectDistinctOn([communityMembers.communityId], {
           communityId: communityMembers.communityId,
@@ -37,34 +36,62 @@ export async function GET() {
         .orderBy(communityMembers.communityId, asc(communityMembers.createdAt))
         .as("cm_lead");
 
-      return client
-        .select({
-          id: communities.id,
-          campusId: communities.campusId,
-          name: communities.name,
-          slug: communities.slug,
-          category: communities.category,
-          description: communities.description,
-          logoUrl: communities.logoUrl,
-          bannerUrl: communities.bannerUrl,
-          website: communities.website,
-          instagram: communities.instagram,
-          status: communities.status,
-          createdAt: communities.createdAt,
-          leadId: users.id,
-          leadName: users.fullName,
-          leadEmail: users.email,
-          memberCount: sql<number>`COALESCE((SELECT COUNT(*)::int FROM ${communityMembers} WHERE ${communityMembers.communityId} = ${communities.id}), 0)`.mapWith(Number),
-          eventCount: sql<number>`COALESCE((SELECT COUNT(*)::int FROM ${events} WHERE ${events.communityId} = ${communities.id} AND ${events.status} IN ('pending', 'published')), 0)`.mapWith(Number),
-        })
-        .from(communities)
-        .leftJoin(leadSubquery, eq(leadSubquery.communityId, communities.id))
-        .leftJoin(users, eq(users.id, leadSubquery.userId))
-        .where(eq(communities.campusId, campusId))
-        .orderBy(asc(communities.name));
+      return Promise.all([
+        client
+          .select({
+            id: communities.id,
+            name: communities.name,
+            slug: communities.slug,
+            code: communities.code,
+            scope: communities.scope,
+            category: communities.category,
+            description: communities.description,
+            logoUrl: communities.logoUrl,
+            bannerUrl: communities.bannerUrl,
+            website: communities.website,
+            instagram: communities.instagram,
+            status: communities.status,
+            createdAt: communities.createdAt,
+            leadId: users.id,
+            leadName: users.fullName,
+            leadEmail: users.email,
+            memberCount: sql<number>`COALESCE((SELECT COUNT(*)::int FROM ${communityMembers} WHERE ${communityMembers.communityId} = ${communities.id}), 0)`.mapWith(Number),
+            eventCount: sql<number>`COALESCE((SELECT COUNT(*)::int FROM ${events} WHERE ${events.communityId} = ${communities.id} AND ${events.status} IN ('pending_stage2', 'pending_executive', 'published', 'pending_report_verification')), 0)`.mapWith(Number),
+          })
+          .from(communities)
+          .leftJoin(leadSubquery, eq(leadSubquery.communityId, communities.id))
+          .leftJoin(users, eq(users.id, leadSubquery.userId))
+          .orderBy(asc(communities.name)),
+        client
+          .select({
+            communityId: communityMembers.communityId,
+            userId: users.id,
+            fullName: users.fullName,
+          })
+          .from(communityMembers)
+          .innerJoin(users, eq(users.id, communityMembers.userId))
+          .where(eq(communityMembers.role, "tic")),
+      ]);
     });
 
-    return NextResponse.json({ communities: rows.map(formatAdminCommunity) });
+    const ticsByCommunity = new Map<string, { ids: string[]; names: string[] }>();
+    for (const row of ticRows) {
+      const entry = ticsByCommunity.get(row.communityId) ?? { ids: [], names: [] };
+      entry.ids.push(row.userId);
+      entry.names.push(row.fullName);
+      ticsByCommunity.set(row.communityId, entry);
+    }
+
+    const formatted = rows.map((row) => {
+      const tics = ticsByCommunity.get(row.id);
+      return formatAdminCommunity({
+        ...row,
+        ticIds: tics?.ids ?? [],
+        ticNames: tics?.names ?? [],
+      });
+    });
+
+    return NextResponse.json({ communities: formatted });
   } catch (err: unknown) {
     console.error("[GET /api/admin/communities] Error:", err);
     return NextResponse.json({ error: "Failed to load communities" }, { status: 500 });
@@ -74,64 +101,53 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getCurrentUser();
-    if (!session || !session.isAdmin) {
-      return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
-    }
-
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    if (!session || (!session.isAdmin && !session.isPrincipal)) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 403 });
     }
 
     const rawBody = await request.json().catch(() => null);
     const parsed = CreateCommunitySchema.safeParse(rawBody);
-
     if (!parsed.success) {
-      const errorMsg = parsed.error.issues[0]?.message || "Invalid community data";
-      return NextResponse.json({ error: errorMsg, details: parsed.error.issues }, { status: 400 });
-    }
-
-    const { name, category, description, logoUrl, website, instagram, leadUserId } = parsed.data;
-    const rawSlug = parsed.data.slug?.trim();
-    const slug = rawSlug && rawSlug.length > 0 ? rawSlug.toLowerCase() : generateSlug(name);
-
-    if (!slug) {
-      return NextResponse.json({ error: "Could not generate a valid slug from community name." }, { status: 400 });
-    }
-
-    // Check slug collision
-    const existing = await withDbRetry((client) =>
-      client
-        .select({ id: communities.id })
-        .from(communities)
-        .where(and(eq(communities.campusId, campusId), eq(communities.slug, slug)))
-        .limit(1)
-    );
-    if (existing.length > 0) {
       return NextResponse.json(
-        { error: `A community with slug '${slug}' already exists on this campus.` },
+        { error: parsed.error.issues[0]?.message || "Invalid community data", details: parsed.error.issues },
         { status: 400 }
       );
     }
 
-    // If leadUserId is provided, verify they exist in this campus and hold an eligible role
+    const {
+      name,
+      category,
+      scope,
+      description,
+      logoUrl,
+      website,
+      instagram,
+      leadUserId,
+      ticUserIds,
+    } = parsed.data;
+    const rawSlug = parsed.data.slug?.trim();
+    const slug = rawSlug && rawSlug.length > 0 ? rawSlug.toLowerCase() : generateSlug(name);
+    const rawCode = parsed.data.code?.trim();
+    const code = rawCode && rawCode.length > 0 ? rawCode.toUpperCase() : generateCode(slug);
+
+    if (!slug) {
+      return NextResponse.json(
+        { error: "Could not generate a valid slug from community name." },
+        { status: 400 }
+      );
+    }
+
     if (leadUserId && leadUserId.trim().length > 0) {
-      const leadUserCheck = await withDbRetry((client) =>
+      const [leadUserCheck] = await withDbRetry((client) =>
         client
           .select({ id: users.id })
           .from(users)
-          .where(
-            and(
-              eq(users.id, leadUserId),
-              or(isNull(users.campusId), eq(users.campusId, campusId)),
-              eq(users.role, "organizer")
-            )
-          )
+          .where(and(eq(users.id, leadUserId), inArray(users.role, ["lead", "staff"])))
           .limit(1)
       );
-      if (leadUserCheck.length === 0) {
+      if (!leadUserCheck) {
         return NextResponse.json(
-          { error: "Assigned lead user does not exist in this campus or is not an organizer." },
+          { error: "Assigned lead user must exist and hold a Lead or Staff account." },
           { status: 400 }
         );
       }
@@ -139,58 +155,54 @@ export async function POST(request: Request) {
 
     const createdCommunity = await withDbRetry(async (client) => {
       return await client.transaction(async (tx) => {
-        // 1. Insert community record
         const [comm] = await tx
           .insert(communities)
           .values({
-            campusId,
             name: name.trim(),
             slug,
+            code,
+            scope: scope || "internal",
             category,
             description: description?.trim() || null,
             logoUrl: logoUrl?.trim() || null,
             website: website?.trim() || null,
             instagram: instagram?.trim() || null,
             status: "approved",
-            createdBy: session.profile.id,
+            createdBy: session.userId,
           })
           .returning();
 
-        // 2. Link community lead if provided
         if (leadUserId && leadUserId.trim().length > 0) {
-          const leadUpdateRes = await tx
-            .update(users)
-            .set({
-              role: sql`CASE WHEN ${users.role} = 'student' THEN 'organizer' ELSE ${users.role} END`,
-              campusId: sql`COALESCE(${users.campusId}, ${campusId})`,
-            })
-            .where(
-              and(
-                eq(users.id, leadUserId),
-                or(isNull(users.campusId), eq(users.campusId, campusId))
-              )
-            )
-            .returning({ id: users.id });
-
-          if (leadUpdateRes.length === 0) {
-            throw new Error("Assigned lead user does not exist in this campus or is not eligible.");
-          }
-
           await tx
             .insert(communityMembers)
             .values({
               communityId: comm.id,
-              userId: leadUserId,
+              userId: leadUserId.trim(),
               role: "lead",
               status: "active",
             })
             .onConflictDoUpdate({
               target: [communityMembers.communityId, communityMembers.userId],
-              set: {
-                role: "lead",
-                status: "active",
-              },
+              set: { role: "lead", status: "active" },
             });
+        }
+
+        if (ticUserIds && ticUserIds.length > 0) {
+          const uniqueTics = [...new Set(ticUserIds.filter((uid) => uid && uid !== leadUserId))];
+          for (const ticId of uniqueTics) {
+            await tx
+              .insert(communityMembers)
+              .values({
+                communityId: comm.id,
+                userId: ticId,
+                role: "tic",
+                status: "active",
+              })
+              .onConflictDoUpdate({
+                target: [communityMembers.communityId, communityMembers.userId],
+                set: { role: "tic", status: "active" },
+              });
+          }
         }
 
         return comm;
@@ -202,9 +214,6 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    if (err instanceof Error && err.message.includes("Assigned lead user")) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
-    }
     if (
       typeof err === "object" &&
       err !== null &&
@@ -212,7 +221,7 @@ export async function POST(request: Request) {
       (err as { code: string }).code === "23505"
     ) {
       return NextResponse.json(
-        { error: "A community with this slug already exists." },
+        { error: "A community with this slug or reference code already exists." },
         { status: 400 }
       );
     }

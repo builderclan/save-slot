@@ -12,7 +12,7 @@ export const communityMembers = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    role: varchar("role", { length: 50 }).notNull().default("member"),
+    role: varchar("role", { length: 50 }).notNull().default("lead"), // 'lead' | 'tic' | 'member'
     status: varchar("status", { length: 50 }).notNull().default("active"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },

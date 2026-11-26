@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser } from "@/server/auth";
 import { withDbRetry } from "@/lib/db";
-import { users, communityMembers, communities } from "@/db/schema";
+import { users, communityMembers, communities, departments } from "@/db/schema";
 import { formatUser, formatAdminUser } from "@/db/adapters";
 import { CreateUserSchema } from "@/lib/validations";
 import { eq, desc, sql } from "drizzle-orm";
@@ -9,27 +9,22 @@ import { eq, desc, sql } from "drizzle-orm";
 export async function GET() {
   try {
     const session = await getCurrentUser();
-    if (!session || !session.isAdmin) {
-      return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
-    }
-
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
+    if (!session || (!session.isAdmin && !session.isPrincipal)) {
+      return NextResponse.json({ error: "Unauthorized access" }, { status: 403 });
     }
 
     const rows = await withDbRetry((client) => {
-      const leadSubquery = client
+      const memberSubquery = client
         .select({
           userId: communityMembers.userId,
           communityId: sql<string>`(ARRAY_AGG(${communityMembers.communityId} ORDER BY ${communityMembers.createdAt} ASC))[1]`.as("community_id"),
           communityName: sql<string>`string_agg(${communities.name}, ', ' ORDER BY ${communities.name})`.as("community_name"),
+          communityMemberRole: sql<string>`(ARRAY_AGG(${communityMembers.role} ORDER BY ${communityMembers.createdAt} ASC))[1]`.as("community_member_role"),
         })
         .from(communityMembers)
         .innerJoin(communities, eq(communities.id, communityMembers.communityId))
-        .where(eq(communityMembers.role, "lead"))
         .groupBy(communityMembers.userId)
-        .as("user_leads");
+        .as("user_memberships");
 
       return client
         .select({
@@ -37,15 +32,20 @@ export async function GET() {
           email: users.email,
           fullName: users.fullName,
           role: users.role,
+          designation: users.designation,
+          departmentId: users.departmentId,
           avatarUrl: users.avatarUrl,
-          campusId: users.campusId,
+          isActive: users.isActive,
           createdAt: users.createdAt,
-          communityId: leadSubquery.communityId,
-          communityName: leadSubquery.communityName,
+          departmentName: departments.name,
+          departmentCode: departments.code,
+          communityId: memberSubquery.communityId,
+          communityName: memberSubquery.communityName,
+          communityMemberRole: memberSubquery.communityMemberRole,
         })
         .from(users)
-        .leftJoin(leadSubquery, eq(leadSubquery.userId, users.id))
-        .where(eq(users.campusId, campusId))
+        .leftJoin(departments, eq(departments.id, users.departmentId))
+        .leftJoin(memberSubquery, eq(memberSubquery.userId, users.id))
         .orderBy(desc(users.createdAt));
     });
 
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized admin access" }, { status: 403 });
     }
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
     const parsed = CreateUserSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -72,15 +72,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const { fullName, email, password, role, communityId } = parsed.data;
-
+    const {
+      fullName,
+      email,
+      password,
+      role,
+      designation,
+      departmentId,
+      communityId,
+      communityMemberRole,
+    } = parsed.data;
     const normalizedEmail = email.trim().toLowerCase();
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
 
-    // Check if user already exists
     const [existing] = await withDbRetry((client) =>
       client
         .select({ id: users.id })
@@ -96,7 +99,6 @@ export async function POST(request: Request) {
       return client.transaction(async (tx) => {
         const newUserId = crypto.randomUUID();
 
-        // 1. Insert into auth.users with empty string tokens for GoTrue scanner compatibility
         await tx.execute(
           sql`INSERT INTO auth.users (
             id, instance_id, aud, role, email, encrypted_password,
@@ -115,7 +117,6 @@ export async function POST(request: Request) {
           )`
         );
 
-        // 2. Insert into auth.identities
         await tx.execute(
           sql`INSERT INTO auth.identities (
             id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at
@@ -126,7 +127,6 @@ export async function POST(request: Request) {
           )`
         );
 
-        // 3. Insert into public.users
         const [insertedUser] = await tx
           .insert(users)
           .values({
@@ -134,26 +134,26 @@ export async function POST(request: Request) {
             email: normalizedEmail,
             fullName: fullName.trim(),
             role,
-            campusId,
+            designation: designation?.trim() || null,
+            departmentId: departmentId?.trim() || null,
+            isActive: true,
           })
           .returning();
 
-        // 4. Assign community lead membership if provided
-        if (communityId && role === "organizer") {
+        if (communityId && communityId.trim() !== "") {
+          const memberRole =
+            communityMemberRole || (role === "tic" ? "tic" : "lead");
           await tx
             .insert(communityMembers)
             .values({
-              communityId,
+              communityId: communityId.trim(),
               userId: newUserId,
-              role: "lead",
+              role: memberRole,
               status: "active",
             })
             .onConflictDoUpdate({
               target: [communityMembers.communityId, communityMembers.userId],
-              set: {
-                role: "lead",
-                status: "active",
-              },
+              set: { role: memberRole, status: "active" },
             });
         }
 
@@ -169,10 +169,7 @@ export async function POST(request: Request) {
       "code" in err &&
       (err as { code: string }).code === "23505"
     ) {
-      return NextResponse.json(
-        { error: "A user with this email already exists." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "A user with this email already exists." }, { status: 400 });
     }
     console.error("[POST /api/admin/users] Error:", err);
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });

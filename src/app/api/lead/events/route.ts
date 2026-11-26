@@ -30,19 +30,14 @@ export async function GET() {
       return NextResponse.json({ events: [] });
     }
 
-    const campusId = session.profile?.campus_id;
-    if ((session.isAdmin || session.isPrincipal) && !campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
-
     const whereClause =
       session.isAdmin || session.isPrincipal
-        ? eq(events.campusId, campusId!)
+        ? undefined
         : inArray(events.communityId, communityIds);
 
     const rows = await withDbRetry((client) =>
       client.query.events.findMany({
-        where: whereClause,
+        ...(whereClause ? { where: whereClause } : {}),
         orderBy: [desc(events.startTime)],
         with: {
           community: {
@@ -50,6 +45,8 @@ export async function GET() {
               id: true,
               name: true,
               slug: true,
+              code: true,
+              scope: true,
             },
             with: {
               members: {
@@ -149,12 +146,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Query venue info for location_name and campus_id
+    // Query venue info for location_name
     const [venue] = await withDbRetry((client) =>
       client
         .select({
           name: venues.name,
-          campusId: venues.campusId,
         })
         .from(venues)
         .where(eq(venues.id, venueId))
@@ -193,7 +189,7 @@ export async function POST(request: Request) {
       client
         .insert(events)
         .values({
-          campusId: venue.campusId,
+          originType: "community",
           communityId: targetCommunityId,
           venueId,
           createdBy: session.userId,
@@ -205,7 +201,7 @@ export async function POST(request: Request) {
           startTime: new Date(startTime),
           endTime: new Date(endTime),
           locationName: venue.name,
-          status: "pending",
+          status: "pending_stage2",
           coverImageUrl: coverImageUrl || null,
           externalRegistrationUrl: externalRegistrationUrl || null,
         })

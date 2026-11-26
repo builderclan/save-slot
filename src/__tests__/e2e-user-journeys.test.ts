@@ -78,7 +78,6 @@ describe("End-to-End Multi-Persona User Journeys (E2E Integration)", () => {
   const venueUuid = "c0a80101-0000-4000-8000-000000000001";
   const mockVenue = {
     id: venueUuid,
-    campus_id: "campus-uuid-1",
     name: "Turing Auditorium",
     building: "Science Wing",
     capacity: 250,
@@ -93,7 +92,7 @@ describe("End-to-End Multi-Persona User Journeys (E2E Integration)", () => {
   describe("Journey 1: Public Student Notice Board & Calendar Integration Journey", () => {
     const mockPublishedEvent: CampusEvent = {
       id: "ev-pub-101",
-      campus_id: "campus-aisat-1",
+      origin_type: "community",
       community_id: "comm-coding-1",
       title: "Annual Web3 & Rust Hackathon",
       slug: "annual-web3-rust-hackathon",
@@ -111,7 +110,6 @@ describe("End-to-End Multi-Persona User Journeys (E2E Integration)", () => {
       target_audience: ["Computer Science", "Engineering"],
       venue: {
         id: venueUuid,
-        campus_id: "campus-aisat-1",
         name: "Turing Auditorium",
         building: "Science Wing",
         capacity: 250,
@@ -120,9 +118,10 @@ describe("End-to-End Multi-Persona User Journeys (E2E Integration)", () => {
       },
       community: {
         id: "comm-coding-1",
-        campus_id: "campus-aisat-1",
         name: "Coding Club",
         slug: "coding-club",
+        code: "CC",
+        scope: "internal",
         category: "Tech",
         lead_name: "Alex Chen",
         status: "approved",
@@ -133,7 +132,7 @@ describe("End-to-End Multi-Persona User Journeys (E2E Integration)", () => {
     it("verifies public event formatting and category filtering", () => {
       const rawDbRow = {
         id: "ev-pub-101",
-        campusId: "campus-aisat-1",
+        originType: "community" as const,
         communityId: "comm-coding-1",
         title: "Annual Web3 & Rust Hackathon",
         slug: "annual-web3-rust-hackathon",
@@ -151,7 +150,6 @@ describe("End-to-End Multi-Persona User Journeys (E2E Integration)", () => {
         targetAudience: ["Computer Science", "Engineering"],
         venue: {
           id: venueUuid,
-          campusId: "campus-aisat-1",
           name: "Turing Auditorium",
           building: "Science Wing",
           capacity: 250,
@@ -159,9 +157,10 @@ describe("End-to-End Multi-Persona User Journeys (E2E Integration)", () => {
         },
         community: {
           id: "comm-coding-1",
-          campusId: "campus-aisat-1",
           name: "Coding Club",
           slug: "coding-club",
+          code: "CC",
+          scope: "internal",
           category: "Tech",
           leadName: "Alex Chen",
         },

@@ -1,7 +1,5 @@
+import { getCurrentUser } from "@/server/auth";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
-
-export const dynamic = "force-dynamic";
 
 export default async function LeadLayout({
   children,
@@ -9,8 +7,16 @@ export default async function LeadLayout({
   children: React.ReactNode;
 }) {
   const session = await getCurrentUser();
-  if (!session || !session.isLead) {
+  if (
+    !session ||
+    (!session.isLead &&
+      !session.isTic &&
+      !session.isHod &&
+      !session.isActingHod &&
+      !session.isStaff)
+  ) {
     redirect("/login?error=lead_required");
+    return null;
   }
 
   return <>{children}</>;

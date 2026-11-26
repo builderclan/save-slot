@@ -5,7 +5,7 @@ describe("formatCampusEvent adapter", () => {
   it("maps creator and community lead_name accurately", () => {
     const rawRow: DrizzleEventRow = {
       id: "ev-1",
-      campusId: "campus-1",
+      originType: "community",
       communityId: "comm-1",
       title: "Startup Pitch Arena",
       slug: "startup-pitch-arena",
@@ -20,6 +20,8 @@ describe("formatCampusEvent adapter", () => {
         id: "comm-1",
         name: "Entrepreneurship Cell",
         slug: "ecell",
+        code: "ECELL",
+        scope: "internal",
         category: "Career",
         leadName: "Marcus Vance (E-Cell Lead)",
       },
@@ -27,7 +29,7 @@ describe("formatCampusEvent adapter", () => {
         id: "user-lead-1",
         fullName: "Marcus Vance (E-Cell Lead)",
         email: "lead.ecell@campus.edu",
-        role: "organizer",
+        role: "lead",
       },
       reviewer: {
         id: "user-admin-1",
@@ -46,7 +48,7 @@ describe("formatCampusEvent adapter", () => {
       id: "user-lead-1",
       full_name: "Marcus Vance (E-Cell Lead)",
       email: "lead.ecell@campus.edu",
-      role: "organizer",
+      role: "lead",
     });
     expect(formatted.reviewer?.full_name).toBe("Dr. Veena V (Vice Principal)");
   });
@@ -54,7 +56,7 @@ describe("formatCampusEvent adapter", () => {
   it("handles missing creator gracefully and maps community fallback", () => {
     const rawRow: DrizzleEventRow = {
       id: "ev-2",
-      campusId: "campus-1",
+      originType: "community",
       communityId: "comm-2",
       title: "Legacy Event",
       slug: "legacy-event",
@@ -68,6 +70,8 @@ describe("formatCampusEvent adapter", () => {
         id: "comm-2",
         name: "Coding Club",
         slug: "coding-club",
+        code: "CC",
+        scope: "internal",
         leadName: "Alex Chen (Coding Lead)",
       },
     };

@@ -11,7 +11,7 @@ import { CampusEvent } from "@/types/database";
 const mockEvents: CampusEvent[] = [
   {
     id: "ev-1",
-    campus_id: "campus-1",
+    origin_type: "community",
     community_id: "comm-1",
     title: "Intro to Rust Workshop",
     slug: "intro-to-rust-workshop",
@@ -28,7 +28,6 @@ const mockEvents: CampusEvent[] = [
     target_audience: ["CS Dept", "Engineering"],
     venue: {
       id: "v-1",
-      campus_id: "campus-1",
       name: "Main Auditorium",
       building: "Science Wing",
       capacity: 250,
@@ -38,7 +37,7 @@ const mockEvents: CampusEvent[] = [
   },
   {
     id: "ev-2",
-    campus_id: "campus-1",
+    origin_type: "community",
     community_id: "comm-1",
     title: "Career Hackathon Proposal",
     slug: "career-hackathon-proposal",
@@ -47,14 +46,14 @@ const mockEvents: CampusEvent[] = [
     start_time: new Date(Date.now() + 86400000 * 5).toISOString(),
     end_time: new Date(Date.now() + 86400000 * 5 + 14400000).toISOString(),
     location_name: "Innovation Lab",
-    status: "pending",
+    status: "pending_executive",
     created_by: "user-1",
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   },
   {
     id: "ev-3",
-    campus_id: "campus-1",
+    origin_type: "community",
     community_id: "comm-1",
     title: "Gaming Night",
     slug: "gaming-night",

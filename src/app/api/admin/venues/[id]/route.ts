@@ -17,10 +17,6 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
     const body = await request.json().catch(() => null);
     const parsed = UpdateVenueFullSchema.safeParse(body);
 
@@ -62,12 +58,7 @@ export async function PATCH(
       client
         .update(venues)
         .set(updateData)
-        .where(
-          and(
-            eq(venues.id, id),
-            eq(venues.campusId, campusId)
-          )
-        )
+        .where(eq(venues.id, id))
         .returning()
     );
 
@@ -93,10 +84,6 @@ export async function DELETE(
     }
 
     const { id } = await params;
-    const campusId = session.profile.campus_id;
-    if (!campusId) {
-      return NextResponse.json({ error: "Campus association required" }, { status: 403 });
-    }
 
     // Safety guard: Check for active or pending events scheduled in this venue
     const activeEvents = await withDbRetry((client) =>
@@ -109,8 +96,7 @@ export async function DELETE(
         .where(
           and(
             eq(events.venueId, id),
-            inArray(events.status, ["pending", "published"]),
-            eq(events.campusId, campusId)
+            inArray(events.status, ["pending_stage2", "pending_executive", "published"])
           )
         )
     );
@@ -130,21 +116,11 @@ export async function DELETE(
         await tx
           .update(events)
           .set({ venueId: null })
-          .where(
-            and(
-              eq(events.venueId, id),
-              eq(events.campusId, campusId)
-            )
-          );
+          .where(eq(events.venueId, id));
 
         const res = await tx
           .delete(venues)
-          .where(
-            and(
-              eq(venues.id, id),
-              eq(venues.campusId, campusId)
-            )
-          )
+          .where(eq(venues.id, id))
           .returning({ id: venues.id });
 
         return res.length > 0;
