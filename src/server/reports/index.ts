@@ -345,6 +345,7 @@ export async function verifyClosureReport(params: {
 }): Promise<WorkflowActionResult<{ status: string; allVerified: boolean }>> {
   if (
     params.decision === "request_revision" &&
+  reportVersion?: string | null;
     (!params.remarks || params.remarks.trim().length < 5)
   ) {
     return {
@@ -408,6 +409,35 @@ export async function verifyClosureReport(params: {
       const now = new Date();
       const recipientIds = Array.from(
         new Set(
+      const [reportRow] = await tx
+        .select({
+          updatedAt: eventReports.updatedAt,
+          submittedAt: eventReports.submittedAt,
+        })
+        .from(eventReports)
+        .where(eq(eventReports.eventId, params.eventId))
+        .limit(1);
+
+      if (!reportRow) {
+        return {
+          ok: false,
+          status: 409,
+          error: "No closure report found for this event.",
+        };
+      }
+
+      if (params.reportVersion) {
+        const currentVersion = (reportRow.updatedAt ?? reportRow.submittedAt).toISOString();
+        if (params.reportVersion !== currentVersion) {
+          return {
+            ok: false,
+            status: 409,
+            error:
+              "This closure report was updated by the organizer after you opened it. Please refresh and review the latest version.",
+          };
+        }
+      }
+
           [eventRow.createdBy, eventRow.coordinatorId].filter((id): id is string =>
             Boolean(id)
           )
@@ -634,6 +664,7 @@ export async function handleReportVerifyPatch(
   });
 
   if (!result.ok) {
+    reportVersion: parsed.data.reportVersion,
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
