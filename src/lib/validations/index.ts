@@ -541,6 +541,45 @@ export const CancelEventSchema = z.object({
     .max(500),
 });
 
+export const ClosureReportSchema = z.object({
+  actualFundUsed: z.coerce
+    .number()
+    .min(0, "Actual fund used cannot be negative")
+    .default(0),
+  fundingSource: FundingSourceEnum.or(z.string().trim().min(2).max(100)).default("No Cost"),
+  fundNotes: z.string().trim().max(1000).optional().nullable().or(z.literal("")),
+  studentCount: z.coerce.number().int().min(0, "Student count cannot be negative").default(0),
+  facultyCount: z.coerce.number().int().min(0, "Faculty count cannot be negative").default(0),
+  externalCount: z.coerce.number().int().min(0, "External count cannot be negative").default(0),
+  summary: z
+    .string()
+    .trim()
+    .min(20, "NAAC/NBA summary must be at least 20 characters")
+    .max(5000),
+  outcomes: z
+    .string()
+    .trim()
+    .min(10, "Key outcomes must be at least 10 characters")
+    .max(3000),
+  evidenceUrl: SafeUrlSchema.optional().nullable().or(z.literal("")),
+  confirmedMentors: z.array(EventMentorInputSchema).max(20).optional().default([]),
+});
+
+export const ReportVerifySchema = z
+  .object({
+    decision: z.enum(["verify", "request_revision"]),
+    remarks: z.string().trim().max(1000).optional().nullable(),
+  })
+  .refine(
+    (data) =>
+      data.decision !== "request_revision" ||
+      Boolean(data.remarks && data.remarks.trim().length >= 5),
+    {
+      message: "Provide clear revision remarks (minimum 5 characters)",
+      path: ["remarks"],
+    }
+  );
+
 // ==========================================================================
 // Centralized Inferred TypeScript Input Types
 // ==========================================================================
@@ -577,3 +616,5 @@ export type EventMentorInput = z.infer<typeof EventMentorInputSchema>;
 export type CoHostEntityInput = z.infer<typeof CoHostEntitySchema>;
 export type WorkspaceEventInput = z.infer<typeof WorkspaceEventSchema>;
 export type CollegeEventCreateInput = z.infer<typeof CollegeEventCreateSchema>;
+export type ClosureReportInput = z.infer<typeof ClosureReportSchema>;
+export type ReportVerifyInput = z.infer<typeof ReportVerifySchema>;

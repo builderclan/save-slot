@@ -47,4 +47,17 @@ export const stage2Api = {
       isActingHodActive,
     });
   },
+
+  verifyReport(
+    scope: "hod" | "fic",
+    eventId: string,
+    decision: "approved" | "needs_revision",
+    remarks?: string
+  ): Promise<{ success: boolean; status: string }> {
+    const endpoint =
+      scope === "hod"
+        ? `/api/hod/events/${eventId}/report/verify`
+        : `/api/fic/events/${eventId}/report/verify`;
+    return apiClient.patch(endpoint, { decision, remarks });
+  },
 };

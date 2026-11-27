@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import Link from "next/link";
 import { format, parseISO } from "date-fns";
 import {
   Building2,
@@ -8,8 +9,10 @@ import {
   CheckCircle2,
   Clock,
   Eye,
+  FileCheck2,
   IndianRupee,
   MapPin,
+  Printer,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
@@ -33,8 +36,19 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
   const [scopedDepartments, setScopedDepartments] = useState<Department[]>([]);
   const [scopedCommunities, setScopedCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
-  const [busyEventId, setBusyEventId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"pending" | "reports" | "history">("pending");
+  const [busyEventIds, setBusyEventIds] = useState<Set<string>>(() => new Set());
+  const [staleVerifiedReportIds, setStaleVerifiedReportIds] = useState<Set<string>>(() => new Set());
+  const queueRequestSeqRef = useRef(0);
+
+  const setEventBusy = useCallback((id: string, busy: boolean) => {
+    setBusyEventIds((prev) => {
+      const next = new Set(prev);
+      if (busy) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
   const [togglingDeptId, setTogglingDeptId] = useState<string | null>(null);
   const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -49,16 +63,27 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
     setTimeout(() => setNotice(null), 4500);
   }, []);
 
-  const loadQueue = useCallback(async () => {
+  const loadQueue = useCallback(async (): Promise<boolean> => {
+    const reqSeq = ++queueRequestSeqRef.current;
     try {
       const res = await stage2Api.getQueue(scope);
+      if (reqSeq !== queueRequestSeqRef.current) {
+        return false;
+      }
       setEvents(res.events || []);
       setScopedDepartments(res.scopedDepartments || []);
       setScopedCommunities(res.scopedCommunities || []);
+      setStaleVerifiedReportIds(new Set());
+      return true;
     } catch (err: unknown) {
-      showNotice(err instanceof Error ? err.message : "Failed to load queue", "error");
+      if (reqSeq === queueRequestSeqRef.current) {
+        showNotice(err instanceof Error ? err.message : "Failed to load queue", "error");
+      }
+      return false;
     } finally {
-      setLoading(false);
+      if (reqSeq === queueRequestSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, [scope, showNotice]);
 
@@ -92,16 +117,59 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
     () => events.filter(isPendingMySignoff),
     [events, isPendingMySignoff]
   );
+  const reportVerifyEvents = useMemo(
+    () =>
+      events.filter(
+        (ev) => ev.status === "pending_report_verification" && Boolean(ev.report)
+      ),
+    [events]
+  );
   const historyEvents = useMemo(
-    () => events.filter((ev) => !isPendingMySignoff(ev)),
+    () =>
+      events.filter(
+        (ev) => !isPendingMySignoff(ev) && ev.status !== "pending_report_verification"
+      ),
     [events, isPendingMySignoff]
   );
 
-  const visibleEvents = activeTab === "pending" ? pendingEvents : historyEvents;
+  const visibleEvents =
+    activeTab === "pending"
+      ? pendingEvents
+      : activeTab === "reports"
+      ? reportVerifyEvents
+      : historyEvents;
+
+  const handleVerifyReport = async (
+    ev: CampusEvent,
+    decision: "approved" | "needs_revision"
+  ) => {
+    try {
+      setEventBusy(ev.id, true);
+      await stage2Api.verifyReport(scope, ev.id, decision);
+      setStaleVerifiedReportIds((prev) => new Set(prev).add(ev.id));
+      const refreshed = await loadQueue();
+      if (!refreshed) {
+        showNotice(
+          `Report verification for "${ev.title}" was saved, but the queue failed to refresh — please refresh.`,
+          "error"
+        );
+        return;
+      }
+      showNotice(
+        decision === "approved"
+          ? `Closure report for "${ev.title}" verified.`
+          : `Returned "${ev.title}" closure report for revision.`
+      );
+    } catch (err: unknown) {
+      showNotice(err instanceof Error ? err.message : "Report verification failed", "error");
+    } finally {
+      setEventBusy(ev.id, false);
+    }
+  };
 
   const handleApprove = async (ev: CampusEvent) => {
     try {
-      setBusyEventId(ev.id);
+      setEventBusy(ev.id, true);
       const res = await stage2Api.approveEvent(scope, ev.id);
       await loadQueue();
       showNotice(
@@ -112,7 +180,7 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
     } catch (err: unknown) {
       showNotice(err instanceof Error ? err.message : "Approval failed", "error");
     } finally {
-      setBusyEventId(null);
+      setEventBusy(ev.id, false);
     }
   };
 
@@ -125,10 +193,11 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
       return;
     }
 
+    const targetId = rejectingEvent.id;
     try {
-      setBusyEventId(rejectingEvent.id);
+      setEventBusy(targetId, true);
       setRejectError(null);
-      await stage2Api.rejectEvent(scope, rejectingEvent.id, trimmed);
+      await stage2Api.rejectEvent(scope, targetId, trimmed);
       const title = rejectingEvent.title;
       setRejectingEvent(null);
       setRejectionReason("");
@@ -137,7 +206,7 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
     } catch (err: unknown) {
       setRejectError(err instanceof Error ? err.message : "Rejection failed");
     } finally {
-      setBusyEventId(null);
+      setEventBusy(targetId, false);
     }
   };
 
@@ -310,6 +379,18 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab("reports")}
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer inline-flex items-center gap-1.5 ${
+              activeTab === "reports"
+                ? "bg-zinc-900 text-white border-zinc-900"
+                : "bg-white text-zinc-600 border-zinc-200 hover:bg-zinc-50"
+            }`}
+          >
+            <FileCheck2 className="w-3.5 h-3.5" />
+            <span>Report Verification ({reportVerifyEvents.length})</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab("history")}
             className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
               activeTab === "history"
@@ -329,18 +410,22 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
               <p className="text-sm font-semibold text-zinc-800">
                 {activeTab === "pending"
                   ? "No proposals awaiting your Stage 2 sign-off"
+                  : activeTab === "reports"
+                  ? "No closure reports pending verification"
                   : "No reviewed proposals yet"}
               </p>
               <p className="text-xs text-zinc-500">
                 {activeTab === "pending"
                   ? "All caught up for your assigned scope."
+                  : activeTab === "reports"
+                  ? "Submitted post-event reports will appear here."
                   : "Events you approve or return will appear here."}
               </p>
             </div>
           ) : (
             visibleEvents.map((ev) => {
               const canAct = isPendingMySignoff(ev);
-              const isBusy = busyEventId === ev.id;
+              const isBusy = busyEventIds.has(ev.id);
               return (
                 <div
                   key={ev.id}
@@ -432,6 +517,44 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
                       <span>Preview</span>
                     </button>
 
+                    {activeTab === "reports" && ev.status === "pending_report_verification" && (
+                      <>
+                        <Link
+                          href={`/reports/events/${ev.id}`}
+                          className="px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 inline-flex items-center gap-1.5"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Dossier</span>
+                        </Link>
+                        {staleVerifiedReportIds.has(ev.id) ? (
+                          <span className="px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50 text-xs font-semibold text-amber-800">
+                            Saved — Refresh Queue
+                          </span>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => handleVerifyReport(ev, "needs_revision")}
+                              className="px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-xs font-semibold text-amber-800 inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Request Revision</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => handleVerifyReport(ev, "approved")}
+                              className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-xs font-semibold text-white inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                            >
+                              <FileCheck2 className="w-3.5 h-3.5" />
+                              <span>{isBusy ? "Saving..." : "Verify Report"}</span>
+                            </button>
+                          </>
+                        )}
+                      </>
+                    )}
+
                     {canAct && (
                       <>
                         <button
@@ -521,10 +644,10 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
               </button>
               <button
                 type="submit"
-                disabled={busyEventId === rejectingEvent.id}
+                disabled={busyEventIds.has(rejectingEvent.id)}
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white cursor-pointer disabled:opacity-50"
               >
-                {busyEventId === rejectingEvent.id ? "Returning..." : "Confirm Rejection"}
+                {busyEventIds.has(rejectingEvent.id) ? "Returning..." : "Confirm Rejection"}
               </button>
             </div>
           </form>

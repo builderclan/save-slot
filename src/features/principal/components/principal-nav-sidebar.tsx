@@ -1,14 +1,15 @@
 "use client";
 
-import { Inbox, Calendar, Clock, ShieldCheck, Sparkles, Sliders } from "lucide-react";
+import { Inbox, Calendar, Clock, ShieldCheck, Sparkles, Sliders, FileCheck2 } from "lucide-react";
 
-export type PrincipalDeskTab = "inbox" | "master-schedule" | "history" | "governance";
+export type PrincipalDeskTab = "inbox" | "master-schedule" | "reports" | "history" | "governance";
 
 interface PrincipalNavSidebarProps {
   activeTab: PrincipalDeskTab;
   onTabChange: (tab: PrincipalDeskTab) => void;
   pendingCount: number;
   approvedCount: number;
+  reportCount: number;
   historyCount: number;
   userName?: string;
   mobileDetailView: boolean;
@@ -20,6 +21,7 @@ export function PrincipalNavSidebar({
   onTabChange,
   pendingCount,
   approvedCount,
+  reportCount,
   historyCount,
   userName,
   mobileDetailView,
@@ -46,7 +48,7 @@ export function PrincipalNavSidebar({
         <nav
           role="tablist"
           aria-label="Principal desk view switcher"
-          className="grid grid-cols-4 lg:flex lg:flex-col gap-1 p-1 lg:p-0 rounded-xl lg:rounded-none bg-zinc-100/90 lg:bg-transparent border border-zinc-200/80 lg:border-none shadow-2xs lg:shadow-none text-xs w-full"
+          className="grid grid-cols-5 lg:flex lg:flex-col gap-1 p-1 lg:p-0 rounded-xl lg:rounded-none bg-zinc-100/90 lg:bg-transparent border border-zinc-200/80 lg:border-none shadow-2xs lg:shadow-none text-xs w-full"
         >
           <button
             type="button"
@@ -101,6 +103,35 @@ export function PrincipalNavSidebar({
               }`}
             >
               {approvedCount}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "reports"}
+            onClick={() => onTabChange("reports")}
+            className={`py-1.5 lg:py-2.5 px-2.5 lg:px-3 rounded-lg lg:rounded-xl text-xs transition-all flex items-center justify-center lg:justify-between gap-1.5 sm:gap-2 cursor-pointer active:scale-95 ${
+              activeTab === "reports"
+                ? "bg-white text-zinc-900 font-semibold shadow-xs lg:shadow-2xs lg:border lg:border-zinc-200/90"
+                : "text-zinc-600 hover:text-zinc-900 font-medium lg:hover:bg-zinc-100/70 lg:border lg:border-transparent"
+            }`}
+          >
+            <div className="flex items-center gap-1.5 lg:gap-2">
+              <FileCheck2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate lg:hidden">Reports</span>
+              <span className="hidden lg:inline">Closure Reports</span>
+            </div>
+            <span
+              className={`px-1.5 lg:px-2 py-0.2 lg:py-0.5 rounded-full text-[10px] font-bold shrink-0 tabular-nums ${
+                activeTab === "reports"
+                  ? reportCount > 0
+                    ? "bg-teal-50 text-teal-700 border border-teal-100/80"
+                    : "bg-zinc-100 text-zinc-800"
+                  : "bg-zinc-200/70 text-zinc-600"
+              }`}
+            >
+              {reportCount}
             </span>
           </button>
 
