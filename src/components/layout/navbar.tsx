@@ -17,6 +17,7 @@ import {
   PanelLeftOpen,
   Building2,
   UserCheck,
+  BarChart2,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { useCalendar } from "@/context/calendar-context";
@@ -204,6 +205,25 @@ export function Navbar() {
                 >
                   <Shield className="w-3.5 h-3.5 text-amber-600" />
                   <span>Admin Console</span>
+                </Link>
+              )}
+
+              {(user?.isPrincipal ||
+                user?.isVicePrincipal ||
+                user?.isAdmin ||
+                user?.isHod ||
+                user?.isActingHod ||
+                user?.isFic) && (
+                <Link
+                  href="/reports/summary"
+                  className={`px-3 py-1.5 rounded-lg font-medium transition-all flex items-center gap-1.5 active:scale-[0.98] ${
+                    pathname.startsWith("/reports")
+                      ? "bg-white text-indigo-950 font-semibold shadow-xs"
+                      : "text-zinc-600 hover:text-indigo-950 hover:bg-white/60"
+                  }`}
+                >
+                  <BarChart2 className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Reports</span>
                 </Link>
               )}
             </nav>
@@ -419,6 +439,26 @@ export function Navbar() {
                 <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-amber-100/70 text-amber-800 font-semibold ml-auto">
                   Staff
                 </span>
+              </Link>
+            )}
+
+            {(user?.isPrincipal ||
+              user?.isVicePrincipal ||
+              user?.isAdmin ||
+              user?.isHod ||
+              user?.isActingHod ||
+              user?.isFic) && (
+              <Link
+                href="/reports/summary"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                  pathname.startsWith("/reports")
+                    ? "bg-indigo-50 text-indigo-900"
+                    : "text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+                }`}
+              >
+                <BarChart2 className="w-4 h-4 text-indigo-600" />
+                <span>Summary Reports Register</span>
               </Link>
             )}
           </nav>
