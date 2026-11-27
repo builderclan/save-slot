@@ -53,6 +53,9 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
   const [rejectingEvent, setRejectingEvent] = useState<CampusEvent | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectError, setRejectError] = useState<string | null>(null);
+  const [revisingReportEvent, setRevisingReportEvent] = useState<CampusEvent | null>(null);
+  const [revisionRemarks, setRevisionRemarks] = useState("");
+  const [revisionError, setRevisionError] = useState<string | null>(null);
   const [previewEvent, setPreviewEvent] = useState<CampusEvent | null>(null);
   const [notice, setNotice] = useState<{ type: "success" | "error"; message: string } | null>(
     null
@@ -63,23 +66,24 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
     setTimeout(() => setNotice(null), 4500);
   }, []);
 
-  const loadQueue = useCallback(async (): Promise<boolean> => {
+  const loadQueue = useCallback(async (): Promise<"ok" | "superseded" | "error"> => {
     const reqSeq = ++queueRequestSeqRef.current;
     try {
       const res = await stage2Api.getQueue(scope);
       if (reqSeq !== queueRequestSeqRef.current) {
-        return false;
+        return "superseded";
       }
       setEvents(res.events || []);
       setScopedDepartments(res.scopedDepartments || []);
       setScopedCommunities(res.scopedCommunities || []);
       setStaleVerifiedReportIds(new Set());
-      return true;
+      return "ok";
     } catch (err: unknown) {
-      if (reqSeq === queueRequestSeqRef.current) {
-        showNotice(err instanceof Error ? err.message : "Failed to load queue", "error");
+      if (reqSeq !== queueRequestSeqRef.current) {
+        return "superseded";
       }
-      return false;
+      showNotice(err instanceof Error ? err.message : "Failed to load queue", "error");
+      return "error";
     } finally {
       if (reqSeq === queueRequestSeqRef.current) {
         setLoading(false);
@@ -90,6 +94,17 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
   useEffect(() => {
     loadQueue();
   }, [loadQueue]);
+
+  useEffect(() => {
+    if (!revisingReportEvent) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setRevisingReportEvent(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [revisingReportEvent]);
 
   const ownedIds = useMemo(() => {
     if (scope === "hod") {
@@ -141,14 +156,25 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
 
   const handleVerifyReport = async (
     ev: CampusEvent,
-    decision: "approved" | "needs_revision"
+    decision: "verify" | "request_revision",
+    remarks?: string
   ) => {
+    const targetId = ev.id;
+    const reportVersion = ev.report?.updated_at ?? ev.report?.submitted_at ?? null;
     try {
-      setEventBusy(ev.id, true);
-      await stage2Api.verifyReport(scope, ev.id, decision);
-      setStaleVerifiedReportIds((prev) => new Set(prev).add(ev.id));
-      const refreshed = await loadQueue();
-      if (!refreshed) {
+      setEventBusy(targetId, true);
+      await stage2Api.verifyReport(scope, targetId, decision, remarks, reportVersion);
+      setStaleVerifiedReportIds((prev) => new Set(prev).add(targetId));
+      if (decision === "request_revision") {
+        setRevisingReportEvent((current) => {
+          if (current?.id !== targetId) return current;
+          setRevisionRemarks("");
+          setRevisionError(null);
+          return null;
+        });
+      }
+      const refreshStatus = await loadQueue();
+      if (refreshStatus === "error") {
         showNotice(
           `Report verification for "${ev.title}" was saved, but the queue failed to refresh — please refresh.`,
           "error"
@@ -156,15 +182,32 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
         return;
       }
       showNotice(
-        decision === "approved"
+        decision === "verify"
           ? `Closure report for "${ev.title}" verified.`
           : `Returned "${ev.title}" closure report for revision.`
       );
     } catch (err: unknown) {
-      showNotice(err instanceof Error ? err.message : "Report verification failed", "error");
+      const msg = err instanceof Error ? err.message : "Report verification failed";
+      if (decision === "request_revision") {
+        setRevisionError(msg);
+      } else {
+        showNotice(msg, "error");
+      }
     } finally {
-      setEventBusy(ev.id, false);
+      setEventBusy(targetId, false);
     }
+  };
+
+  const handleRevisionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!revisingReportEvent) return;
+    const trimmed = revisionRemarks.trim();
+    if (trimmed.length < 5) {
+      setRevisionError("Please provide at least 5 characters explaining the revision.");
+      return;
+    }
+    setRevisionError(null);
+    await handleVerifyReport(revisingReportEvent, "request_revision", trimmed);
   };
 
   const handleApprove = async (ev: CampusEvent) => {
@@ -535,7 +578,11 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() => handleVerifyReport(ev, "needs_revision")}
+                              onClick={() => {
+                                setRevisingReportEvent(ev);
+                                setRevisionRemarks("");
+                                setRevisionError(null);
+                              }}
                               className="px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-xs font-semibold text-amber-800 inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                             >
                               <XCircle className="w-3.5 h-3.5" />
@@ -544,7 +591,7 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
                             <button
                               type="button"
                               disabled={isBusy}
-                              onClick={() => handleVerifyReport(ev, "approved")}
+                              onClick={() => handleVerifyReport(ev, "verify")}
                               className="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-xs font-semibold text-white inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                             >
                               <FileCheck2 className="w-3.5 h-3.5" />
@@ -655,6 +702,73 @@ export function Stage2Desk({ scope }: Stage2DeskProps) {
       )}
 
       <EventDetailModal event={previewEvent} onClose={() => setPreviewEvent(null)} />
+
+      {/* Closure Report Revision Remarks Modal */}
+      {revisingReportEvent && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="stage2-revision-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          <div
+            className="fixed inset-0 bg-zinc-950/50 backdrop-blur-xs"
+            onClick={() => setRevisingReportEvent(null)}
+          />
+          <form
+            onSubmit={handleRevisionSubmit}
+            className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white shadow-2xl p-5 sm:p-6 z-10 space-y-4"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3
+                  id="stage2-revision-dialog-title"
+                  className="text-sm font-bold text-zinc-900"
+                >
+                  Request Closure Report Revision
+                </h3>
+                <p className="text-xs text-zinc-500 mt-0.5 truncate max-w-xs">
+                  {revisingReportEvent.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRevisingReportEvent(null)}
+                className="p-1 text-zinc-400 hover:text-zinc-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <textarea
+              rows={3}
+              required
+              value={revisionRemarks}
+              onChange={(e) => setRevisionRemarks(e.target.value)}
+              placeholder="Explain what needs correction (minimum 5 characters)..."
+              className="w-full px-3 py-2 rounded-xl border border-zinc-200 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+            />
+            {revisionError && (
+              <p className="text-xs text-rose-600 font-medium">{revisionError}</p>
+            )}
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRevisingReportEvent(null)}
+                className="px-3.5 py-2 rounded-xl border border-zinc-200 text-xs font-medium text-zinc-700 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={busyEventIds.has(revisingReportEvent.id)}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-semibold text-white cursor-pointer disabled:opacity-50"
+              >
+                {busyEventIds.has(revisingReportEvent.id) ? "Sending..." : "Send Revision Request"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

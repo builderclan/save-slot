@@ -85,12 +85,14 @@ export const principalApi = {
 
   verifyReport(
     eventId: string,
-    decision: "approved" | "needs_revision",
-    remarks?: string
+    decision: "verify" | "request_revision",
+    remarks?: string,
+    reportVersion?: string | null
   ): Promise<{ success: boolean; status: string }> {
     return apiClient.patch(`/api/principal/events/${eventId}/report/verify`, {
       decision,
       remarks,
+      reportVersion: reportVersion || undefined,
     });
   },
 };

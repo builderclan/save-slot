@@ -569,6 +569,7 @@ export const ReportVerifySchema = z
   .object({
     decision: z.enum(["verify", "request_revision"]),
     remarks: z.string().trim().max(1000).optional().nullable(),
+    reportVersion: z.string().trim().max(64).optional().nullable(),
   })
   .refine(
     (data) =>

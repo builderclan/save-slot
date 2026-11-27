@@ -51,13 +51,18 @@ export const stage2Api = {
   verifyReport(
     scope: "hod" | "fic",
     eventId: string,
-    decision: "approved" | "needs_revision",
-    remarks?: string
+    decision: "verify" | "request_revision",
+    remarks?: string,
+    reportVersion?: string | null
   ): Promise<{ success: boolean; status: string }> {
     const endpoint =
       scope === "hod"
         ? `/api/hod/events/${eventId}/report/verify`
         : `/api/fic/events/${eventId}/report/verify`;
-    return apiClient.patch(endpoint, { decision, remarks });
+    return apiClient.patch(endpoint, {
+      decision,
+      remarks,
+      reportVersion: reportVersion || undefined,
+    });
   },
 };
