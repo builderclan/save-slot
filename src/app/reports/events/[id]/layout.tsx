@@ -1,10 +1,6 @@
 import type { ReactNode } from "react";
 
-/** Minimal layout: no navbar, white background — optimized for A4 print */
+/** Minimal print-ready wrapper — white background without nested html/body */
 export default function DossierLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en">
-      <body className="bg-white antialiased">{children}</body>
-    </html>
-  );
+  return <div className="bg-white min-h-screen">{children}</div>;
 }

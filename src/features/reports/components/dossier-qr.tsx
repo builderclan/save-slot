@@ -12,7 +12,7 @@ interface DossierQRProps {
 export async function DossierQR({ url, label }: DossierQRProps) {
   let dataUrl = "";
   try {
-    dataUrl = await QRCode.toDataURL(url, { width: 112, margin: 1, color: { dark: "#18181b", light: "#ffffff" } });
+    dataUrl = await QRCode.toDataURL(url, { width: 112, margin: 4, color: { dark: "#18181b", light: "#ffffff" } });
   } catch {
     return null;
   }

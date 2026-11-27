@@ -54,13 +54,17 @@ export function Navbar() {
     setMobileMenuOpen(false);
   }, [pathname]);
 
+  if (pathname.startsWith("/reports/events/")) {
+    return null;
+  }
+
   const handleLogout = async () => {
     setMobileMenuOpen(false);
     await logout();
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full h-14 border-b border-zinc-200/80 bg-white/95 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full h-14 border-b border-zinc-200/80 bg-white/95 backdrop-blur-md print:hidden">
       {/* Accessible h1 heading for document hierarchy */}
       <h1 className="sr-only">
         SaveSlot • Campus Events & Scheduling • {campusConfig.name} ({campusConfig.shortName})
