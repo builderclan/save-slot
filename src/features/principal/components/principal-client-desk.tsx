@@ -20,6 +20,7 @@ import { PrincipalInboxView } from "./principal-inbox-view";
 import { PrincipalScheduleView } from "./principal-schedule-view";
 import { PrincipalHistoryView } from "./principal-history-view";
 import { PrincipalGovernanceView } from "./principal-governance-view";
+import { PrincipalReportsView } from "./principal-reports-view";
 import { PrincipalCollegeEventModal } from "./principal-college-event-modal";
 import {
   PrincipalRejectionModal,
@@ -32,7 +33,7 @@ import { principalApi } from "../api";
 import { conflictsApi } from "@/features/conflicts/api";
 import { ApiException } from "@/lib/api-client";
 
-const VALID_TABS: PrincipalDeskTab[] = ["inbox", "master-schedule", "history", "governance"];
+const VALID_TABS: PrincipalDeskTab[] = ["inbox", "master-schedule", "reports", "history", "governance"];
 
 function isValidPrincipalTab(tab: string | null): tab is PrincipalDeskTab {
   return tab !== null && VALID_TABS.includes(tab as PrincipalDeskTab);
@@ -143,6 +144,10 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
   // Derived subsets
   const pendingEvents = useMemo(() => {
     return events.filter((e) => e.status === "pending_executive");
+  }, [events]);
+
+  const reportVerificationEvents = useMemo(() => {
+    return events.filter((e) => e.status === "pending_report_verification");
   }, [events]);
 
   const [nowTimestamp, setNowTimestamp] = useState<number>(0);
@@ -395,6 +400,7 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
         onTabChange={handleTabChange}
         pendingCount={pendingEvents.length}
         approvedCount={activeApprovedEvents.length}
+        reportCount={reportVerificationEvents.length}
         historyCount={historyEvents.length}
         userName={user?.fullName || user?.email}
         mobileDetailView={mobileDetailView}
@@ -431,6 +437,15 @@ function PrincipalClientDeskInner({ initialEvents, user }: PrincipalClientDeskPr
             calendarCategoryFilter={calendarCategoryFilter}
             onCategoryFilterChange={setCalendarCategoryFilter}
             availableCategories={availableCategories}
+            onSelectEvent={(ev) => setPreviewEvent(ev)}
+          />
+        )}
+
+        {activeTab === "reports" && (
+          <PrincipalReportsView
+            reportEvents={reportVerificationEvents}
+            onRefresh={loadExecutiveQueue}
+            onNotify={(msg, type) => showToast(msg, type || "success")}
             onSelectEvent={(ev) => setPreviewEvent(ev)}
           />
         )}

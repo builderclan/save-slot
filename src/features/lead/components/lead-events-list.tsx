@@ -18,6 +18,8 @@ import {
   Users,
   Send,
   Ban,
+  FileCheck2,
+  Printer,
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "@/features/events";
@@ -31,6 +33,7 @@ export interface LeadEventsListProps {
   onShowRejectionNotice?: (event: CampusEvent) => void;
   onSubmitDraft?: (event: CampusEvent) => void;
   onCancelPublished?: (event: CampusEvent) => void;
+  onFileReport?: (event: CampusEvent) => void;
   onProposeNew: () => void;
   onResetFilters: () => void;
 }
@@ -73,6 +76,7 @@ export function LeadEventsList({
   onShowRejectionNotice,
   onSubmitDraft,
   onCancelPublished,
+  onFileReport,
   onProposeNew,
   onResetFilters,
 }: LeadEventsListProps) {
@@ -151,6 +155,20 @@ export function LeadEventsList({
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 text-[10px] font-medium">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                     <span>Approved & Live</span>
+                  </span>
+                )}
+
+                {ev.status === "pending_report_verification" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-indigo-200 bg-indigo-50 text-indigo-800 text-[10px] font-medium">
+                    <FileCheck2 className="w-3 h-3 text-indigo-600" />
+                    <span>Report Verifying</span>
+                  </span>
+                )}
+
+                {ev.status === "completed" && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-teal-200 bg-teal-50 text-teal-800 text-[10px] font-medium">
+                    <CheckCircle2 className="w-3 h-3 text-teal-600" />
+                    <span>Completed & Filed</span>
                   </span>
                 )}
 
@@ -295,18 +313,44 @@ export function LeadEventsList({
                 <span>Preview</span>
               </button>
 
-              {/* View Live + Cancel for Published Events */}
-              {ev.status === "published" && (
+              {/* Actions for Published / Report / Completed Events */}
+              {(ev.status === "published" || ev.status === "pending_report_verification" || ev.status === "completed") && (
                 <>
-                  <Link
-                    href="/"
-                    title="View on Campus Notice Board"
-                    className="px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors flex items-center gap-1.5 shadow-2xs active:scale-[0.98]"
-                  >
-                    <span>View Live</span>
-                    <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-                  </Link>
-                  {onCancelPublished && !ev.report && (
+                  {(ev.status === "completed" || ev.status === "pending_report_verification") && (
+                    <Link
+                      href={`/reports/events/${ev.id}`}
+                      title="View Event Dossier"
+                      className={`px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-colors flex items-center gap-1.5 shadow-2xs active:scale-[0.98] ${
+                        ev.status === "completed"
+                          ? "border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-700"
+                          : "border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700"
+                      }`}
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Dossier</span>
+                    </Link>
+                  )}
+                  {ev.status === "published" && onFileReport && !ev.report && (
+                    <button
+                      type="button"
+                      onClick={() => onFileReport(ev)}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-[0.98]"
+                    >
+                      <FileCheck2 className="w-3.5 h-3.5" />
+                      <span>File Report</span>
+                    </button>
+                  )}
+                  {ev.status === "published" && (
+                    <Link
+                      href="/"
+                      title="View on Campus Notice Board"
+                      className="px-2.5 py-1.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors flex items-center gap-1.5 shadow-2xs active:scale-[0.98]"
+                    >
+                      <span>View Live</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
+                    </Link>
+                  )}
+                  {ev.status === "published" && onCancelPublished && !ev.report && (
                     <button
                       type="button"
                       onClick={() => onCancelPublished(ev)}

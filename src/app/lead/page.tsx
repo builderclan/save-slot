@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import {
   Calendar,
@@ -21,6 +21,7 @@ import {
   LeadCancelEventModal,
   LeadRejectionNoticeModal,
   ProposeEventModal,
+  ClosureReportModal,
 } from "@/features/lead";
 import { EventDetailModal } from "@/features/events";
 import LeadLoading from "./loading";
@@ -70,6 +71,8 @@ function LeadWorkspaceContent() {
     hasActiveFilters,
     resetFilters,
   } = useLeadWorkspace();
+
+  const [closingReportEvent, setClosingReportEvent] = useState<CampusEvent | null>(null);
 
   if (loading) {
     return <LeadLoading />;
@@ -223,6 +226,7 @@ function LeadWorkspaceContent() {
           onShowRejectionNotice={(e: CampusEvent) => setSelectedRejectedEvent(e)}
           onSubmitDraft={handleSubmitDraft}
           onCancelPublished={(e: CampusEvent) => setCancellingEvent(e)}
+          onFileReport={(e: CampusEvent) => setClosingReportEvent(e)}
           onWithdraw={(e: CampusEvent) => setWithdrawingEvent(e)}
         />
       </div>
@@ -303,6 +307,23 @@ function LeadWorkspaceContent() {
           isSubmitting={isCancelling}
           onClose={() => setCancellingEvent(null)}
           onConfirm={handleConfirmCancel}
+        />
+      )}
+
+      {/* Post-Event Closure Report Modal */}
+      {closingReportEvent && (
+        <ClosureReportModal
+          event={closingReportEvent}
+          onClose={() => setClosingReportEvent(null)}
+          onSuccess={(status) => {
+            setClosingReportEvent(null);
+            loadEvents();
+            showNotice(
+              status === "completed"
+                ? "Report filed & event marked completed!"
+                : "Closure report submitted for verification."
+            );
+          }}
         />
       )}
       </div>
