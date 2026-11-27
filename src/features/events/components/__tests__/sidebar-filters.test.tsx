@@ -98,13 +98,14 @@ describe("Sidebar Filters Components", () => {
         />
       );
 
-      expect(html).toContain("Host Origin");
-      expect(html).toContain("College");
-      expect(html).toContain("Department");
-      expect(html).toContain("Community · Internal");
-      expect(html).toContain("Community · External");
-      expect(html).toContain("CSE — Computer Science");
-      expect(html).toContain("ECE — Electronics");
+      const text = html.replace(/<!-- -->/g, "");
+      expect(text).toContain("Host Origin");
+      expect(text).toContain("College");
+      expect(text).toContain("Department");
+      expect(text).toContain("Community · Internal");
+      expect(text).toContain("Community · External");
+      expect(text).toContain("CSE — Computer Science");
+      expect(text).toContain("ECE — Electronics");
     });
   });
 
@@ -118,7 +119,7 @@ describe("Sidebar Filters Components", () => {
       expect(getEventHostLabel(collegeEv)).toBe("College Event");
       expect(getEventHostLabel(deptEv)).toBe("CSE");
       expect(renderToString(<EventOriginBadge event={collegeEv} />)).toContain("College");
-      expect(renderToString(<EventOriginBadge event={deptEv} />)).toContain("Dept · CSE");
+      expect(renderToString(<EventOriginBadge event={deptEv} />).replace(/<!-- -->/g, "")).toContain("Dept · CSE");
       expect(renderToString(<EventOriginBadge event={internalEv} />)).toContain("Internal");
       expect(renderToString(<EventOriginBadge event={externalEv} />)).toContain("External");
     });
