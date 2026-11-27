@@ -103,7 +103,7 @@ Submits the post-event NAAC/NBA closure report (`event_reports` + confirmed `eve
 
 - `GET /api/hod/queue`: Dept & Joint events in `pending_stage2` or `pending_report_verification` needing this department's action.
 - `POST /api/hod/events/[id]/approve` & `POST /api/hod/events/[id]/reject`: Records sign-off on `event_stage2_approvals` + `event_approvals`; advances to `pending_executive` only when every required co-host has approved.
-- `PATCH /api/hod/events/[id]/report/verify`: Quick-verifies closure report (locks `completed` once all participating hosts verify) or returns it for revision (`needs_revision`).
+- `PATCH /api/hod/events/[id]/report/verify`: Quick-verifies closure report (locks `completed` once all participating hosts verify) or returns it for revision (`request_revision`).
 - `PATCH /api/hod/acting-hod`: Lets the primary HOD toggle `is_acting_hod_active` on/off when going on leave.
 
 ### 5.2 Community Faculty-in-Charge (`/api/fic/*`)
@@ -151,8 +151,8 @@ Submits the post-event NAAC/NBA closure report (`event_reports` + confirmed `eve
 *Scoped by role: P/VP (all campus), HOD (department events), FIC (assigned communities), Lead/Staff (own events).*
 
 - `GET / POST /api/workspace/events/[id]/report`: Load or submit post-event NAAC/NBA closure report + confirmed mentors. Transitions `published` → `pending_report_verification` (or `completed` directly for college events closed by P/VP).
-- `PATCH /api/fic/events/[id]/report/verify`: FIC report verification (`decision`: `approved` | `needs_revision`, optional `remarks`).
-- `PATCH /api/hod/events/[id]/report/verify`: HOD report verification (`decision`: `approved` | `needs_revision`, optional `remarks`).
+- `PATCH /api/fic/events/[id]/report/verify`: FIC report verification (`decision`: `verify` | `request_revision`, optional `remarks`).
+- `PATCH /api/hod/events/[id]/report/verify`: HOD report verification (`decision`: `verify` | `request_revision`, optional `remarks`).
 - `PATCH /api/principal/events/[id]/report/verify`: Executive report verification; marks event `completed`.
 - `GET /api/reports/events/[id]`: Full dossier payload (metadata, mentors, estimated vs. actual funds, NAAC/NBA summary, chronological `event_approvals`, QR verify URL).
 - `GET /api/reports/summary`: Consolidated register filtered by `academicYear`, `startDate`, `endDate`, `originType`, `communityScope`, `departmentId`, `status`, `search`; supports `?format=csv`.
