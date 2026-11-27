@@ -13,11 +13,12 @@ import {
   CalendarDays,
   LayoutGrid,
 } from "lucide-react";
-import { CampusEvent, Venue, EventCategory } from "@/types/database";
+import { CampusEvent, Department, Venue, EventCategory } from "@/types/database";
 import { Button, Input } from "@/components/ui";
 import { MiniCalendar } from "./mini-calendar";
 import { SidebarCategoryFilter } from "./sidebar-category-filter";
 import { SidebarHorizonFilter } from "./sidebar-horizon-filter";
+import { SidebarOriginFilter } from "./sidebar-origin-filter";
 import { MonthView } from "./month-view";
 import { WeekView } from "./week-view";
 import { EventCard } from "./event-card";
@@ -57,17 +58,20 @@ function EventDeepLinkHandler({
 interface NoticeBoardClientProps {
   initialEvents: CampusEvent[];
   initialVenues: Venue[];
+  initialDepartments?: Department[];
   initialUserSession?: UserSessionState | null;
 }
 
 export function NoticeBoardClient({
   initialEvents,
   initialVenues,
+  initialDepartments = [],
   initialUserSession = null,
 }: NoticeBoardClientProps) {
   const {
     events,
     venues,
+    departments,
     loading,
     error,
     loadData,
@@ -81,6 +85,10 @@ export function NoticeBoardClient({
     setSelectedCategories,
     selectedHorizon,
     setSelectedHorizon,
+    selectedOrigin,
+    setSelectedOrigin,
+    selectedDepartmentId,
+    setSelectedDepartmentId,
     mobileFiltersOpen,
     setMobileFiltersOpen,
     toggleCategory,
@@ -100,6 +108,7 @@ export function NoticeBoardClient({
   } = useNoticeBoard({
     initialEvents,
     initialVenues,
+    initialDepartments,
     initialUserSession,
   });
 
@@ -188,6 +197,8 @@ export function NoticeBoardClient({
   const hasCategoryFilter = selectedCategories.length !== CATEGORIES.length;
   const activeFilterCount =
     (hasCategoryFilter ? 1 : 0) +
+    (selectedOrigin !== "all" ? 1 : 0) +
+    (selectedDepartmentId !== "all" ? 1 : 0) +
     (selectedHorizon !== "all" ? 1 : 0) +
     (search.trim() ? 1 : 0);
 
@@ -380,6 +391,18 @@ export function NoticeBoardClient({
           />
         </div>
 
+        {/* Origin & Department Filter */}
+        <div className="p-3 bg-white border border-zinc-200/80 rounded-xl shadow-2xs">
+          <SidebarOriginFilter
+            selectedOrigin={selectedOrigin}
+            onChangeOrigin={setSelectedOrigin}
+            selectedDepartmentId={selectedDepartmentId}
+            onChangeDepartmentId={setSelectedDepartmentId}
+            departments={departments}
+            idPrefix="desktop"
+          />
+        </div>
+
         {/* Time Horizon Filter */}
         <SidebarHorizonFilter
           selectedHorizon={selectedHorizon}
@@ -452,6 +475,16 @@ export function NoticeBoardClient({
 
             {/* Scrollable Content */}
             <div className="p-5 space-y-5 overflow-y-auto min-h-0 flex-1">
+              {/* Origin & Department */}
+              <SidebarOriginFilter
+                selectedOrigin={selectedOrigin}
+                onChangeOrigin={setSelectedOrigin}
+                selectedDepartmentId={selectedDepartmentId}
+                onChangeDepartmentId={setSelectedDepartmentId}
+                departments={departments}
+                idPrefix="mobile"
+              />
+
               {/* Time Horizon */}
               <SidebarHorizonFilter
                 selectedHorizon={selectedHorizon}

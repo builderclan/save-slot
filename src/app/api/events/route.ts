@@ -31,6 +31,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const communitySlug = searchParams.get("community");
+    const originType = searchParams.get("originType");
+    const communityScope = searchParams.get("communityScope");
+    const departmentId = searchParams.get("departmentId");
     const search = searchParams.get("search");
     const requestedStatus = searchParams.get("status") || "published";
 
@@ -71,12 +74,26 @@ export async function GET(request: Request) {
       conditions.push(eq(communities.slug, communitySlug));
     }
 
+    if (originType && originType !== "all") {
+      conditions.push(eq(events.originType, originType));
+    }
+
+    if (communityScope && (communityScope === "internal" || communityScope === "external")) {
+      conditions.push(eq(events.originType, "community"));
+      conditions.push(eq(communities.scope, communityScope));
+    }
+
+    if (departmentId && departmentId !== "all") {
+      conditions.push(eq(events.departmentId, departmentId));
+    }
+
     if (search && search.trim() !== "") {
       const searchTerm = search.trim();
       conditions.push(
         or(
           ilike(events.title, `%${searchTerm}%`),
           ilike(events.description, `%${searchTerm}%`),
+          ilike(events.referenceNumber, `%${searchTerm}%`),
           ilike(communities.name, `%${searchTerm}%`),
           ilike(departments.name, `%${searchTerm}%`),
         ),

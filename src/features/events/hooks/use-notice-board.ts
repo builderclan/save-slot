@@ -11,9 +11,10 @@ import {
 } from "date-fns";
 import { useCalendar } from "@/context/calendar-context";
 import { useAuth } from "@/context/auth-context";
-import { CampusEvent, EventCategory, Venue } from "@/types/database";
+import { CampusEvent, Department, EventCategory, Venue } from "@/types/database";
 import { eventsApi } from "@/features/events/api";
 import { venuesApi } from "@/features/venues/api";
+import type { NoticeBoardOriginFilter } from "../components/sidebar-origin-filter";
 
 export const NOTICE_BOARD_CATEGORIES: EventCategory[] = [
   "Tech",
@@ -45,17 +46,20 @@ export interface UserSessionState {
 export interface UseNoticeBoardOptions {
   initialEvents: CampusEvent[];
   initialVenues: Venue[];
+  initialDepartments?: Department[];
   initialUserSession?: UserSessionState | null;
 }
 
 export function useNoticeBoard({
   initialEvents,
   initialVenues,
+  initialDepartments = [],
   initialUserSession = null,
 }: UseNoticeBoardOptions) {
   const router = useRouter();
   const [events, setEvents] = useState<CampusEvent[]>(initialEvents);
   const [venues, setVenues] = useState<Venue[]>(initialVenues);
+  const [departments, setDepartments] = useState<Department[]>(initialDepartments);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +77,8 @@ export function useNoticeBoard({
   // Filter States
   const [selectedCategories, setSelectedCategories] = useState<string[]>(NOTICE_BOARD_CATEGORIES);
   const [selectedHorizon, setSelectedHorizon] = useState<"all" | "today" | "week" | "weekend">("all");
+  const [selectedOrigin, setSelectedOrigin] = useState<NoticeBoardOriginFilter>("all");
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>("all");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   // Auth & Proposal modal
@@ -96,9 +102,10 @@ export function useNoticeBoard({
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [eventsRes, venuesRes] = await Promise.allSettled([
+      const [eventsRes, venuesRes, deptsRes] = await Promise.allSettled([
         eventsApi.getPublished(),
         venuesApi.getVenues(),
+        fetch("/api/departments").then((r) => (r.ok ? r.json() : { departments: [] })),
       ]);
 
       if (eventsRes.status === "fulfilled") {
@@ -109,6 +116,10 @@ export function useNoticeBoard({
 
       if (venuesRes.status === "fulfilled") {
         setVenues(venuesRes.value.venues || []);
+      }
+
+      if (deptsRes.status === "fulfilled" && Array.isArray(deptsRes.value?.departments)) {
+        setDepartments(deptsRes.value.departments);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Error fetching events");
@@ -152,21 +163,68 @@ export function useNoticeBoard({
         const matchesTitle = ev.title.toLowerCase().includes(q);
         const matchesDesc = ev.description.toLowerCase().includes(q);
         const matchesClub = ev.community?.name.toLowerCase().includes(q) || false;
+        const matchesClubCode = ev.community?.code?.toLowerCase().includes(q) || false;
+        const matchesDept = ev.department?.name.toLowerCase().includes(q) || false;
+        const matchesDeptCode = ev.department?.code?.toLowerCase().includes(q) || false;
+        const matchesRef = ev.reference_number?.toLowerCase().includes(q) || false;
         const matchesVenue = ev.venue?.name.toLowerCase().includes(q) || false;
         const matchesAudience = (ev.target_audience || []).some((aud) =>
           aud.toLowerCase().includes(q)
         );
-        if (!matchesTitle && !matchesDesc && !matchesClub && !matchesVenue && !matchesAudience) {
+        if (
+          !matchesTitle &&
+          !matchesDesc &&
+          !matchesClub &&
+          !matchesClubCode &&
+          !matchesDept &&
+          !matchesDeptCode &&
+          !matchesRef &&
+          !matchesVenue &&
+          !matchesAudience
+        ) {
           return false;
         }
       }
 
-      // 2. Category multi-select
+      // 2. Host Origin & Scope filter
+      if (selectedOrigin !== "all") {
+        if (selectedOrigin === "college" && ev.origin_type !== "college") {
+          return false;
+        }
+        if (selectedOrigin === "department" && ev.origin_type !== "department") {
+          return false;
+        }
+        if (
+          selectedOrigin === "community_internal" &&
+          !(ev.origin_type === "community" && ev.community?.scope === "internal")
+        ) {
+          return false;
+        }
+        if (
+          selectedOrigin === "community_external" &&
+          !(ev.origin_type === "community" && ev.community?.scope === "external")
+        ) {
+          return false;
+        }
+      }
+
+      // 3. Department filter
+      if (selectedDepartmentId !== "all") {
+        const matchesPrimaryDept = ev.department_id === selectedDepartmentId;
+        const matchesCoHostDept = (ev.stage2_approvals || []).some(
+          (s2) => s2.entity_type === "department" && s2.department_id === selectedDepartmentId
+        );
+        if (!matchesPrimaryDept && !matchesCoHostDept) {
+          return false;
+        }
+      }
+
+      // 4. Category multi-select
       if (selectedCategories.length > 0 && !selectedCategories.includes(ev.category)) {
         return false;
       }
 
-      // 3. Date Horizon
+      // 5. Date Horizon
       if (selectedHorizon !== "all") {
         const evDate = toDate(ev.start_time);
         const now = new Date();
@@ -183,16 +241,20 @@ export function useNoticeBoard({
 
       return true;
     });
-  }, [events, search, selectedCategories, selectedHorizon]);
+  }, [events, search, selectedOrigin, selectedDepartmentId, selectedCategories, selectedHorizon]);
 
   const hasActiveFilters = Boolean(
     search.trim() !== "" ||
+      selectedOrigin !== "all" ||
+      selectedDepartmentId !== "all" ||
       selectedCategories.length !== NOTICE_BOARD_CATEGORIES.length ||
       selectedHorizon !== "all"
   );
 
   const handleResetFilters = useCallback(() => {
     setSearch("");
+    setSelectedOrigin("all");
+    setSelectedDepartmentId("all");
     setSelectedCategories(NOTICE_BOARD_CATEGORIES);
     setSelectedHorizon("all");
   }, [setSearch]);
@@ -202,6 +264,7 @@ export function useNoticeBoard({
     setEvents,
     venues,
     setVenues,
+    departments,
     loading,
     error,
     loadData,
@@ -217,6 +280,10 @@ export function useNoticeBoard({
     setSelectedCategories,
     selectedHorizon,
     setSelectedHorizon,
+    selectedOrigin,
+    setSelectedOrigin,
+    selectedDepartmentId,
+    setSelectedDepartmentId,
     mobileFiltersOpen,
     setMobileFiltersOpen,
     toggleCategory,

@@ -1,8 +1,8 @@
 import { withDbRetry } from "@/lib/db";
 import { events, communities, departments, venues, users, communityMembers } from "@/db/schema";
 import { eq, asc, getTableColumns, aliasedTable, sql, inArray } from "drizzle-orm";
-import { formatCampusEvent, formatVenue } from "@/db/adapters";
-import { CampusEvent, Venue } from "@/types/database";
+import { formatCampusEvent, formatDepartment, formatVenue } from "@/db/adapters";
+import { CampusEvent, Department, Venue } from "@/types/database";
 import { NoticeBoardClient } from "@/features/events";
 
 // Incremental Static Regeneration: Cache at the Edge with 60s background revalidation
@@ -14,9 +14,10 @@ const reviewers = aliasedTable(users, "reviewers");
 export default async function StudentNoticeBoardPage() {
   let initialEvents: CampusEvent[] = [];
   let initialVenues: Venue[] = [];
+  let initialDepartments: Department[] = [];
 
   try {
-    const [eventsRows, venuesRows] = await Promise.all([
+    const [eventsRows, venuesRows, deptRows] = await Promise.all([
       withDbRetry((client) =>
         client
           .select({
@@ -84,10 +85,18 @@ export default async function StudentNoticeBoardPage() {
           .where(eq(venues.isActive, true))
           .orderBy(asc(venues.name))
       ),
+      withDbRetry((client) =>
+        client
+          .select()
+          .from(departments)
+          .where(eq(departments.isActive, true))
+          .orderBy(asc(departments.code))
+      ),
     ]);
 
     initialEvents = eventsRows.map(formatCampusEvent);
     initialVenues = venuesRows.map(formatVenue);
+    initialDepartments = deptRows.map(formatDepartment);
   } catch (err) {
     console.warn("Notice board pre-render: database query failed (build/offline fallback):", err);
   }
@@ -96,6 +105,7 @@ export default async function StudentNoticeBoardPage() {
     <NoticeBoardClient
       initialEvents={initialEvents}
       initialVenues={initialVenues}
+      initialDepartments={initialDepartments}
     />
   );
 }
