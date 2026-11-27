@@ -104,10 +104,11 @@ export function SummaryRegister() {
         <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {data?.availableAcademicYears && data.availableAcademicYears.length > 0 && (
             <div>
-              <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
+              <label htmlFor="register-academic-year" className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
                 Academic Year
               </label>
               <select
+                id="register-academic-year"
                 value={filters.academicYear ?? ""}
                 onChange={(e) => updateFilter("academicYear", e.target.value || undefined)}
                 className="w-full text-xs rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-zinc-700 outline-none focus:ring-2 focus:ring-indigo-500/40"
@@ -123,10 +124,11 @@ export function SummaryRegister() {
           )}
 
           <div>
-            <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
+            <label htmlFor="register-origin-type" className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
               Origin
             </label>
             <select
+              id="register-origin-type"
               value={filters.originType ?? ""}
               onChange={(e) =>
                 updateFilter(
@@ -145,10 +147,11 @@ export function SummaryRegister() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
+            <label htmlFor="register-status" className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
               Status
             </label>
             <select
+              id="register-status"
               value={filters.status ?? ""}
               onChange={(e) => updateFilter("status", e.target.value || undefined)}
               className="w-full text-xs rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-zinc-700 outline-none focus:ring-2 focus:ring-indigo-500/40"
@@ -162,12 +165,13 @@ export function SummaryRegister() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
+            <label htmlFor="register-search" className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
               Search
             </label>
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-400" />
               <input
+                id="register-search"
                 type="text"
                 value={filters.search ?? ""}
                 onChange={(e) => updateFilter("search", e.target.value || undefined)}
@@ -178,10 +182,11 @@ export function SummaryRegister() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
+            <label htmlFor="register-start-date" className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
               From
             </label>
             <input
+              id="register-start-date"
               type="date"
               value={filters.startDate ?? ""}
               onChange={(e) => updateFilter("startDate", e.target.value || undefined)}
@@ -190,10 +195,11 @@ export function SummaryRegister() {
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
+            <label htmlFor="register-end-date" className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wide mb-1">
               To
             </label>
             <input
+              id="register-end-date"
               type="date"
               value={filters.endDate ?? ""}
               onChange={(e) => updateFilter("endDate", e.target.value || undefined)}
@@ -238,10 +244,49 @@ export function SummaryRegister() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Mobile List Rows + Desktop Table */}
       {initialized && (
         <div className="rounded-2xl border border-zinc-200/90 bg-white shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="md:hidden divide-y divide-zinc-100">
+            {rows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-zinc-400 text-xs">
+                {loading ? "Loading…" : "No events match the current filters."}
+              </div>
+            ) : (
+              <>
+                {rows.map((row) => (
+                  <div key={row.id} className="p-3.5 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[11px] font-semibold text-zinc-700">
+                        {row.reference_number ?? "—"}
+                      </span>
+                      <StatusBadge status={row.status} />
+                    </div>
+                    <p className="text-xs font-semibold text-zinc-900 leading-snug">
+                      {row.title}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-zinc-500">
+                      <span>{row.host_name}{row.host_code ? ` (${row.host_code})` : ""}</span>
+                      <span>{format(parseISO(row.start_time), "dd MMM yyyy")}</span>
+                      <span>{row.total_participants.toLocaleString("en-IN")} participants</span>
+                      {row.actual_fund_used > 0 && (
+                        <span>₹{row.actual_fund_used.toLocaleString("en-IN")}</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div className="p-3.5 bg-zinc-50 border-t border-zinc-200 flex items-center justify-between text-xs font-semibold text-zinc-800">
+                  <span>Totals — {rows.length} event{rows.length !== 1 ? "s" : ""}</span>
+                  <span>
+                    {rows.reduce((s, r) => s + r.total_participants, 0).toLocaleString("en-IN")} · ₹
+                    {rows.reduce((s, r) => s + r.actual_fund_used, 0).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-[11px] border-collapse">
               <thead>
                 <tr className="bg-zinc-50 border-b border-zinc-200">

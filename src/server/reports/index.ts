@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
-import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, inArray, lt, or, type SQL } from "drizzle-orm";
 import {
   collegeSettings,
+  communities,
   communityMembers,
+  departments,
   eventApprovals,
   eventMentors,
   eventReports,
   eventStage2Approvals,
   events,
+  venues,
 } from "@/db/schema";
 import {
   formatCampusEvent,
@@ -342,10 +345,10 @@ export async function verifyClosureReport(params: {
   scope: "hod" | "fic" | "executive";
   decision: "verify" | "request_revision";
   remarks?: string | null;
+  reportVersion?: string | null;
 }): Promise<WorkflowActionResult<{ status: string; allVerified: boolean }>> {
   if (
     params.decision === "request_revision" &&
-  reportVersion?: string | null;
     (!params.remarks || params.remarks.trim().length < 5)
   ) {
     return {
@@ -406,9 +409,6 @@ export async function verifyClosureReport(params: {
         };
       }
 
-      const now = new Date();
-      const recipientIds = Array.from(
-        new Set(
       const [reportRow] = await tx
         .select({
           updatedAt: eventReports.updatedAt,
@@ -438,6 +438,9 @@ export async function verifyClosureReport(params: {
         }
       }
 
+      const now = new Date();
+      const recipientIds = Array.from(
+        new Set(
           [eventRow.createdBy, eventRow.coordinatorId].filter((id): id is string =>
             Boolean(id)
           )
@@ -661,10 +664,10 @@ export async function handleReportVerifyPatch(
     scope,
     decision: parsed.data.decision,
     remarks: parsed.data.remarks,
+    reportVersion: parsed.data.reportVersion,
   });
 
   if (!result.ok) {
-    reportVersion: parsed.data.reportVersion,
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
@@ -832,6 +835,55 @@ export function hasSummaryRegisterAccess(session: AuthSession): boolean {
 /**
  * Loads the consolidated NAAC/NBA summary register scoped to the caller's authority.
  */
+function zonedDateMidnightToUtc(
+  dateStr: string,
+  timeZone: string,
+  addDays = 0
+): Date | null {
+  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr.trim());
+  let year: number;
+  let month: number;
+  let day: number;
+  if (isoMatch) {
+    year = Number(isoMatch[1]);
+    month = Number(isoMatch[2]);
+    day = Number(isoMatch[3]);
+  } else {
+    const parsed = new Date(dateStr);
+    if (isNaN(parsed.getTime())) return null;
+    year = parsed.getUTCFullYear();
+    month = parsed.getUTCMonth() + 1;
+    day = parsed.getUTCDate();
+  }
+
+  const targetUtc = Date.UTC(year, month - 1, day + addDays, 0, 0, 0);
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date(targetUtc));
+    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    const zonedHour = map.hour === "24" ? 0 : Number(map.hour);
+    const asUtc = Date.UTC(
+      Number(map.year),
+      Number(map.month) - 1,
+      Number(map.day),
+      zonedHour,
+      Number(map.minute),
+      Number(map.second)
+    );
+    return new Date(targetUtc - (asUtc - targetUtc));
+  } catch {
+    return new Date(targetUtc);
+  }
+}
+
 export async function getSummaryRegister(
   filters: SummaryRegisterFilters,
   session: AuthSession
@@ -845,7 +897,47 @@ export async function getSummaryRegister(
   }
 
   return withDbRetry(async (client) => {
-    const conditions = [];
+    const settingsRow = await client
+      .select()
+      .from(collegeSettings)
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+    const collegeTimezone = settingsRow?.timezone || "Asia/Kolkata";
+
+    const isGlobalViewer =
+      session.isPrincipal || session.isVicePrincipal || session.isAdmin;
+    const hodIds = session.hodDepartments.map((d) => d.id);
+    const ficIds = session.ficCommunities.map((c) => c.id);
+
+    const scopeConditions: SQL[] = [];
+    if (!isGlobalViewer) {
+      if (hodIds.length === 0 && ficIds.length === 0) {
+        return {
+          ok: true,
+          data: {
+            collegeSettings: settingsRow
+              ? formatCollegeSettings(settingsRow)
+              : defaultCollegeSettings(),
+            rows: [],
+            totals: {
+              totalEvents: 0,
+              totalParticipants: 0,
+              totalEstimatedBudget: 0,
+              totalActualFundUsed: 0,
+            },
+            availableAcademicYears: [],
+          },
+        };
+      }
+      const unitPredicates: SQL[] = [];
+      if (hodIds.length > 0) unitPredicates.push(inArray(events.departmentId, hodIds));
+      if (ficIds.length > 0) unitPredicates.push(inArray(events.communityId, ficIds));
+      scopeConditions.push(
+        unitPredicates.length === 1 ? unitPredicates[0] : or(...unitPredicates)!
+      );
+    }
+
+    const conditions: SQL[] = [...scopeConditions];
 
     if (filters.academicYear) {
       conditions.push(eq(events.academicYear, filters.academicYear));
@@ -860,21 +952,102 @@ export async function getSummaryRegister(
       conditions.push(eq(events.status, filters.status));
     }
     if (filters.startDate) {
-      const start = new Date(filters.startDate);
-      if (!isNaN(start.getTime())) {
+      const start = zonedDateMidnightToUtc(filters.startDate, collegeTimezone, 0);
+      if (start) {
         conditions.push(gte(events.startTime, start));
       }
     }
     if (filters.endDate) {
-      const end = new Date(filters.endDate);
-      if (!isNaN(end.getTime())) {
-        end.setHours(23, 59, 59, 999);
-        conditions.push(lte(events.endTime, end));
+      const nextDayMidnight = zonedDateMidnightToUtc(filters.endDate, collegeTimezone, 1);
+      if (nextDayMidnight) {
+        conditions.push(lt(events.endTime, nextDayMidnight));
       }
     }
 
-    const [settingsRow, eventRows] = await Promise.all([
-      client.select().from(collegeSettings).limit(1).then((rows) => rows[0] ?? null),
+    if (filters.communityScope) {
+      const scopedCommunities = await client
+        .select({ id: communities.id })
+        .from(communities)
+        .where(eq(communities.scope, filters.communityScope));
+      const scopedCommIds = scopedCommunities.map((c) => c.id);
+      if (scopedCommIds.length === 0) {
+        const distinctYears = await client
+          .selectDistinct({ academicYear: events.academicYear })
+          .from(events)
+          .where(scopeConditions.length > 0 ? and(...scopeConditions) : undefined);
+        return {
+          ok: true,
+          data: {
+            collegeSettings: settingsRow
+              ? formatCollegeSettings(settingsRow)
+              : defaultCollegeSettings(),
+            rows: [],
+            totals: {
+              totalEvents: 0,
+              totalParticipants: 0,
+              totalEstimatedBudget: 0,
+              totalActualFundUsed: 0,
+            },
+            availableAcademicYears: distinctYears
+              .map((r) => r.academicYear)
+              .filter((y): y is string => Boolean(y))
+              .sort((a, b) => b.localeCompare(a)),
+          },
+        };
+      }
+      conditions.push(eq(events.originType, "community"));
+      conditions.push(inArray(events.communityId, scopedCommIds));
+    }
+
+    const searchTerm = filters.search?.trim() || "";
+    if (searchTerm) {
+      const pattern = `%${searchTerm}%`;
+      const [matchingComms, matchingDepts, matchingVenues] = await Promise.all([
+        client
+          .select({ id: communities.id })
+          .from(communities)
+          .where(ilike(communities.name, pattern)),
+        client
+          .select({ id: departments.id })
+          .from(departments)
+          .where(ilike(departments.name, pattern)),
+        client
+          .select({ id: venues.id })
+          .from(venues)
+          .where(ilike(venues.name, pattern)),
+      ]);
+      const searchPredicates: SQL[] = [
+        ilike(events.title, pattern),
+        ilike(events.referenceNumber, pattern),
+      ];
+      if (matchingComms.length > 0) {
+        searchPredicates.push(
+          inArray(
+            events.communityId,
+            matchingComms.map((c) => c.id)
+          )
+        );
+      }
+      if (matchingDepts.length > 0) {
+        searchPredicates.push(
+          inArray(
+            events.departmentId,
+            matchingDepts.map((d) => d.id)
+          )
+        );
+      }
+      if (matchingVenues.length > 0) {
+        searchPredicates.push(
+          inArray(
+            events.venueId,
+            matchingVenues.map((v) => v.id)
+          )
+        );
+      }
+      conditions.push(or(...searchPredicates)!);
+    }
+
+    const [eventRows, distinctYearRows] = await Promise.all([
       client.query.events.findMany({
         ...(conditions.length > 0 ? { where: and(...conditions) } : {}),
         orderBy: [desc(events.startTime)],
@@ -892,43 +1065,13 @@ export async function getSummaryRegister(
           report: true,
         },
       }),
+      client
+        .selectDistinct({ academicYear: events.academicYear })
+        .from(events)
+        .where(scopeConditions.length > 0 ? and(...scopeConditions) : undefined),
     ]);
 
-    const isGlobalViewer =
-      session.isPrincipal || session.isVicePrincipal || session.isAdmin;
-    const hodSet = new Set(session.hodDepartments.map((d) => d.id));
-    const ficSet = new Set(session.ficCommunities.map((c) => c.id));
-    const searchLower = filters.search?.trim().toLowerCase() || "";
-
-    const filteredRows = eventRows.filter((row) => {
-      if (!isGlobalViewer) {
-        const matchesDept = Boolean(row.departmentId && hodSet.has(row.departmentId));
-        const matchesComm = Boolean(row.communityId && ficSet.has(row.communityId));
-        if (!matchesDept && !matchesComm) return false;
-      }
-
-      if (filters.communityScope) {
-        if (row.originType !== "community") return false;
-        if (row.community?.scope !== filters.communityScope) return false;
-      }
-
-      if (searchLower) {
-        const haystack = [
-          row.title,
-          row.referenceNumber || "",
-          row.community?.name || "",
-          row.department?.name || "",
-          row.venue?.name || "",
-        ]
-          .join(" ")
-          .toLowerCase();
-        if (!haystack.includes(searchLower)) return false;
-      }
-
-      return true;
-    });
-
-    const summaryRows: SummaryRegisterRow[] = filteredRows.map((row) => {
+    const summaryRows: SummaryRegisterRow[] = eventRows.map((row) => {
       const studentCount = Number(row.report?.studentCount ?? 0);
       const facultyCount = Number(row.report?.facultyCount ?? 0);
       const externalCount = Number(row.report?.externalCount ?? 0);
@@ -992,7 +1135,7 @@ export async function getSummaryRegister(
 
     const availableAcademicYears = Array.from(
       new Set(
-        eventRows
+        distinctYearRows
           .map((r) => r.academicYear)
           .filter((y): y is string => Boolean(y))
       )
