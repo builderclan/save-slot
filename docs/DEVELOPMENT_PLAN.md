@@ -7,7 +7,7 @@
 | **`v0.3.0` POC** | Public Notice Board, Safe-Slot Engine, Lead / Principal / Admin POC | Done | Baseline release |
 | **Phase 1: Schema, Roles & Admin Setup** | Single-college DB (`013`), Drizzle schema, effective RBAC auth, IT & Ops `/admin` console, AISAT seed | Done | `#80`, `#81` |
 | **Phase 2: Multi-Stage Approvals & Overrides** | Unified Proposer (`/lead`, `/staff`), Stage 2 desks (`/hod`, `/fic`), P/VP overrides, soft locks, inbox | Next | — |
-| **Phase 3: Closure Reports & Printable Dossiers** | Atomic ref numbers, NAAC/NBA closure reports, A4 print dossiers, consolidated register, QR `/verify/[code]` | Planned | — |
+| **Phase 3: Closure Reports & Printable Dossiers** | Atomic ref numbers, NAAC/NBA closure reports, A4 print dossiers, consolidated register, QR `/verify/[code]` | Complete | `feat/v1-phase3-reports` |
 | **Phase 4: Public Notice Board & Full QA** | Origin & Department filters on `/`, Internal/External badges, 360px/desktop QA, `pnpm validate` | Planned | — |
 
 ---
@@ -52,11 +52,11 @@ The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical st
 - **Goal:** Replace physical paper slips and manual Excel registers with verified closure reports, AISAT reference codes, A4 printouts, and QR verification.
 
 - **Deliverables:**
-  - [ ] Atomic Reference Number generator (`AISAT/<YYYY-YY>/<HOST_CODE>/<NNN>`) running inside final P/VP approval with July 1 – June 30 academic year rollover.
-  - [ ] Post-Event Closure Form (`event_reports` + confirmed `event_mentors`: Internal/External, Role, Company; Total Fund Used; Student/Faculty/External counts; NAAC/NBA summary & outcomes) + HOD/FIC/P-VP quick-verification queue (`pending_report_verification` $\rightarrow$ `completed`).
-  - [ ] A4 Print-CSS Individual Event Dossier (`/reports/events/[id]`): AISAT letterhead, full timestamped `event_approvals` log, mentor & fund tables, *"Electronically Approved via SaveSlot — No Physical Signature Required"* stamp, and vector QR code.
-  - [ ] Consolidated Register (`/reports/summary`): Filterable by Academic Year, Date Range, Origin, Community Scope, Department, and Status, with A4 print view and CSV export.
-  - [ ] Public QR Verification (`/verify/[code]`): Read-only authenticity page displaying Ref No, Title, Date, Venue, Origin, Approval Chain Names + Timestamps, and Status—while hiding funds, rejection notes, and personal contacts.
+  - [x] Atomic Reference Number generator (`AISAT/<YYYY-YY>/<HOST_CODE>/<NNN>`) running inside final P/VP approval with July 1 – June 30 academic year rollover.
+  - [x] Post-Event Closure Form (`event_reports` + confirmed `event_mentors`: Internal/External, Role, Company; Total Fund Used; Student/Faculty/External counts; NAAC/NBA summary & outcomes) + HOD/FIC/P-VP quick-verification queue (`pending_report_verification` $\rightarrow$ `completed`).
+  - [x] A4 Print-CSS Individual Event Dossier (`/reports/events/[id]`): AISAT letterhead, full timestamped `event_approvals` log, mentor & fund tables, *"Electronically Approved via SaveSlot — No Physical Signature Required"* stamp, and vector QR code.
+  - [x] Consolidated Register (`/reports/summary`): Filterable by Academic Year, Date Range, Origin, Community Scope, Department, and Status, with A4 print view and CSV export.
+  - [x] Public QR Verification (`/verify/[code]`): Read-only authenticity page displaying Ref No, Title, Date, Venue, Origin, Approval Chain Names + Timestamps, and Status—while hiding funds, rejection notes, and personal contacts.
 
 ### Phase 4: Public Notice Board Refresh & Full QA
 
