@@ -1,6 +1,7 @@
 export * from "./category-badge";
 export * from "./event-card";
 export * from "./event-detail-modal";
+export * from "./event-origin-badge";
 export * from "./filter-bar";
 export * from "./mini-calendar";
 export * from "./month-view";
@@ -8,4 +9,5 @@ export * from "./notice-board-client";
 export * from "./rejection-modal";
 export * from "./sidebar-category-filter";
 export * from "./sidebar-horizon-filter";
+export * from "./sidebar-origin-filter";
 export * from "./week-view";

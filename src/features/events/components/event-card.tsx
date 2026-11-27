@@ -6,6 +6,7 @@ import { format, parseISO, isSameDay } from "date-fns";
 import { MapPin, Clock, ArrowUpRight, Calendar as CalendarIcon, CheckCircle2, Users } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge, CATEGORY_STYLES } from "./category-badge";
+import { EventOriginBadge, getEventHostLabel } from "./event-origin-badge";
 import { formatDisplayName } from "@/lib/utils";
 
 interface EventCardProps {
@@ -50,13 +51,16 @@ export function EventCard({ event, onSelect }: EventCardProps) {
         <div className="flex items-center gap-1.5 min-w-0">
           <span className={`w-1.5 h-1.5 rounded-full ${catStyle.dot} shrink-0`} />
           <span className="text-[11px] font-medium text-zinc-600 truncate">
-            {event.community?.name || "Campus Community"}
+            {getEventHostLabel(event)}
             {leadName && (
               <span className="text-zinc-400 font-normal"> · {formatDisplayName(leadName)}</span>
             )}
           </span>
         </div>
-        <CategoryBadge category={event.category} size="sm" showDot />
+        <div className="flex items-center gap-1.5 shrink-0">
+          <EventOriginBadge event={event} />
+          <CategoryBadge category={event.category} size="sm" showDot />
+        </div>
       </div>
 
       {/* Cover Media Banner (Clean, unencumbered by floating pills) */}

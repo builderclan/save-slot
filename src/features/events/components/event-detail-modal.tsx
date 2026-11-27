@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { CampusEvent } from "@/types/database";
 import { CategoryBadge } from "./category-badge";
+import { EventOriginBadge, getEventHostLabel } from "./event-origin-badge";
 import { getGoogleCalendarUrl, downloadIcsFile } from "@/lib/calendar-export";
 import { formatDisplayName } from "@/lib/utils";
 
@@ -164,18 +165,23 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
       >
         {/* Editorial Top Navigation Bar */}
         <div className="px-4 sm:px-5 py-3.5 border-b border-zinc-100 flex items-center justify-between gap-3 bg-white shrink-0 sticky top-0 z-20">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <span className="text-[11px] font-medium text-zinc-600 flex items-center gap-1.5 truncate">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-              <span className="truncate">{event.community?.name || "Campus Community"}</span>
+              <span className="truncate">{getEventHostLabel(event)}</span>
               {leadName && (
                 <span className="text-zinc-400 font-normal truncate hidden xs:inline">
                   {" "}· {formatDisplayName(leadName)}
                 </span>
               )}
             </span>
-            <span className="text-zinc-300">•</span>
+            <EventOriginBadge event={event} />
             <CategoryBadge category={event.category} size="sm" showDot />
+            {event.reference_number && (
+              <span className="px-2 py-0.5 rounded-md bg-zinc-100 border border-zinc-200 font-mono text-[10px] font-semibold text-zinc-700">
+                {event.reference_number}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-1 shrink-0">
