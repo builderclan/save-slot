@@ -6,9 +6,9 @@
 | :--- | :--- | :--- | :--- |
 | **`v0.3.0` POC** | Public Notice Board, Safe-Slot Engine, Lead / Principal / Admin POC | Done | Baseline release |
 | **Phase 1: Schema, Roles & Admin Setup** | Single-college DB (`013`), Drizzle schema, effective RBAC auth, IT & Ops `/admin` console, AISAT seed | Done | `#80`, `#81` |
-| **Phase 2: Multi-Stage Approvals & Overrides** | Unified Proposer (`/lead`, `/staff`), Stage 2 desks (`/hod`, `/fic`), P/VP overrides, soft locks, inbox | Next | — |
-| **Phase 3: Closure Reports & Printable Dossiers** | Atomic ref numbers, NAAC/NBA closure reports, A4 print dossiers, consolidated register, QR `/verify/[code]` | Complete | `feat/v1-phase3-reports` |
-| **Phase 4: Public Notice Board & Full QA** | Origin & Department filters on `/`, Internal/External badges, 360px/desktop QA, `pnpm validate` | Planned | — |
+| **Phase 2: Multi-Stage Approvals & Overrides** | Unified Proposer (`/lead`, `/staff`), Stage 2 desks (`/hod`, `/fic`), P/VP overrides, soft locks, inbox | Done | `#83` |
+| **Phase 3: Closure Reports & Printable Dossiers** | Atomic ref numbers, NAAC/NBA closure reports, A4 print dossiers, consolidated register, QR `/verify/[code]` | Done | `#84` |
+| **Phase 4: Public Notice Board & Full QA** | Origin & Department filters on `/`, Internal/External badges, 360px/desktop QA, `pnpm validate` | Complete | `feat/v1-phase4-notice-board` |
 
 ---
 
@@ -63,9 +63,9 @@ The `v0.3.0` Proof of Concept proved out the core scheduling UI and technical st
 - **Goal:** Bring the new origins and filters to `/` and verify everything end-to-end.
 
 - **Deliverables:**
-  - [ ] Public Notice Board (`/`) filters for Origin (`College`, `Department`, `Community - Internal`, `Community - External`), Department (`CSE`, `ECE`, `EEE`, `AI`, `ME`, `CE`), Category, and Search, plus Internal/External badges.
-  - [ ] Responsive UI check across 360px mobile & 1280px desktop, plus browser Print-to-PDF check on A4 dossiers.
-  - [ ] Full unit, workflow, and integration tests + `pnpm validate` (`db:migrate:check`, `typecheck`, `lint`, `test`, `build`).
+  - [x] Public Notice Board (`/`) filters for Origin (`College`, `Department`, `Community - Internal`, `Community - External`), Department (`CSE`, `ECE`, `EEE`, `AI`, `ME`, `CE`), Category, and Search, plus Internal/External badges.
+  - [x] Responsive UI check across 360px mobile & 1280px desktop, plus browser Print-to-PDF check on A4 dossiers.
+  - [x] Full unit, workflow, and integration tests + `pnpm validate` (`db:migrate:check`, `typecheck`, `lint`, `test`, `build`).
 
 ---
 
