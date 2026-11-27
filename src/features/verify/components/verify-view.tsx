@@ -1,4 +1,4 @@
-import { format, parseISO } from "date-fns";
+import { format, isSameDay, parseISO } from "date-fns";
 import { CheckCircle2, Calendar, MapPin, ShieldCheck, Building2 } from "lucide-react";
 import type { PublicVerifyPayload } from "@/server/reports";
 
@@ -66,8 +66,9 @@ export function VerifyView({ data }: VerifyViewProps) {
             <div className="flex items-center gap-2.5">
               <Calendar className="w-4 h-4 text-zinc-400 shrink-0" />
               <span>
-                {format(start, "EEEE, MMMM d, yyyy")} · {format(start, "h:mm a")} –{" "}
-                {format(end, "h:mm a")}
+                {isSameDay(start, end)
+                  ? `${format(start, "EEEE, MMMM d, yyyy")} · ${format(start, "h:mm a")} – ${format(end, "h:mm a")}`
+                  : `${format(start, "EEE, MMM d, yyyy h:mm a")} – ${format(end, "EEE, MMM d, yyyy h:mm a")}`}
               </span>
             </div>
             <div className="flex items-center gap-2.5">

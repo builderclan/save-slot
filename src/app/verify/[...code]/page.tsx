@@ -5,19 +5,24 @@ import { getPublicVerifyPayload } from "@/server/reports";
 import { VerifyView } from "@/features/verify/components/verify-view";
 
 interface PageProps {
-  params: Promise<{ code: string }>;
+  params: Promise<{ code: string[] }>;
+}
+
+function decodeRefCode(segments: string[]): string {
+  return segments.map((s) => decodeURIComponent(s)).join("/");
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { code } = await params;
   return {
-    title: `Verify ${decodeURIComponent(code)} · SaveSlot`,
+    title: `Verify ${decodeRefCode(code)} · SaveSlot`,
   };
 }
 
 export default async function PublicVerifyPage({ params }: PageProps) {
   const { code } = await params;
-  const result = await getPublicVerifyPayload(decodeURIComponent(code));
+  const refCode = decodeRefCode(code);
+  const result = await getPublicVerifyPayload(refCode);
 
   if (!result.ok) {
     return (
@@ -27,10 +32,7 @@ export default async function PublicVerifyPage({ params }: PageProps) {
           <h1 className="text-lg font-bold text-zinc-900">Record Not Found</h1>
           <p className="text-xs text-zinc-500 leading-relaxed">
             No verified event record was found for reference code{" "}
-            <span className="font-mono font-semibold text-zinc-700">
-              {decodeURIComponent(code)}
-            </span>
-            .
+            <span className="font-mono font-semibold text-zinc-700">{refCode}</span>.
           </p>
           <Link
             href="/"

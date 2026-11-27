@@ -7,7 +7,7 @@ vi.mock("@/server/reports", () => ({
 
 import { getPublicVerifyPayload } from "@/server/reports";
 
-describe("GET /api/verify/[code]", () => {
+describe("GET /api/verify/[...code]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -20,16 +20,16 @@ describe("GET /api/verify/[code]", () => {
     });
 
     const res = await GET(new Request("http://localhost/api/verify/AISAT-INVALID"), {
-      params: Promise.resolve({ code: "AISAT-INVALID" }),
+      params: Promise.resolve({ code: ["AISAT-INVALID"] }),
     });
     expect(res.status).toBe(404);
   });
 
-  it("returns verified payload without auth", async () => {
+  it("returns verified payload without auth for slash-separated reference codes", async () => {
     vi.mocked(getPublicVerifyPayload).mockResolvedValue({
       ok: true,
       data: {
-        reference_number: "AISAT-2026-CSE-001",
+        reference_number: "AISAT/CSE/2026-27/001",
         academic_year: "2026-27",
         title: "AI Workshop",
         origin_type: "department",
@@ -52,12 +52,13 @@ describe("GET /api/verify/[code]", () => {
       },
     });
 
-    const res = await GET(new Request("http://localhost/api/verify/AISAT-2026-CSE-001"), {
-      params: Promise.resolve({ code: "AISAT-2026-CSE-001" }),
+    const res = await GET(new Request("http://localhost/api/verify/AISAT/CSE/2026-27/001"), {
+      params: Promise.resolve({ code: ["AISAT", "CSE", "2026-27", "001"] }),
     });
     expect(res.status).toBe(200);
+    expect(getPublicVerifyPayload).toHaveBeenCalledWith("AISAT/CSE/2026-27/001");
     const json = await res.json();
-    expect(json.reference_number).toBe("AISAT-2026-CSE-001");
+    expect(json.reference_number).toBe("AISAT/CSE/2026-27/001");
     expect(json.status).toBe("completed");
   });
 });
